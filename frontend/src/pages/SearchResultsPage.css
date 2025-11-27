@@ -1,0 +1,645 @@
+.results-page {
+  padding: 32px 20px;
+  min-height: 60vh;
+  background: #f8f9fa;
+}
+
+.results-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.results-header {
+  margin-bottom: 32px;
+}
+
+.results-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #1a1a1a;
+  font-size: 28px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.header-icon {
+  color: #0066CC;
+}
+
+.search-route {
+  color: #5f6368;
+  font-size: 16px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.results-count {
+  color: #9aa0a6;
+  font-size: 14px;
+}
+
+.results-content {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.filters-section {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  z-index: 10;
+}
+
+.results-section {
+  min-height: 400px;
+}
+
+.results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.result-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  padding: 20px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #e8eaed;
+}
+
+.result-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+/* Flight Card */
+.flight-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.card-icon {
+  font-size: 24px;
+  color: #0066CC;
+}
+
+.card-title-section h3 {
+  margin: 0 0 6px 0;
+  color: #1a1a1a;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.card-subtitle {
+  margin: 0;
+  color: #5f6368;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-body {
+  margin-bottom: 18px;
+}
+
+.card-info-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.info-icon {
+  color: #9aa0a6;
+  font-size: 14px;
+}
+
+.duration-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: #e8f4ff;
+  color: #0066CC;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Hotel Card */
+.hotel-card {
+  display: flex;
+  gap: 20px;
+}
+
+.card-image {
+  width: 200px;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hotel-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 15px;
+}
+
+.rating-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #0066CC;
+  color: white;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.star-icon {
+  font-size: 12px;
+}
+
+.location-icon {
+  font-size: 12px;
+  color: #999;
+}
+
+.amenities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.amenity-tag {
+  padding: 4px 10px;
+  background: #f5f5f5;
+  color: #666;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.availability {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Car Card */
+.car-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  background: #f0f7ff;
+  color: #0066CC;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Card Footer */
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 18px;
+  border-top: 1px solid #e8eaed;
+}
+
+.card-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.details-btn {
+  background: #ffffff;
+  color: #0066CC;
+  border: 1.5px solid #0066CC;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.details-btn:hover {
+  background: #0066CC;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,102,204,0.2);
+}
+
+.price-section {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.price {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0066CC;
+}
+
+.price-label {
+  font-size: 14px;
+  color: #9aa0a6;
+}
+
+/* Roundtrip Card Styles */
+.roundtrip-card {
+  padding: 0;
+}
+
+.roundtrip-card-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  padding: 20px;
+}
+
+.roundtrip-legs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.roundtrip-leg-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.roundtrip-leg-row:last-child {
+  border-bottom: none;
+}
+
+.leg-label {
+  font-weight: 700;
+  color: #5f6368;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.leg-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leg-airline {
+  font-weight: 700;
+  color: #1a1a1a;
+  font-size: 16px;
+}
+
+.leg-route {
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.leg-time {
+  color: #1a1a1a;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.leg-date {
+  color: #9aa0a6;
+  font-size: 13px;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+.leg-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #5f6368;
+}
+
+.leg-duration {
+  font-weight: 600;
+}
+
+.leg-stops {
+  color: #9aa0a6;
+}
+
+.roundtrip-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  min-width: 220px;
+  padding-left: 24px;
+  border-left: 1px solid #e8eaed;
+}
+
+.roundtrip-price-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.roundtrip-price {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0066CC;
+}
+
+.roundtrip-price-label {
+  font-size: 14px;
+  color: #9aa0a6;
+}
+
+.roundtrip-cabin {
+  font-size: 13px;
+  color: #5f6368;
+  padding: 6px 14px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.roundtrip-seats {
+  font-size: 13px;
+  color: #d32f2f;
+  font-weight: 600;
+}
+
+.roundtrip-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.roundtrip-actions .details-btn,
+.roundtrip-actions .book-btn {
+  width: 100%;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border: 1px solid #e8eaed;
+}
+
+.empty-state p {
+  color: #5f6368;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.clear-filters-link,
+.flexible-dates-link {
+  padding: 12px 24px;
+  background: #0066CC;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0,102,204,0.2);
+}
+
+.clear-filters-link:hover,
+.flexible-dates-link:hover {
+  background: #0052a3;
+  box-shadow: 0 4px 12px rgba(0,102,204,0.3);
+}
+
+.clear-filters-link:focus,
+.flexible-dates-link:focus {
+  outline: 2px solid #0066CC;
+  outline-offset: 2px;
+}
+
+.book-btn {
+  padding: 12px 32px;
+  background: #0066CC;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0,102,204,0.2);
+}
+
+.book-btn:hover {
+  background: #0052a3;
+  box-shadow: 0 4px 12px rgba(0,102,204,0.3);
+}
+
+/* Loading and Error States */
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.error-state p,
+.empty-state p {
+  color: #666;
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.retry-btn,
+.clear-filters-link {
+  padding: 12px 30px;
+  background: #0066CC;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover,
+.clear-filters-link:hover {
+  background: #0052a3;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .results-content {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-section {
+    position: sticky;
+    top: 20px;
+    z-index: 10;
+    margin-bottom: 20px;
+  }
+
+  .roundtrip-card-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .roundtrip-card-right {
+    border-left: none;
+    border-top: 1px solid #e0e0e0;
+    padding-left: 0;
+    padding-top: 20px;
+    align-items: flex-start;
+  }
+
+  .roundtrip-price-section {
+    align-items: flex-start;
+  }
+
+  .roundtrip-leg-row {
+    grid-template-columns: 80px 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .results-page {
+    padding: 20px 10px;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .book-btn {
+    width: 100%;
+  }
+
+  .roundtrip-card-content {
+    padding: 20px 15px;
+  }
+
+  .roundtrip-leg-row {
+    grid-template-columns: 70px 1fr;
+    gap: 15px;
+  }
+
+  .leg-label {
+    font-size: 12px;
+  }
+
+  .roundtrip-card-right {
+    min-width: auto;
+  }
+
+  .roundtrip-price {
+    font-size: 28px;
+  }
+
+  .hotel-card {
+    flex-direction: column;
+  }
+
+  .card-image {
+    width: 100%;
+    height: 200px;
+  }
+}
+
+/* Accessibility */
+.details-btn:focus,
+.book-btn:focus,
+.clear-filters-link:focus,
+.flexible-dates-link:focus {
+  outline: 2px solid #0066CC;
+  outline-offset: 2px;
+}
+
+.filter-select:focus {
+  outline: 2px solid #0066CC;
+  outline-offset: 2px;
+}
+
+.filter-checkbox input:focus {
+  outline: 2px solid #0066CC;
+  outline-offset: 2px;
+}
+
+/* Skeleton Loading Styles */
+.skeleton-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 25px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

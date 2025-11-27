@@ -1,0 +1,532 @@
+const pool = require('../config/database');
+const { v4: uuidv4 } = require('uuid');
+
+// Normalize city name: strip state/country suffixes and airport codes
+const normalizeCityName = (cityName) => {
+  if (!cityName) return '';
+
+  let normalized = cityName.trim();
+
+  // Remove airport codes in parentheses: "New York (JFK)" → "New York"
+  normalized = normalized.replace(/\s*\([A-Z]{3,4}\)\s*$/i, '');
+
+  // Remove state/country suffixes: "New York, NY" → "New York"
+  normalized = normalized.replace(/\s*,\s*[A-Z]{2,3}(\s*\([^)]+\))?\s*$/i, '');
+  normalized = normalized.replace(/\s*,\s*(USA|United States|US)\s*$/i, '');
+
+  // Remove extra whitespace
+  normalized = normalized.trim();
+
+  return normalized;
+};
+
+// Search flights
+const searchFlights = async (req, res) => {
+  try {
+    const { origin, destination, departure_date, return_date, passengers = 1, tripType } = req.query;
+
+    // Handle multi-city searches
+    if (tripType === 'multicity') {
+      // Parse multi-city leg parameters
+      const legs = [];
+
+      // Try parsing 'legs' JSON parameter first (from frontend)
+      if (req.query.legs) {
+        try {
+          const parsedLegs = JSON.parse(req.query.legs);
+          if (Array.isArray(parsedLegs)) {
+            parsedLegs.forEach(leg => {
+              if (leg.from && leg.to && (leg.date || leg.departDate)) {
+                legs.push({
+                  from: normalizeCityName(leg.from),
+                  to: normalizeCityName(leg.to),
+                  date: leg.date || leg.departDate
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing legs parameter:', error);
+        }
+      }
+
+      // Fallback to individual parameters if legs array is still empty
+      if (legs.length === 0) {
+        let legIndex = 1;
+        while (req.query[`leg${legIndex}_from`] && req.query[`leg${legIndex}_to`] && req.query[`leg${legIndex}_date`]) {
+          legs.push({
+            from: normalizeCityName(req.query[`leg${legIndex}_from`]),
+            to: normalizeCityName(req.query[`leg${legIndex}_to`]),
+            date: req.query[`leg${legIndex}_date`]
+          });
+          legIndex++;
+        }
+      }
+
+      if (legs.length === 0) {
+        return res.status(400).json({ error: 'Missing required multi-city leg parameters' });
+      }
+
+      console.log('🔍 Multi-city search:', {
+        legsCount: legs.length,
+        legs: legs.map((leg, i) => ({ leg: i + 1, from: leg.from, to: leg.to, date: leg.date }))
+      });
+
+      // Search for each leg separately
+      const legResults = [];
+      for (let i = 0; i < legs.length; i++) {
+        const leg = legs[i];
+        const legStart = `${leg.date} 00:00:00`;
+        const legEnd = `${leg.date} 23:59:59`;
+
+        const legQuery = `SELECT * FROM flights 
+           WHERE (LOWER(departure_city) LIKE ? OR LOWER(departure_city) = ?)
+           AND (LOWER(arrival_city) LIKE ? OR LOWER(arrival_city) = ?)
+           AND departure_time BETWEEN ? AND ?
+           AND available_seats >= ?
+           ORDER BY price ASC`;
+
+        const legFromLower = leg.from.toLowerCase();
+        const legToLower = leg.to.toLowerCase();
+        const legParams = [
+          `%${legFromLower}%`, legFromLower,
+          `%${legToLower}%`, legToLower,
+          legStart, legEnd, parseInt(passengers)
+        ];
+
+        const legResult = await pool.query(legQuery, legParams);
+
+        console.log(`🔍 Leg ${i + 1} (${leg.from} → ${leg.to}, ${leg.date}):`, {
+          found: legResult.rows.length
+        });
+
+        if (legResult.rows.length === 0) {
+          // If any leg has no results, return empty
+          return res.json({
+            flights: [],
+            total: 0,
+            searchParams: { tripType: 'multicity', legs }
+          });
+        }
+
+        legResults.push(legResult.rows);
+      }
+
+      // Combine all leg results into multi-city options
+      // Each combination is one flight option with all legs
+      const multiCityFlights = [];
+
+      // Generate all combinations of flights across legs
+      const generateCombinations = (legIndex, currentCombination) => {
+        if (legIndex === legResults.length) {
+          // Calculate total price
+          const totalPrice = currentCombination.reduce((sum, flight) => {
+            return sum + parseFloat(flight.price || 0);
+          }, 0);
+
+          multiCityFlights.push({
+            legs: currentCombination,
+            total_price: totalPrice,
+            is_multicity: true,
+            leg_count: legResults.length
+          });
+          return;
+        }
+
+        // Try each flight option for this leg
+        legResults[legIndex].forEach(flight => {
+          generateCombinations(legIndex + 1, [...currentCombination, flight]);
+        });
+      };
+
+      generateCombinations(0, []);
+
+      console.log('🔍 Multi-city combinations:', {
+        legsCount: legResults.length,
+        flightsPerLeg: legResults.map(leg => leg.length),
+        totalCombinations: multiCityFlights.length
+      });
+
+      return res.json({
+        flights: multiCityFlights,
+        total: multiCityFlights.length,
+        searchParams: { tripType: 'multicity', legs }
+      });
+    }
+
+    // Handle regular one-way and roundtrip searches
+    if (!origin || !destination || !departure_date) {
+      return res.status(400).json({ error: 'Missing required search parameters' });
+    }
+
+    // Normalize city names
+    const normalizedOrigin = normalizeCityName(origin);
+    const normalizedDestination = normalizeCityName(destination);
+
+    // Build day-range date filters (00:00:00 to 23:59:59)
+    const departStart = `${departure_date} 00:00:00`;
+    const departEnd = `${departure_date} 23:59:59`;
+
+    // Search for outbound flights with case-insensitive matching and day-range date filter
+    // Use LIKE pattern with % wildcards for flexible matching
+    const outboundQuery = `SELECT * FROM flights 
+       WHERE (LOWER(departure_city) LIKE ? OR LOWER(departure_city) = ?)
+       AND (LOWER(arrival_city) LIKE ? OR LOWER(arrival_city) = ?)
+       AND departure_time BETWEEN ? AND ?
+       AND available_seats >= ?
+       ORDER BY price ASC`;
+
+    // Use LIKE with % wildcards for flexible matching, also try exact match
+    const normalizedOriginLower = normalizedOrigin.toLowerCase();
+    const normalizedDestinationLower = normalizedDestination.toLowerCase();
+    const outboundParams = [
+      `%${normalizedOriginLower}%`, normalizedOriginLower,
+      `%${normalizedDestinationLower}%`, normalizedDestinationLower,
+      departStart, departEnd, parseInt(passengers)
+    ];
+
+    const outboundResult = await pool.query(outboundQuery, outboundParams);
+
+    // Log actual SQL query with bound values for debugging
+    const outboundParamsCopy = [...outboundParams];
+    const outboundSqlDebug = outboundQuery
+      .replace(/\?/g, () => {
+        const val = outboundParamsCopy.shift();
+        if (val === undefined) return 'undefined';
+        return typeof val === 'string' ? `'${val}'` : val;
+      });
+
+    console.log('🔍 Outbound search:', {
+      original: { origin, destination },
+      normalized: { origin: normalizedOrigin, destination: normalizedDestination },
+      departure_date,
+      dateRange: { start: departStart, end: departEnd },
+      passengers,
+      found: outboundResult.rows.length,
+      sql: outboundSqlDebug
+    });
+
+    // Additional debug: Check if any flights exist for these dates
+    if (outboundResult.rows.length === 0) {
+      const debugQuery = `SELECT COUNT(*) as count, 
+        MIN(departure_city) as sample_departure, 
+        MIN(arrival_city) as sample_arrival,
+        MIN(DATE(departure_time)) as min_date,
+        MAX(DATE(departure_time)) as max_date
+        FROM flights 
+        WHERE departure_time BETWEEN ? AND ?`;
+      const debugResult = await pool.query(debugQuery, [departStart, departEnd]);
+      console.log('🔍 Debug: Flights in date range:', debugResult.rows[0]);
+
+      // Check if cities exist at all
+      const cityCheckQuery = `SELECT DISTINCT departure_city, arrival_city 
+        FROM flights 
+        WHERE LOWER(departure_city) LIKE ? OR LOWER(arrival_city) LIKE ?
+        LIMIT 10`;
+      const cityCheckResult = await pool.query(cityCheckQuery, [
+        `%${normalizedOrigin.toLowerCase()}%`,
+        `%${normalizedDestination.toLowerCase()}%`
+      ]);
+      console.log('🔍 Debug: Matching cities found:', cityCheckResult.rows);
+
+      // Check all flights in database
+      const allFlightsQuery = `SELECT COUNT(*) as total, 
+        MIN(DATE(departure_time)) as min_date, 
+        MAX(DATE(departure_time)) as max_date,
+        GROUP_CONCAT(DISTINCT departure_city) as cities
+        FROM flights`;
+      const allFlightsResult = await pool.query(allFlightsQuery);
+      console.log('🔍 Debug: All flights in database:', allFlightsResult.rows[0]);
+    }
+
+    let flights = outboundResult.rows;
+    let missingLeg = null;
+
+    // If return_date is provided, search for return flights and combine them
+    if (return_date) {
+      // Build day-range date filter for return flights
+      const returnStart = `${return_date} 00:00:00`;
+      const returnEnd = `${return_date} 23:59:59`;
+
+      // Return flights: destination → origin (reversed route)
+      // Use LIKE pattern with % wildcards for flexible matching
+      const returnQuery = `SELECT * FROM flights 
+              WHERE (LOWER(departure_city) LIKE ? OR LOWER(departure_city) = ?)
+              AND (LOWER(arrival_city) LIKE ? OR LOWER(arrival_city) = ?)
+              AND departure_time BETWEEN ? AND ?
+              AND available_seats >= ?
+              ORDER BY price ASC`;
+
+      // Use LIKE with % wildcards for flexible matching, also try exact match
+      const normalizedDestinationLower = normalizedDestination.toLowerCase();
+      const normalizedOriginLower = normalizedOrigin.toLowerCase();
+      const returnParams = [
+        `%${normalizedDestinationLower}%`, normalizedDestinationLower,
+        `%${normalizedOriginLower}%`, normalizedOriginLower,
+        returnStart, returnEnd, parseInt(passengers)
+      ];
+
+      const returnResult = await pool.query(returnQuery, returnParams);
+
+      // Check for missing legs
+      if (outboundResult.rows.length === 0) {
+        missingLeg = 'outbound';
+      } else if (returnResult.rows.length === 0) {
+        missingLeg = 'return';
+      }
+
+      // Log actual SQL query with bound values for debugging
+      const returnParamsCopy = [...returnParams];
+      const returnSqlDebug = returnQuery
+        .replace(/\?/g, () => {
+          const val = returnParamsCopy.shift();
+          if (val === undefined) return 'undefined';
+          return typeof val === 'string' ? `'${val}'` : val;
+        });
+
+      console.log('🔍 Return search:', {
+        original: { origin: destination, destination: origin },
+        normalized: { origin: normalizedDestination, destination: normalizedOrigin },
+        return_date,
+        dateRange: { start: returnStart, end: returnEnd },
+        passengers,
+        found: returnResult.rows.length,
+        sql: returnSqlDebug
+      });
+
+      const returnFlights = returnResult.rows;
+
+      // Combine outbound and return flights into roundtrip options
+      // Each outbound flight can be paired with each return flight
+      const roundtripFlights = [];
+      outboundResult.rows.forEach(outbound => {
+        returnFlights.forEach(returnFlight => {
+          roundtripFlights.push({
+            ...outbound,
+            return_flight: returnFlight,
+            total_price: parseFloat(outbound.price) + parseFloat(returnFlight.price),
+            is_roundtrip: true
+          });
+        });
+      });
+
+      console.log('🔍 Roundtrip combinations:', {
+        outboundCount: outboundResult.rows.length,
+        returnCount: returnFlights.length,
+        roundtripCount: roundtripFlights.length
+      });
+
+      flights = roundtripFlights;
+    } else {
+      // One-way flights - mark them as such
+      flights = outboundResult.rows.map(flight => ({
+        ...flight,
+        is_roundtrip: false
+      }));
+    }
+
+    // Log final normalized params
+    console.log('✅ Final search results:', {
+      normalizedParams: {
+        origin: normalizedOrigin,
+        destination: normalizedDestination,
+        departure_date,
+        return_date: return_date || null,
+        passengers
+      },
+      totalFlights: flights.length
+    });
+
+    const response = {
+      flights: flights,
+      total: flights.length,
+      searchParams: {
+        origin: normalizedOrigin,
+        destination: normalizedDestination,
+        departure_date,
+        return_date,
+        passengers
+      }
+    };
+
+    // Add missingLeg if applicable
+    if (missingLeg) {
+      response.missingLeg = missingLeg;
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Flight search error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
+// Get flight details
+const getFlightDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      'SELECT * FROM flights WHERE id = ?',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Flight not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Book flight
+const bookFlight = async (req, res) => {
+  try {
+    const { flight_id, passenger_details, payment_details, selected_seats } = req.body;
+    const userId = req.user ? req.user.userId : null;
+
+    if (!flight_id || !passenger_details) {
+      return res.status(400).json({ error: 'Missing required booking information' });
+    }
+
+    // Check flight availability
+    const flight = await pool.query(
+      'SELECT * FROM flights WHERE id = ?',
+      [flight_id]
+    );
+
+    if (flight.rows.length === 0) {
+      return res.status(404).json({ error: 'Flight not found' });
+    }
+
+    if (flight.rows[0].available_seats < 1) {
+      return res.status(400).json({ error: 'No seats available' });
+    }
+
+    const flightData = flight.rows[0];
+    let totalAmount = flightData.price; // Base price
+
+    // Handle seat selection
+    let seatInfo = null;
+    if (selected_seats && selected_seats.length > 0) {
+      const seatService = require('../services/seatService');
+
+      try {
+        // Calculate seat price modifier
+        const seatPrice = await seatService.calculateSeatPrice(flight_id, selected_seats);
+        totalAmount += seatPrice;
+
+        // Reserve seats
+        await seatService.reserveSeats(flight_id, selected_seats);
+
+        seatInfo = {
+          seats: selected_seats,
+          seatPrice: seatPrice
+        };
+      } catch (seatError) {
+        return res.status(400).json({
+          error: seatError.message || 'Seat reservation failed'
+        });
+      }
+    }
+
+    // Process Payment
+    let paymentResult;
+    try {
+      if (payment_details) {
+        const { processPayment } = require('../services/paymentService');
+        paymentResult = await processPayment(payment_details, totalAmount);
+      } else {
+        console.warn('Processing booking without payment details (Legacy Mode)');
+      }
+    } catch (paymentError) {
+      return res.status(402).json({
+        error: paymentError.message || 'Payment failed',
+        details: paymentError
+      });
+    }
+
+    // Create booking
+    const bookingReference = `FL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const status = paymentResult ? 'confirmed' : 'pending';
+    const paymentStatus = paymentResult ? 'paid' : 'pending';
+
+    const bookingResult = await pool.query(
+      `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status, payment_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)` ,
+      [
+        userId,
+        'flight',
+        bookingReference,
+        totalAmount,
+        JSON.stringify({
+          flight_id,
+          passenger_details,
+          flight_details: flightData,
+          payment_info: paymentResult,
+          seat_info: seatInfo
+        }),
+        status,
+        paymentStatus
+      ]
+    );
+
+    // Our pool.query returns rows [{ id: insertId }] for INSERTs
+    const bookingId = bookingResult?.rows?.[0]?.id || null;
+    const bookingRowResult = bookingId ? await pool.query(
+      'SELECT * FROM bookings WHERE id = ?',
+      [bookingId]
+    ) : { rows: [] };
+    const bookingRow = bookingRowResult.rows?.[0] || null;
+
+    // Update available seats
+    await pool.query(
+      'UPDATE flights SET available_seats = available_seats - 1 WHERE id = ?',
+      [flight_id]
+    );
+
+    res.status(201).json({
+      message: 'Booking created successfully',
+      booking: bookingRow || { id: bookingId, booking_reference: bookingReference }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Get available seats for a flight
+const getFlightSeats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const seatService = require('../services/seatService');
+
+    // Try to get seats
+    let seats = await seatService.getAvailableSeats(id);
+
+    // If no seats exist, generate them
+    if (seats.length === 0) {
+      await seatService.generateSeatsForFlight(id);
+      seats = await seatService.getAvailableSeats(id);
+    }
+
+    res.json({ seats });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+module.exports = {
+  searchFlights,
+  getFlightDetails,
+  bookFlight,
+  getFlightSeats
+};
+
+

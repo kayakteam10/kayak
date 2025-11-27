@@ -1,0 +1,112 @@
+.price-matrix-container {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.price-matrix-header {
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.price-matrix-header h3 {
+    font-size: 1.1rem;
+    color: #1a202c;
+    margin: 0;
+    font-weight: 600;
+}
+
+.price-matrix-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.price-matrix-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.price-matrix-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.price-matrix-scroll::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+}
+
+.matrix-card {
+    min-width: 140px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    background: white;
+}
+
+.matrix-card:hover {
+    border-color: #ff690f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 105, 15, 0.15);
+}
+
+.matrix-card.active {
+    border-color: #ff690f;
+    background-color: #fff7ed;
+    box-shadow: 0 0 0 1px #ff690f;
+}
+
+.matrix-badge {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #10b981;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.matrix-badge.fastest {
+    background-color: #3b82f6;
+}
+
+.matrix-airline {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #475569;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.matrix-price {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #1a202c;
+}
+
+.matrix-duration {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 4px;
+}

@@ -1,0 +1,84 @@
+.missing-leg-banner {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.banner-icon {
+  color: #ff9800;
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.banner-content {
+  flex: 1;
+}
+
+.banner-content h3 {
+  margin: 0 0 8px 0;
+  color: #856404;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.banner-content p {
+  margin: 0 0 12px 0;
+  color: #856404;
+  font-size: 14px;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.date-adjust-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  color: #856404;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-adjust-btn:hover {
+  background: #ffc107;
+  color: white;
+  border-color: #ff9800;
+}
+
+.date-adjust-btn:focus {
+  outline: 2px solid #0066CC;
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .missing-leg-banner {
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .banner-actions {
+    width: 100%;
+  }
+
+  .date-adjust-btn {
+    flex: 1;
+    justify-content: center;
+    min-width: 100px;
+  }
+}
+
