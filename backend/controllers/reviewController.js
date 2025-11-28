@@ -59,7 +59,7 @@ const createReview = async (req, res) => {
     const userName = `${user.first_name} ${user.last_name}`;
 
     // Create review document
-    const db = getDB();
+    const db = await getDB();
     const review = {
       bookingId: parseInt(bookingId),
       entityType,
@@ -87,9 +87,9 @@ const createReview = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Create review error:', error);
-    res.status(500).json({ 
-      error: 'Failed to create review', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to create review',
+      details: error.message
     });
   }
 };
@@ -107,8 +107,8 @@ const getReviewsByEntity = async (req, res) => {
       return res.status(400).json({ error: 'Invalid entity type' });
     }
 
-    const db = getDB();
-    
+    const db = await getDB();
+
     // Build sort criteria
     let sort = { createdAt: -1 }; // Default: most recent
     if (sortBy === 'rating_high') sort = { rating: -1, createdAt: -1 };
@@ -171,17 +171,17 @@ const getReviewsByEntity = async (req, res) => {
 
 /**
  * Get reviews by user
- * GET /api/reviews/user/:userId
+ * GET /api/reviews/user/my-reviews
  */
 const getReviewsByUser = async (req, res) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const db = getDB();
+    const db = await getDB();
     const reviews = await db.collection('reviews')
-      .find({ userId: parseInt(userId) })
-      .sort({ createdAt: -1 })
+      .find({ user_id: parseInt(userId) })
+      .sort({ created_at: -1 })
       .toArray();
 
     res.json({ reviews });
@@ -207,8 +207,8 @@ const updateReview = async (req, res) => {
       return res.status(400).json({ error: 'Invalid review ID' });
     }
 
-    const db = getDB();
-    
+    const db = await getDB();
+
     // Check if review belongs to user
     const existingReview = await db.collection('reviews').findOne({
       _id: new ObjectId(id),
@@ -261,8 +261,8 @@ const deleteReview = async (req, res) => {
       return res.status(400).json({ error: 'Invalid review ID' });
     }
 
-    const db = getDB();
-    
+    const db = await getDB();
+
     // Check if review belongs to user
     const result = await db.collection('reviews').deleteOne({
       _id: new ObjectId(id),
@@ -292,7 +292,7 @@ const markHelpful = async (req, res) => {
       return res.status(400).json({ error: 'Invalid review ID' });
     }
 
-    const db = getDB();
+    const db = await getDB();
     await db.collection('reviews').updateOne(
       { _id: new ObjectId(id) },
       { $inc: { helpfulCount: 1 } }

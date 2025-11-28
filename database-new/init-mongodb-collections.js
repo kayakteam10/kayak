@@ -106,17 +106,37 @@ async function initializeCollections() {
                 validator: {
                     $jsonSchema: {
                         bsonType: 'object',
-                        required: ['image_id', 'entity_type', 'file_url', 'uploaded_at'],
+                        required: ['image_id', 'entity_type', 'uploaded_at'],
                         properties: {
                             image_id: { bsonType: 'string' },
                             entity_type: { enum: ['hotel', 'car', 'user_profile', 'review'] },
                             entity_id: { bsonType: 'int' },
                             user_id: { bsonType: 'int' },
+
+                            // Base64 data storage (primary method)
+                            file_data: {
+                                bsonType: 'string',
+                                description: 'Base64 encoded image data with data URI scheme (e.g., data:image/jpeg;base64,...)'
+                            },
+                            thumbnail_data: {
+                                bsonType: 'string',
+                                description: 'Base64 encoded thumbnail image (optional, for faster loading)'
+                            },
+
+                            // File URLs (optional, for future CDN migration)
+                            file_url: { bsonType: ['string', 'null'] },
+                            thumbnail_url: { bsonType: ['string', 'null'] },
+
+                            // Metadata
                             file_name: { bsonType: 'string' },
-                            file_url: { bsonType: 'string' },
-                            thumbnail_url: { bsonType: 'string' },
-                            file_size: { bsonType: 'int' },
-                            file_format: { bsonType: 'string' },
+                            file_size: {
+                                bsonType: 'int',
+                                description: 'Size in bytes (recommend max 5MB for profiles, 2MB for others)'
+                            },
+                            file_format: {
+                                enum: ['JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'],
+                                description: 'Image format'
+                            },
                             dimensions: {
                                 bsonType: 'object',
                                 properties: {
