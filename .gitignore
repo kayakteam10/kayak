@@ -48,3 +48,8 @@ coverage/
 *.tmp
 *.temp
 .cache/
+
+# Local setup documentation
+SETUP.md
+TEAM_SETUP.md
+database/add-flight-seats-table.sql

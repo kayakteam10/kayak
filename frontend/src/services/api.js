@@ -56,4 +56,14 @@ export const bookingsAPI = {
   hold: (data) => api.post('/api/bookings/hold', data),
 };
 
+// Reviews API
+export const reviewsAPI = {
+  create: (data) => api.post('/api/reviews', data),
+  getByEntity: (entityType, entityId, params) => api.get(`/api/reviews/${entityType}/${entityId}`, { params }),
+  getMyReviews: () => api.get('/api/reviews/user/my-reviews'),
+  update: (id, data) => api.put(`/api/reviews/${id}`, data),
+  delete: (id) => api.delete(`/api/reviews/${id}`),
+  markHelpful: (id) => api.post(`/api/reviews/${id}/helpful`),
+};
+
 export default api;

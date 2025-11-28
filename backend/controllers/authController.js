@@ -1,20 +1,27 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const { validateUserProfile, validateEmail } = require('../utils/validation');
 
 // Register new user
 const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, role = 'user' } = req.body;
 
-    // Check if user exists
+    // Validate email format
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      return res.status(400).json({ error: emailCheck.error });
+    }
+
+    // Check if user exists (duplicate prevention)
     const userExists = await pool.query(
       'SELECT email FROM users WHERE email = ?',
       [email]
     );
 
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ error: 'User already exists with this email' });
     }
 
     // Hash password
@@ -102,20 +109,33 @@ const me = async (req, res) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    
     const result = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, role FROM users WHERE id = ?',
+      `SELECT id, email, first_name, last_name, phone, role, profile_picture, 
+              ssn, address, city, state, zip_code, credit_card_last4, credit_card_type 
+       FROM users WHERE id = ?`,
       [userId]
     );
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
+    
     const u = result.rows[0];
     res.json({
       id: u.id,
       email: u.email,
       firstName: u.first_name,
       lastName: u.last_name,
-      phone: u.phone || ''
+      phone: u.phone || '',
+      profilePicture: u.profile_picture || '',
+      ssn: u.ssn || '',
+      address: u.address || '',
+      city: u.city || '',
+      state: u.state || '',
+      zipCode: u.zip_code || '',
+      creditCardLast4: u.credit_card_last4 || '',
+      creditCardType: u.credit_card_type || ''
     });
   } catch (error) {
     console.error(error);
@@ -128,24 +148,105 @@ const updateMe = async (req, res) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    const { firstName, lastName, phone } = req.body;
+    
+    const { 
+      firstName, 
+      lastName, 
+      phone, 
+      profilePicture,
+      ssn,
+      address,
+      city,
+      state,
+      zipCode,
+      creditCardLast4,
+      creditCardType
+    } = req.body;
+
+    // Validate the user data
+    const validation = validateUserProfile({
+      email: req.user.email, // Already validated email from token
+      ssn,
+      zip_code: zipCode,
+      state,
+      phone,
+      credit_card_last4: creditCardLast4
+    });
+
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        validationErrors: validation.errors 
+      });
+    }
+
+    // Check for duplicate SSN if provided
+    if (ssn) {
+      const ssnCheck = await pool.query(
+        'SELECT id FROM users WHERE ssn = ? AND id != ?',
+        [ssn, userId]
+      );
+      if (ssnCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'SSN already registered to another user' });
+      }
+    }
+
+    // Update user profile
     await pool.query(
-      'UPDATE users SET first_name = ?, last_name = ?, phone = ? WHERE id = ?',
-      [firstName || null, lastName || null, phone || null, userId]
+      `UPDATE users SET 
+        first_name = ?, 
+        last_name = ?, 
+        phone = ?, 
+        profile_picture = ?,
+        ssn = ?,
+        address = ?,
+        city = ?,
+        state = ?,
+        zip_code = ?,
+        credit_card_last4 = ?,
+        credit_card_type = ?
+      WHERE id = ?`,
+      [
+        firstName || null, 
+        lastName || null, 
+        phone || null, 
+        profilePicture || null,
+        ssn || null,
+        address || null,
+        city || null,
+        state ? state.toUpperCase() : null,
+        zipCode || null,
+        creditCardLast4 || null,
+        creditCardType || null,
+        userId
+      ]
     );
+    
+    // Get updated user
     const result = await pool.query(
-      'SELECT id, email, first_name, last_name, phone FROM users WHERE id = ?',
+      `SELECT id, email, first_name, last_name, phone, profile_picture,
+              ssn, address, city, state, zip_code, credit_card_last4, credit_card_type
+       FROM users WHERE id = ?`,
       [userId]
     );
+    
     const u = result.rows[0];
     res.json({
-      message: 'Profile updated',
+      message: 'Profile updated successfully',
       user: {
         id: u.id,
         email: u.email,
         firstName: u.first_name,
         lastName: u.last_name,
-        phone: u.phone || ''
+        phone: u.phone || '',
+        profilePicture: u.profile_picture || '',
+        ssn: u.ssn || '',
+        address: u.address || '',
+        city: u.city || '',
+        state: u.state || '',
+        zipCode: u.zip_code || '',
+        creditCardLast4: u.credit_card_last4 || '',
+        creditCardType: u.credit_card_type || ''
       }
     });
   } catch (error) {

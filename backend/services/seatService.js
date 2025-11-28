@@ -15,7 +15,7 @@ const generateSeatsForFlight = async (flightId) => {
             throw new Error('Flight not found');
         }
 
-        const config = flightResult.rows[0].seat_configuration;
+        const config = flightResult.rows[0].seat_configuration || {};
         const rows = config.rows || 30;
         const columns = config.columns || ['A', 'B', 'C', 'D', 'E', 'F'];
 
