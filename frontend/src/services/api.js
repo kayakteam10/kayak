@@ -32,6 +32,7 @@ export const flightsAPI = {
   search: (params) => api.get('/api/flights/search', { params }),
   getDetails: (id) => api.get(`/api/flights/${id}`),
   book: (data) => api.post('/api/flights/book', data),
+  searchAirports: (query) => api.get('/api/flights/airports/search', { params: { query } }),
 };
 
 // Hotels API

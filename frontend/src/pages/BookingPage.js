@@ -179,7 +179,9 @@ function BookingPage() {
         response = await carsAPI.book({ car_id: parseInt(id), rental_details: bookingData });
       }
 
-      navigate(`/booking/confirmation/${type}/${response.data.booking_id || response.data.id}`);
+      // Extract booking ID from response (flights API returns response.data.booking.id)
+      const bookingId = response.data.booking?.id || response.data.booking_id || response.data.id;
+      navigate(`/booking/confirmation/${type}/${bookingId}`);
     } catch (err) {
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
         alert('Session expired. Please login again.');
