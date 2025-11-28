@@ -80,6 +80,44 @@ const bookHotel = async (req, res) => {
   }
 };
 
-module.exports = { searchHotels, getHotelDetails, bookHotel };
+// Search cities for hotel locations (placeholder function)
+const searchCities = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    // If no query, return empty array
+    if (!query || query.trim() === '') {
+      return res.json([]);
+    }
+
+    const searchTerm = query.trim();
+
+    // Simple city search from hotels table
+    const searchQuery = `
+      SELECT DISTINCT city, location
+      FROM hotels
+      WHERE LOWER(city) LIKE LOWER(?) 
+         OR LOWER(location) LIKE LOWER(?)
+      LIMIT 10
+    `;
+
+    const searchPattern = `%${searchTerm}%`;
+    const result = await pool.query(searchQuery, [searchPattern, searchPattern]);
+
+    // Format response
+    const cities = result.rows.map(row => ({
+      label: `${row.city}, ${row.location}`,
+      value: row.city,
+      type: 'city'
+    }));
+
+    res.json(cities);
+  } catch (error) {
+    console.error('City search error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
+module.exports = { searchHotels, getHotelDetails, bookHotel, searchCities };
 
 
