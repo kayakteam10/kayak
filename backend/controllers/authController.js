@@ -114,8 +114,8 @@ const me = async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     
     const result = await pool.query(
-      `SELECT id, email, first_name, last_name, phone, role, profile_picture, 
-              ssn, address, city, state, zip_code, credit_card_last4, credit_card_type 
+      `SELECT id, email, first_name, last_name, phone_number, role, mongo_image_id, 
+              ssn, address, city, state, zip_code, credit_card_last4 
        FROM users WHERE id = ?`,
       [userId]
     );
@@ -130,15 +130,14 @@ const me = async (req, res) => {
       email: u.email,
       firstName: u.first_name,
       lastName: u.last_name,
-      phone: u.phone || '',
-      profilePicture: u.profile_picture || '',
+      phone: u.phone_number || '',
+      profilePicture: u.mongo_image_id || '',
       ssn: u.ssn || '',
       address: u.address || '',
       city: u.city || '',
       state: u.state || '',
       zipCode: u.zip_code || '',
-      creditCardLast4: u.credit_card_last4 || '',
-      creditCardType: u.credit_card_type || ''
+      creditCardLast4: u.credit_card_last4 || ''
     });
   } catch (error) {
     console.error(error);
@@ -199,15 +198,14 @@ const updateMe = async (req, res) => {
       `UPDATE users SET 
         first_name = ?, 
         last_name = ?, 
-        phone = ?, 
-        profile_picture = ?,
+        phone_number = ?, 
+        mongo_image_id = ?,
         ssn = ?,
         address = ?,
         city = ?,
         state = ?,
         zip_code = ?,
-        credit_card_last4 = ?,
-        credit_card_type = ?
+        credit_card_last4 = ?
       WHERE id = ?`,
       [
         firstName || null, 
@@ -220,15 +218,14 @@ const updateMe = async (req, res) => {
         state ? state.toUpperCase() : null,
         zipCode || null,
         creditCardLast4 || null,
-        creditCardType || null,
         userId
       ]
     );
     
     // Get updated user
     const result = await pool.query(
-      `SELECT id, email, first_name, last_name, phone, profile_picture,
-              ssn, address, city, state, zip_code, credit_card_last4, credit_card_type
+      `SELECT id, email, first_name, last_name, phone_number, mongo_image_id,
+              ssn, address, city, state, zip_code, credit_card_last4
        FROM users WHERE id = ?`,
       [userId]
     );
@@ -241,15 +238,14 @@ const updateMe = async (req, res) => {
         email: u.email,
         firstName: u.first_name,
         lastName: u.last_name,
-        phone: u.phone || '',
-        profilePicture: u.profile_picture || '',
+        phone: u.phone_number || '',
+        profilePicture: u.mongo_image_id || '',
         ssn: u.ssn || '',
         address: u.address || '',
         city: u.city || '',
         state: u.state || '',
         zipCode: u.zip_code || '',
-        creditCardLast4: u.credit_card_last4 || '',
-        creditCardType: u.credit_card_type || ''
+        creditCardLast4: u.credit_card_last4 || ''
       }
     });
   } catch (error) {
