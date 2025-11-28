@@ -509,6 +509,9 @@ SELECT 'Successfully inserted 50 rows into valid MySQL tables (excluding Mongo e
 -- POST-INSERT UPDATES (Baggage & Policies)
 -- ========================================================
 
+-- Disable Safe Update Mode temporarily to allow bulk updates
+SET SQL_SAFE_UPDATES = 0;
+
 -- 1. Initialize Seat Configuration for all flights
 UPDATE flights 
 SET seat_configuration = JSON_OBJECT(
@@ -545,11 +548,13 @@ UPDATE flights
 SET carry_on_fee = 45.00, checked_bag_fee = 50.00, baggage_allowance = 'Personal item only'
 WHERE airline LIKE '%Spirit%' OR airline LIKE '%Frontier%';
 
+-- Re-enable Safe Update Mode
+SET SQL_SAFE_UPDATES = 1;
+
 
 -- ========================================================
 -- OPTIONAL: GENERATE DUMMY SEATS (For Flight #1 only)
 -- ========================================================
--- This populates the seat map table for the first flight so you can test it.
 INSERT INTO flight_seats (flight_id, seat_number, seat_type, is_available, price_modifier) VALUES
 (1, '1A', 'business', FALSE, 100.00), -- Booked
 (1, '1B', 'business', TRUE, 100.00),
@@ -557,3 +562,5 @@ INSERT INTO flight_seats (flight_id, seat_number, seat_type, is_available, price
 (1, '10A', 'economy', TRUE, 0.00),
 (1, '10B', 'economy', TRUE, 0.00),
 (1, '10C', 'economy', FALSE, 0.00); -- Booked
+
+SELECT 'All dummy data inserted and policies updated successfully.' AS Status;
