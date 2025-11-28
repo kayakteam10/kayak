@@ -5,7 +5,7 @@ const getUserBookings = async (req, res) => {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      'SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC',
+      'SELECT * FROM bookings WHERE user_id = ? ORDER BY booking_date DESC',
       [userId]
     );
 
@@ -60,12 +60,12 @@ const cancelBooking = async (req, res) => {
 const holdBooking = async (req, res) => {
   try {
     const { flight_id, return_flight_id, passengers, trip_type } = req.body;
-    
+
     // Authentication is required for booking
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ error: 'Authentication required to create a booking' });
     }
-    
+
     const userId = req.user.userId;
 
     if (!flight_id) {
@@ -117,7 +117,7 @@ const holdBooking = async (req, res) => {
 
     // Create hold booking (status: 'pending')
     const bookingReference = `HLD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const bookingResult = await pool.query(
       `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
        VALUES (?, ?, ?, ?, ?, 'pending')`,
@@ -129,14 +129,14 @@ const holdBooking = async (req, res) => {
         JSON.stringify(bookingDetails)
       ]
     );
-    
+
     // Extract the inserted ID from the result
     const bookingId = bookingResult.rows && bookingResult.rows[0] ? bookingResult.rows[0].id : null;
-    
+
     if (!bookingId) {
       return res.status(500).json({ error: 'Failed to create booking' });
     }
-    
+
     const bookingRowResult = await pool.query(
       'SELECT * FROM bookings WHERE id = ?',
       [bookingId]

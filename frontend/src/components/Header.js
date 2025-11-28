@@ -5,6 +5,7 @@ import '../App.css';
 function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('token') !== null);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User');
+  const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || '');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -13,6 +14,7 @@ function Header() {
     const updateLoginState = () => {
       setIsLoggedIn(localStorage.getItem('token') !== null);
       setUserName(localStorage.getItem('userName') || 'User');
+      setProfilePicture(localStorage.getItem('profilePicture') || '');
     };
 
     // Initial check
@@ -51,8 +53,10 @@ function Header() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userName');
+    localStorage.removeItem('profilePicture');
     setIsLoggedIn(false);
     setUserName('User');
+    setProfilePicture('');
     setShowDropdown(false);
     // Dispatch custom event to notify of logout
     window.dispatchEvent(new Event('logout'));
@@ -78,7 +82,11 @@ function Header() {
                   className="user-menu-button"
                   onClick={() => setShowDropdown(!showDropdown)}
                 >
-                  <span className="user-icon">👤</span>
+                  {profilePicture ? (
+                    <img src={profilePicture} alt="Profile" className="header-profile-pic" />
+                  ) : (
+                    <span className="user-icon">👤</span>
+                  )}
                   <span className="user-name">{userName}</span>
                   <span className="dropdown-arrow">{showDropdown ? '▲' : '▼'}</span>
                 </button>

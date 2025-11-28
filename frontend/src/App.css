@@ -167,6 +167,20 @@
   font-size: 18px;
 }
 
+.header-profile-pic {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+  transition: var(--transition);
+}
+
+.user-menu-button:hover .header-profile-pic {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
 .user-name {
   font-weight: 500;
 }

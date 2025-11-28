@@ -16,7 +16,7 @@
     "react-slider": "^2.0.6"
   },
   "scripts": {
-    "start": "BROWSER=none PORT=8088 react-scripts start",
+    "start": "set PORT=8088&& set BROWSER=none&& react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
