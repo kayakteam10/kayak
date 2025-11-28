@@ -90,16 +90,19 @@ CREATE TABLE IF NOT EXISTS flights (
 -- 2.5 FLIGHT SEATS (New Table)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS flight_seats (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  flight_id INT NOT NULL,
-  seat_number VARCHAR(10) NOT NULL,  -- e.g., '12A'
-  seat_type ENUM('economy', 'premium', 'business') DEFAULT 'economy',
-  is_available BOOLEAN DEFAULT TRUE,
-  price_modifier DECIMAL(10, 2) DEFAULT 0.00,
-  
-  FOREIGN KEY (flight_id) REFERENCES flights(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_seat (flight_id, seat_number)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    flight_id INT NOT NULL,
+    seat_number VARCHAR(10) NOT NULL, -- e.g. '12A'
+    seat_type ENUM('economy', 'business', 'first', 'premium') DEFAULT 'economy',
+    is_available BOOLEAN DEFAULT TRUE,
+    price_modifier DECIMAL(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (flight_id) REFERENCES flights(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_flight_seat (flight_id, seat_number),
+    INDEX idx_flight (flight_id),
+    INDEX idx_available (is_available)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. HOTELS
 -- Images and specific reviews removed (live in Mongo).
