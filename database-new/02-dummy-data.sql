@@ -7,59 +7,60 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 -- ========================================================
 TRUNCATE TABLE users;
 INSERT INTO users (id, first_name, last_name, email, ssn, password_hash, city, state, mongo_image_id, role) VALUES
+-- All users' password: abcd
 -- The Single Admin
-(1, 'John', 'Doe', 'john.doe@email.com', '123-45-0001', 'hash123', 'San Jose', 'CA', 'img_obj_001', 'admin'),
+(1, 'John', 'Doe', 'john.doe@email.com', '123-45-0001', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', 'img_obj_001', 'admin'),
 
 -- Regular Users
-(2, 'Jane', 'Smith', 'jane.smith@email.com', '123-45-0002', 'hash123', 'New York', 'NY', 'img_obj_002', 'user'),
-(3, 'Mike', 'Brown', 'mike.b@email.com', '123-45-0003', 'hash123', 'Chicago', 'IL', NULL, 'user'),
-(4, 'Sarah', 'Davis', 'sarah.d@email.com', '123-45-0004', 'hash123', 'Austin', 'TX', 'img_obj_004', 'user'),
-(5, 'Chris', 'Wilson', 'chris.w@email.com', '123-45-0005', 'hash123', 'Seattle', 'WA', NULL, 'user'),
-(6, 'Emily', 'Moore', 'emily.m@email.com', '123-45-0006', 'hash123', 'Miami', 'FL', 'img_obj_006', 'user'),
-(7, 'David', 'Taylor', 'david.t@email.com', '123-45-0007', 'hash123', 'Denver', 'CO', NULL, 'user'),
-(8, 'Anna', 'Anderson', 'anna.a@email.com', '123-45-0008', 'hash123', 'Boston', 'MA', 'img_obj_008', 'user'),
-(9, 'James', 'Thomas', 'james.t@email.com', '123-45-0009', 'hash123', 'Phoenix', 'AZ', NULL, 'user'),
-(10, 'Laura', 'Jackson', 'laura.j@email.com', '123-45-0010', 'hash123', 'Detroit', 'MI', 'img_obj_010', 'user'),
-(11, 'Robert', 'White', 'rob.w@email.com', '123-45-0011', 'hash123', 'San Jose', 'CA', NULL, 'user'),
-(12, 'Linda', 'Harris', 'linda.h@email.com', '123-45-0012', 'hash123', 'San Jose', 'CA', NULL, 'user'),
-(13, 'William', 'Martin', 'will.m@email.com', '123-45-0013', 'hash123', 'San Jose', 'CA', NULL, 'user'),
-(14, 'Elizabeth', 'Thompson', 'liz.t@email.com', '123-45-0014', 'hash123', 'San Jose', 'CA', NULL, 'user'),
-(15, 'Michael', 'Garcia', 'mike.g@email.com', '123-45-0015', 'hash123', 'New York', 'NY', NULL, 'user'),
-(16, 'Barbara', 'Martinez', 'barb.m@email.com', '123-45-0016', 'hash123', 'New York', 'NY', NULL, 'user'),
-(17, 'Richard', 'Robinson', 'rich.r@email.com', '123-45-0017', 'hash123', 'New York', 'NY', NULL, 'user'),
-(18, 'Susan', 'Clark', 'sue.c@email.com', '123-45-0018', 'hash123', 'New York', 'NY', NULL, 'user'),
-(19, 'Joseph', 'Rodriguez', 'joe.r@email.com', '123-45-0019', 'hash123', 'Chicago', 'IL', NULL, 'user'),
-(20, 'Jessica', 'Lewis', 'jess.l@email.com', '123-45-0020', 'hash123', 'Chicago', 'IL', NULL, 'user'),
-(21, 'Thomas', 'Lee', 'tom.l@email.com', '123-45-0021', 'hash123', 'Chicago', 'IL', NULL, 'user'),
-(22, 'Karen', 'Walker', 'karen.w@email.com', '123-45-0022', 'hash123', 'Chicago', 'IL', NULL, 'user'),
-(23, 'Charles', 'Hall', 'charles.h@email.com', '123-45-0023', 'hash123', 'Austin', 'TX', NULL, 'user'),
-(24, 'Lisa', 'Allen', 'lisa.a@email.com', '123-45-0024', 'hash123', 'Austin', 'TX', NULL, 'user'),
-(25, 'Daniel', 'Young', 'dan.y@email.com', '123-45-0025', 'hash123', 'Austin', 'TX', NULL, 'user'),
-(26, 'Betty', 'Hernandez', 'betty.h@email.com', '123-45-0026', 'hash123', 'Austin', 'TX', NULL, 'user'),
-(27, 'Matthew', 'King', 'matt.k@email.com', '123-45-0027', 'hash123', 'Seattle', 'WA', NULL, 'user'),
-(28, 'Margaret', 'Wright', 'marg.w@email.com', '123-45-0028', 'hash123', 'Seattle', 'WA', NULL, 'user'),
-(29, 'Anthony', 'Lopez', 'tony.l@email.com', '123-45-0029', 'hash123', 'Seattle', 'WA', NULL, 'user'),
-(30, 'Sandra', 'Hill', 'sandra.h@email.com', '123-45-0030', 'hash123', 'Seattle', 'WA', NULL, 'user'),
-(31, 'Mark', 'Scott', 'mark.s@email.com', '123-45-0031', 'hash123', 'Miami', 'FL', NULL, 'user'),
-(32, 'Ashley', 'Green', 'ash.g@email.com', '123-45-0032', 'hash123', 'Miami', 'FL', NULL, 'user'),
-(33, 'Donald', 'Adams', 'don.a@email.com', '123-45-0033', 'hash123', 'Miami', 'FL', NULL, 'user'),
-(34, 'Kimberly', 'Baker', 'kim.b@email.com', '123-45-0034', 'hash123', 'Miami', 'FL', NULL, 'user'),
-(35, 'Steven', 'Gonzalez', 'steve.g@email.com', '123-45-0035', 'hash123', 'Denver', 'CO', NULL, 'user'),
-(36, 'Donna', 'Nelson', 'donna.n@email.com', '123-45-0036', 'hash123', 'Denver', 'CO', NULL, 'user'),
-(37, 'Paul', 'Carter', 'paul.c@email.com', '123-45-0037', 'hash123', 'Denver', 'CO', NULL, 'user'),
-(38, 'Carol', 'Mitchell', 'carol.m@email.com', '123-45-0038', 'hash123', 'Denver', 'CO', NULL, 'user'),
-(39, 'Andrew', 'Perez', 'andy.p@email.com', '123-45-0039', 'hash123', 'Boston', 'MA', NULL, 'user'),
-(40, 'Michelle', 'Roberts', 'mich.r@email.com', '123-45-0040', 'hash123', 'Boston', 'MA', NULL, 'user'),
-(41, 'Joshua', 'Turner', 'josh.t@email.com', '123-45-0041', 'hash123', 'Boston', 'MA', NULL, 'user'),
-(42, 'Emily', 'Phillips', 'em.p@email.com', '123-45-0042', 'hash123', 'Boston', 'MA', NULL, 'user'),
-(43, 'Kevin', 'Campbell', 'kev.c@email.com', '123-45-0043', 'hash123', 'Phoenix', 'AZ', NULL, 'user'),
-(44, 'Amanda', 'Parker', 'amanda.p@email.com', '123-45-0044', 'hash123', 'Phoenix', 'AZ', NULL, 'user'),
-(45, 'Brian', 'Evans', 'brian.e@email.com', '123-45-0045', 'hash123', 'Phoenix', 'AZ', NULL, 'user'),
-(46, 'Melissa', 'Edwards', 'mel.e@email.com', '123-45-0046', 'hash123', 'Phoenix', 'AZ', NULL, 'user'),
-(47, 'Edward', 'Collins', 'ed.c@email.com', '123-45-0047', 'hash123', 'Detroit', 'MI', NULL, 'user'),
-(48, 'Stephanie', 'Stewart', 'steph.s@email.com', '123-45-0048', 'hash123', 'Detroit', 'MI', NULL, 'user'),
-(49, 'Ronald', 'Sanchez', 'ron.s@email.com', '123-45-0049', 'hash123', 'Detroit', 'MI', NULL, 'user'),
-(50, 'Timothy', 'Morris', 'tim.m@email.com', '123-45-0050', 'hash123', 'Detroit', 'MI', NULL, 'user');
+(2, 'Jane', 'Smith', 'jane.smith@email.com', '123-45-0002', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', 'img_obj_002', 'user'),
+(3, 'Mike', 'Brown', 'mike.b@email.com', '123-45-0003', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
+(4, 'Sarah', 'Davis', 'sarah.d@email.com', '123-45-0004', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', 'img_obj_004', 'user'),
+(5, 'Chris', 'Wilson', 'chris.w@email.com', '123-45-0005', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
+(6, 'Emily', 'Moore', 'emily.m@email.com', '123-45-0006', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', 'img_obj_006', 'user'),
+(7, 'David', 'Taylor', 'david.t@email.com', '123-45-0007', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
+(8, 'Anna', 'Anderson', 'anna.a@email.com', '123-45-0008', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', 'img_obj_008', 'user'),
+(9, 'James', 'Thomas', 'james.t@email.com', '123-45-0009', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
+(10, 'Laura', 'Jackson', 'laura.j@email.com', '123-45-0010', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', 'img_obj_010', 'user'),
+(11, 'Robert', 'White', 'rob.w@email.com', '123-45-0011', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
+(12, 'Linda', 'Harris', 'linda.h@email.com', '123-45-0012', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
+(13, 'William', 'Martin', 'will.m@email.com', '123-45-0013', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
+(14, 'Elizabeth', 'Thompson', 'liz.t@email.com', '123-45-0014', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
+(15, 'Michael', 'Garcia', 'mike.g@email.com', '123-45-0015', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
+(16, 'Barbara', 'Martinez', 'barb.m@email.com', '123-45-0016', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
+(17, 'Richard', 'Robinson', 'rich.r@email.com', '123-45-0017', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
+(18, 'Susan', 'Clark', 'sue.c@email.com', '123-45-0018', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
+(19, 'Joseph', 'Rodriguez', 'joe.r@email.com', '123-45-0019', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
+(20, 'Jessica', 'Lewis', 'jess.l@email.com', '123-45-0020', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
+(21, 'Thomas', 'Lee', 'tom.l@email.com', '123-45-0021', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
+(22, 'Karen', 'Walker', 'karen.w@email.com', '123-45-0022', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
+(23, 'Charles', 'Hall', 'charles.h@email.com', '123-45-0023', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
+(24, 'Lisa', 'Allen', 'lisa.a@email.com', '123-45-0024', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
+(25, 'Daniel', 'Young', 'dan.y@email.com', '123-45-0025', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
+(26, 'Betty', 'Hernandez', 'betty.h@email.com', '123-45-0026', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
+(27, 'Matthew', 'King', 'matt.k@email.com', '123-45-0027', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
+(28, 'Margaret', 'Wright', 'marg.w@email.com', '123-45-0028', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
+(29, 'Anthony', 'Lopez', 'tony.l@email.com', '123-45-0029', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
+(30, 'Sandra', 'Hill', 'sandra.h@email.com', '123-45-0030', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
+(31, 'Mark', 'Scott', 'mark.s@email.com', '123-45-0031', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
+(32, 'Ashley', 'Green', 'ash.g@email.com', '123-45-0032', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
+(33, 'Donald', 'Adams', 'don.a@email.com', '123-45-0033', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
+(34, 'Kimberly', 'Baker', 'kim.b@email.com', '123-45-0034', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
+(35, 'Steven', 'Gonzalez', 'steve.g@email.com', '123-45-0035', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
+(36, 'Donna', 'Nelson', 'donna.n@email.com', '123-45-0036', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
+(37, 'Paul', 'Carter', 'paul.c@email.com', '123-45-0037', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
+(38, 'Carol', 'Mitchell', 'carol.m@email.com', '123-45-0038', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
+(39, 'Andrew', 'Perez', 'andy.p@email.com', '123-45-0039', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
+(40, 'Michelle', 'Roberts', 'mich.r@email.com', '123-45-0040', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
+(41, 'Joshua', 'Turner', 'josh.t@email.com', '123-45-0041', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
+(42, 'Emily', 'Phillips', 'em.p@email.com', '123-45-0042', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
+(43, 'Kevin', 'Campbell', 'kev.c@email.com', '123-45-0043', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
+(44, 'Amanda', 'Parker', 'amanda.p@email.com', '123-45-0044', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
+(45, 'Brian', 'Evans', 'brian.e@email.com', '123-45-0045', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
+(46, 'Melissa', 'Edwards', 'mel.e@email.com', '123-45-0046', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
+(47, 'Edward', 'Collins', 'ed.c@email.com', '123-45-0047', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user'),
+(48, 'Stephanie', 'Stewart', 'steph.s@email.com', '123-45-0048', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user'),
+(49, 'Ronald', 'Sanchez', 'ron.s@email.com', '123-45-0049', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user'),
+(50, 'Timothy', 'Morris', 'tim.m@email.com', '123-45-0050', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user');
 
 TRUNCATE TABLE airports;
 INSERT INTO airports (code, name, city, state, country) VALUES 
@@ -509,6 +510,9 @@ SELECT 'Successfully inserted 50 rows into valid MySQL tables (excluding Mongo e
 -- POST-INSERT UPDATES (Baggage & Policies)
 -- ========================================================
 
+-- Disable Safe Update Mode temporarily to allow bulk updates
+SET SQL_SAFE_UPDATES = 0;
+
 -- 1. Initialize Seat Configuration for all flights
 UPDATE flights 
 SET seat_configuration = JSON_OBJECT(
@@ -545,11 +549,13 @@ UPDATE flights
 SET carry_on_fee = 45.00, checked_bag_fee = 50.00, baggage_allowance = 'Personal item only'
 WHERE airline LIKE '%Spirit%' OR airline LIKE '%Frontier%';
 
+-- Re-enable Safe Update Mode
+SET SQL_SAFE_UPDATES = 1;
+
 
 -- ========================================================
 -- OPTIONAL: GENERATE DUMMY SEATS (For Flight #1 only)
 -- ========================================================
--- This populates the seat map table for the first flight so you can test it.
 INSERT INTO flight_seats (flight_id, seat_number, seat_type, is_available, price_modifier) VALUES
 (1, '1A', 'business', FALSE, 100.00), -- Booked
 (1, '1B', 'business', TRUE, 100.00),
@@ -557,3 +563,5 @@ INSERT INTO flight_seats (flight_id, seat_number, seat_type, is_available, price
 (1, '10A', 'economy', TRUE, 0.00),
 (1, '10B', 'economy', TRUE, 0.00),
 (1, '10C', 'economy', FALSE, 0.00); -- Booked
+
+SELECT 'All dummy data inserted and policies updated successfully.' AS Status;
