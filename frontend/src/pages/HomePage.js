@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { FaPlane, FaHotel, FaCar, FaUmbrellaBeach, FaMagic, FaSearch, FaExchangeAlt, FaCalendarAlt, FaUser } from 'react-icons/fa';
+import AirportAutocomplete from '../components/AirportAutocomplete';
 import './HomePage.css';
 
 const heroImages = [
@@ -873,12 +874,11 @@ const HomePage = () => {
         </div>
         <div className="segment-content">
           <label className="segment-label">From</label>
-          <input
-            type="text"
-            className="segment-input"
-            placeholder="Country, city or airport"
+          <AirportAutocomplete
             value={formData.origin}
-            onChange={handleInputChange('origin')}
+            onChange={(city) => setFormData(prev => ({ ...prev, origin: city }))}
+            placeholder="Country, city or airport"
+            name="origin"
             required
           />
         </div>
@@ -913,12 +913,11 @@ const HomePage = () => {
         </div>
         <div className="segment-content">
           <label className="segment-label">To</label>
-          <input
-            type="text"
-            className="segment-input"
-            placeholder="Country, city or airport"
+          <AirportAutocomplete
             value={formData.destination}
-            onChange={handleInputChange('destination')}
+            onChange={(city) => setFormData(prev => ({ ...prev, destination: city }))}
+            placeholder="Country, city or airport"
+            name="destination"
             required
           />
         </div>
@@ -1110,15 +1109,14 @@ const HomePage = () => {
                             </div>
                             <div className="segment-content">
                               <label className="segment-label">From</label>
-                              <input
-                                type="text"
-                                className="segment-input"
-                                placeholder="Country, city or airport"
+                              <AirportAutocomplete
                                 value={leg.from}
-                                onChange={(event) => {
-                                  updateLeg(index, 'from', event.target.value);
+                                onChange={(city) => {
+                                  updateLeg(index, 'from', city);
                                   setValidationError('');
                                 }}
+                                placeholder="Country, city or airport"
+                                name={`leg-${index}-from`}
                                 required
                               />
                             </div>
@@ -1133,15 +1131,14 @@ const HomePage = () => {
                             </div>
                             <div className="segment-content">
                               <label className="segment-label">To</label>
-                              <input
-                                type="text"
-                                className="segment-input"
-                                placeholder="Country, city or airport"
+                              <AirportAutocomplete
                                 value={leg.to}
-                                onChange={(event) => {
-                                  updateLeg(index, 'to', event.target.value);
+                                onChange={(city) => {
+                                  updateLeg(index, 'to', city);
                                   setValidationError('');
                                 }}
+                                placeholder="Country, city or airport"
+                                name={`leg-${index}-to`}
                                 required
                               />
                             </div>

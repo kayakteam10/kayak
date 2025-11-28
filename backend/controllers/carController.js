@@ -75,6 +75,44 @@ const bookCar = async (req, res) => {
   }
 };
 
-module.exports = { searchCars, getCarDetails, bookCar };
+// Search locations for car rentals (placeholder function)
+const searchLocations = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    // If no query, return empty array
+    if (!query || query.trim() === '') {
+      return res.json([]);
+    }
+
+    const searchTerm = query.trim();
+
+    // Simple location search from cars table
+    const searchQuery = `
+      SELECT DISTINCT city, location
+      FROM cars
+      WHERE LOWER(city) LIKE LOWER(?) 
+         OR LOWER(location) LIKE LOWER(?)
+      LIMIT 10
+    `;
+
+    const searchPattern = `%${searchTerm}%`;
+    const result = await pool.query(searchQuery, [searchPattern, searchPattern]);
+
+    // Format response
+    const locations = result.rows.map(row => ({
+      label: `${row.city}, ${row.location}`,
+      value: row.city,
+      type: 'location'
+    }));
+
+    res.json(locations);
+  } catch (error) {
+    console.error('Location search error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
+module.exports = { searchCars, getCarDetails, bookCar, searchLocations };
 
 

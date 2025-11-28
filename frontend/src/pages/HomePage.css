@@ -2147,3 +2147,58 @@
     max-width: 100%;
   }
 }
+
+/* Airport Autocomplete Integration */
+.search-segment .airport-autocomplete {
+  width: 100%;
+}
+
+.search-segment .airport-input {
+  border: none;
+  outline: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  height: 24px;
+  line-height: 24px;
+}
+
+.search-segment .airport-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+.search-segment .airport-input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+.leg-segment .airport-autocomplete {
+  width: 100%;
+}
+
+.leg-segment .airport-input {
+  border: none;
+  outline: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  height: 24px;
+  line-height: 24px;
+}
+
+.leg-segment .airport-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+.leg-segment .airport-input:focus {
+  border: none;
+  box-shadow: none;
+}

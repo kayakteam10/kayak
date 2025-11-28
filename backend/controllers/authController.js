@@ -20,10 +20,13 @@ const register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate a unique SSN (for demo purposes - in production, this would be handled differently)
+    const ssn = `999-${Math.floor(10 + Math.random() * 89)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     // Insert user
     const result = await pool.query(
-      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, NULL, ?)',
-      [email, hashedPassword, firstName, lastName, role]
+      'INSERT INTO users (email, password_hash, first_name, last_name, ssn, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [email, hashedPassword, firstName, lastName, ssn, role]
     );
 
     // Get the inserted user

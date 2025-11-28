@@ -445,8 +445,15 @@ function SearchResultsPage() {
         const response = await bookingsAPI.hold(holdData);
 
         if (response.data && response.data.booking_reference) {
-          // Navigate to review/hold step
-          navigate(`/booking/review/${response.data.booking_reference}`);
+          // Navigate to booking page with flight ID and pass booking reference via state
+          navigate(`/booking/flights/${flight.id}`, {
+            state: {
+              bookingReference: response.data.booking_reference,
+              holdExpiry: response.data.expires_at,
+              isRoundtrip: true,
+              returnFlight: flight.return_flight
+            }
+          });
         } else {
           // Fallback to booking page
           navigate(`/booking/flights/${flight.id}`);

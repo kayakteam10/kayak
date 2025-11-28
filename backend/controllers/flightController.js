@@ -79,12 +79,16 @@ const searchFlights = async (req, res) => {
         const legStart = `${leg.date} 00:00:00`;
         const legEnd = `${leg.date} 23:59:59`;
 
-        const legQuery = `SELECT * FROM flights 
-           WHERE (LOWER(departure_city) LIKE ? OR LOWER(departure_city) = ?)
-           AND (LOWER(arrival_city) LIKE ? OR LOWER(arrival_city) = ?)
-           AND departure_time BETWEEN ? AND ?
-           AND available_seats >= ?
-           ORDER BY price ASC`;
+        const legQuery = `
+          SELECT f.* 
+          FROM flights f
+          INNER JOIN airports dep ON f.departure_airport = dep.code
+          INNER JOIN airports arr ON f.arrival_airport = arr.code
+          WHERE (LOWER(dep.city) LIKE ? OR LOWER(dep.city) = ?)
+            AND (LOWER(arr.city) LIKE ? OR LOWER(arr.city) = ?)
+            AND f.departure_time BETWEEN ? AND ?
+            AND f.available_seats >= ?
+          ORDER BY f.price ASC`;
 
         const legFromLower = leg.from.toLowerCase();
         const legToLower = leg.to.toLowerCase();
@@ -168,13 +172,17 @@ const searchFlights = async (req, res) => {
     const departEnd = `${departure_date} 23:59:59`;
 
     // Search for outbound flights with case-insensitive matching and day-range date filter
-    // Use LIKE pattern with % wildcards for flexible matching
-    const outboundQuery = `SELECT * FROM flights 
-       WHERE (LOWER(departure_city) LIKE ? OR LOWER(departure_city) = ?)
-       AND (LOWER(arrival_city) LIKE ? OR LOWER(arrival_city) = ?)
-       AND departure_time BETWEEN ? AND ?
-       AND available_seats >= ?
-       ORDER BY price ASC`;
+    // Join with airports table to search by city name
+    const outboundQuery = `
+      SELECT f.* 
+      FROM flights f
+      INNER JOIN airports dep ON f.departure_airport = dep.code
+      INNER JOIN airports arr ON f.arrival_airport = arr.code
+      WHERE (LOWER(dep.city) LIKE ? OR LOWER(dep.city) = ?)
+        AND (LOWER(arr.city) LIKE ? OR LOWER(arr.city) = ?)
+        AND f.departure_time BETWEEN ? AND ?
+        AND f.available_seats >= ?
+      ORDER BY f.price ASC`;
 
     // Use LIKE with % wildcards for flexible matching, also try exact match
     const normalizedOriginLower = normalizedOrigin.toLowerCase();
@@ -206,39 +214,6 @@ const searchFlights = async (req, res) => {
       sql: outboundSqlDebug
     });
 
-    // Additional debug: Check if any flights exist for these dates
-    if (outboundResult.rows.length === 0) {
-      const debugQuery = `SELECT COUNT(*) as count, 
-        MIN(departure_city) as sample_departure, 
-        MIN(arrival_city) as sample_arrival,
-        MIN(DATE(departure_time)) as min_date,
-        MAX(DATE(departure_time)) as max_date
-        FROM flights 
-        WHERE departure_time BETWEEN ? AND ?`;
-      const debugResult = await pool.query(debugQuery, [departStart, departEnd]);
-      console.log('🔍 Debug: Flights in date range:', debugResult.rows[0]);
-
-      // Check if cities exist at all
-      const cityCheckQuery = `SELECT DISTINCT departure_city, arrival_city 
-        FROM flights 
-        WHERE LOWER(departure_city) LIKE ? OR LOWER(arrival_city) LIKE ?
-        LIMIT 10`;
-      const cityCheckResult = await pool.query(cityCheckQuery, [
-        `%${normalizedOrigin.toLowerCase()}%`,
-        `%${normalizedDestination.toLowerCase()}%`
-      ]);
-      console.log('🔍 Debug: Matching cities found:', cityCheckResult.rows);
-
-      // Check all flights in database
-      const allFlightsQuery = `SELECT COUNT(*) as total, 
-        MIN(DATE(departure_time)) as min_date, 
-        MAX(DATE(departure_time)) as max_date,
-        GROUP_CONCAT(DISTINCT departure_city) as cities
-        FROM flights`;
-      const allFlightsResult = await pool.query(allFlightsQuery);
-      console.log('🔍 Debug: All flights in database:', allFlightsResult.rows[0]);
-    }
-
     let flights = outboundResult.rows;
     let missingLeg = null;
 
@@ -249,13 +224,17 @@ const searchFlights = async (req, res) => {
       const returnEnd = `${return_date} 23:59:59`;
 
       // Return flights: destination → origin (reversed route)
-      // Use LIKE pattern with % wildcards for flexible matching
-      const returnQuery = `SELECT * FROM flights 
-              WHERE (LOWER(departure_city) LIKE ? OR LOWER(departure_city) = ?)
-              AND (LOWER(arrival_city) LIKE ? OR LOWER(arrival_city) = ?)
-              AND departure_time BETWEEN ? AND ?
-              AND available_seats >= ?
-              ORDER BY price ASC`;
+      // Join with airports table to search by city name
+      const returnQuery = `
+        SELECT f.* 
+        FROM flights f
+        INNER JOIN airports dep ON f.departure_airport = dep.code
+        INNER JOIN airports arr ON f.arrival_airport = arr.code
+        WHERE (LOWER(dep.city) LIKE ? OR LOWER(dep.city) = ?)
+          AND (LOWER(arr.city) LIKE ? OR LOWER(arr.city) = ?)
+          AND f.departure_time BETWEEN ? AND ?
+          AND f.available_seats >= ?
+        ORDER BY f.price ASC`;
 
       // Use LIKE with % wildcards for flexible matching, also try exact match
       const normalizedDestinationLower = normalizedDestination.toLowerCase();
@@ -454,11 +433,10 @@ const bookFlight = async (req, res) => {
     // Create booking
     const bookingReference = `FL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const status = paymentResult ? 'confirmed' : 'pending';
-    const paymentStatus = paymentResult ? 'paid' : 'pending';
 
     const bookingResult = await pool.query(
-      `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status, payment_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)` ,
+      `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
+       VALUES (?, ?, ?, ?, ?, ?)` ,
       [
         userId,
         'flight',
@@ -471,8 +449,7 @@ const bookFlight = async (req, res) => {
           payment_info: paymentResult,
           seat_info: seatInfo
         }),
-        status,
-        paymentStatus
+        status
       ]
     );
 
@@ -495,8 +472,10 @@ const bookFlight = async (req, res) => {
       booking: bookingRow || { id: bookingId, booking_reference: bookingReference }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ Booking Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 };
 
@@ -522,11 +501,79 @@ const getFlightSeats = async (req, res) => {
   }
 };
 
+// Search airports (dynamic autocomplete)
+const searchAirports = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    // If no query, return empty array
+    if (!query || query.trim() === '') {
+      return res.json([]);
+    }
+
+    const searchTerm = query.trim();
+
+    // Case-insensitive search across code, city, and name
+    // Using LOWER() for case-insensitive matching in MySQL
+    const searchQuery = `
+      SELECT code, name, city, state, country
+      FROM airports
+      WHERE LOWER(code) LIKE LOWER(?) 
+         OR LOWER(city) LIKE LOWER(?)
+         OR LOWER(name) LIKE LOWER(?)
+      ORDER BY 
+        CASE 
+          WHEN LOWER(code) = LOWER(?) THEN 1
+          WHEN LOWER(city) = LOWER(?) THEN 2
+          WHEN LOWER(code) LIKE LOWER(?) THEN 3
+          WHEN LOWER(city) LIKE LOWER(?) THEN 4
+          ELSE 5
+        END,
+        city ASC
+      LIMIT 10
+    `;
+
+    // Parameters for LIKE search (with wildcards) and exact match priority
+    const searchPattern = `%${searchTerm}%`;
+    const params = [
+      searchPattern,  // code LIKE
+      searchPattern,  // city LIKE
+      searchPattern,  // name LIKE
+      searchTerm,     // exact code match (priority 1)
+      searchTerm,     // exact city match (priority 2)
+      `${searchTerm}%`, // code starts with (priority 3)
+      `${searchTerm}%`  // city starts with (priority 4)
+    ];
+
+    const result = await pool.query(searchQuery, params);
+
+    // Format response: code, label (formatted string), city
+    const airports = result.rows.map(airport => ({
+      code: airport.code,
+      label: `${airport.city} - ${airport.name} (${airport.code})`,
+      city: airport.city,
+      state: airport.state,
+      country: airport.country
+    }));
+
+    console.log('🔍 Airport search:', {
+      query: searchTerm,
+      found: airports.length
+    });
+
+    res.json(airports);
+  } catch (error) {
+    console.error('Airport search error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
 module.exports = {
   searchFlights,
   getFlightDetails,
   bookFlight,
-  getFlightSeats
+  getFlightSeats,
+  searchAirports
 };
 
 
