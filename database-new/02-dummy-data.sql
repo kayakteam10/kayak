@@ -554,14 +554,78 @@ SET SQL_SAFE_UPDATES = 1;
 
 
 -- ========================================================
--- OPTIONAL: GENERATE DUMMY SEATS (For Flight #1 only)
+-- GENERATE SEATS FOR FLIGHTS 1-10 (30 Rows x 6 Seats each)
 -- ========================================================
-INSERT INTO flight_seats (flight_id, seat_number, seat_type, is_available, price_modifier) VALUES
-(1, '1A', 'business', FALSE, 100.00), -- Booked
-(1, '1B', 'business', TRUE, 100.00),
-(1, '1C', 'business', TRUE, 100.00),
-(1, '10A', 'economy', TRUE, 0.00),
-(1, '10B', 'economy', TRUE, 0.00),
-(1, '10C', 'economy', FALSE, 0.00); -- Booked
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS GenerateSeats //
+
+CREATE PROCEDURE GenerateSeats()
+BEGIN
+    DECLARE flight_idx INT DEFAULT 1;
+    DECLARE row_num INT;
+    DECLARE col_idx INT;
+    DECLARE col_char CHAR(1);
+    DECLARE seat_str VARCHAR(10);
+    DECLARE s_type VARCHAR(20);
+    DECLARE price DECIMAL(10,2);
+    DECLARE seat_cols VARCHAR(10) DEFAULT 'ABCDEF';
+    
+    -- Loop through the first 10 flights
+    WHILE flight_idx <= 10 DO
+    
+        -- Clear existing seats for this flight just in case
+        DELETE FROM flight_seats WHERE flight_id = flight_idx;
+        
+        SET row_num = 1;
+
+        -- Loop through 30 Rows
+        WHILE row_num <= 30 DO
+            SET col_idx = 1;
+            
+            -- Determine Class & Price based on Row Number
+            IF row_num <= 2 THEN
+                SET s_type = 'first';
+                SET price = 300.00;
+            ELSEIF row_num <= 5 THEN
+                SET s_type = 'business';
+                SET price = 150.00;
+            ELSEIF row_num <= 10 THEN
+                SET s_type = 'premium';
+                SET price = 50.00;
+            ELSE
+                SET s_type = 'economy';
+                SET price = 0.00;
+            END IF;
+
+            -- Loop through Columns A-F
+            WHILE col_idx <= 6 DO
+                SET col_char = SUBSTRING(seat_cols, col_idx, 1);
+                SET seat_str = CONCAT(row_num, col_char);
+                
+                -- Insert the seat (Randomly make 15% unavailable to simulate bookings)
+                INSERT INTO flight_seats (flight_id, seat_number, seat_type, is_available, price_modifier)
+                VALUES (flight_idx, seat_str, s_type, IF(RAND() > 0.15, TRUE, FALSE), price);
+                
+                SET col_idx = col_idx + 1;
+            END WHILE;
+
+            SET row_num = row_num + 1;
+        END WHILE;
+        
+        -- Move to next flight
+        SET flight_idx = flight_idx + 1;
+    END WHILE;
+END //
+
+DELIMITER ;
+
+-- Execute the generator
+CALL GenerateSeats();
+
+-- Clean up
+DROP PROCEDURE GenerateSeats;
+
+SELECT CONCAT('Success! Generated ', COUNT(*), ' seats across the first 10 flights.') AS Status FROM flight_seats;
 
 SELECT 'All dummy data inserted and policies updated successfully.' AS Status;
