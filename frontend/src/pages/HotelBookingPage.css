@@ -4,7 +4,7 @@
   padding: 20px 0;
 }
 
-.booking-container {
+.hotel-booking-page .booking-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
@@ -14,7 +14,7 @@
 }
 
 /* Left Column - Form */
-.booking-form-section {
+.hotel-booking-page .booking-form-section {
   background: white;
 }
 
@@ -33,55 +33,55 @@
   font-size: 18px;
 }
 
-form {
+.hotel-booking-page form {
   padding: 30px;
 }
 
-.form-section {
+.hotel-booking-page .form-section {
   margin-bottom: 30px;
   padding-bottom: 30px;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.form-section:last-of-type {
+.hotel-booking-page .form-section:last-of-type {
   border-bottom: none;
 }
 
-.form-section h2 {
+.hotel-booking-page .form-section h2 {
   font-size: 22px;
   margin-bottom: 20px;
   color: #1a1a1a;
   font-weight: 600;
 }
 
-.form-section h3 {
+.hotel-booking-page .form-section h3 {
   font-size: 18px;
   margin: 20px 0 15px 0;
   color: #1a1a1a;
   font-weight: 600;
 }
 
-.form-row {
+.hotel-booking-page .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
   margin-bottom: 15px;
 }
 
-.form-group {
+.hotel-booking-page .form-group {
   display: flex;
   flex-direction: column;
 }
 
-.form-group label {
+.hotel-booking-page .form-group label {
   font-size: 14px;
   margin-bottom: 8px;
   color: #333;
   font-weight: 500;
 }
 
-.form-group input,
-.form-group select {
+.hotel-booking-page .form-group input,
+.hotel-booking-page .form-group select {
   padding: 12px;
   border: 1px solid #d0d0d0;
   border-radius: 4px;
@@ -89,12 +89,12 @@ form {
   transition: border-color 0.2s;
 }
 
-.form-group input:focus {
+.hotel-booking-page .form-group input:focus {
   outline: none;
   border-color: #ff6b35;
 }
 
-.form-group input.error {
+.hotel-booking-page .form-group input.error {
   border-color: #d32f2f;
 }
 
@@ -544,33 +544,33 @@ form {
 
 /* Responsive */
 @media (max-width: 968px) {
-  .booking-container {
+  .hotel-booking-page .booking-container {
     grid-template-columns: 1fr;
   }
 
-  .booking-summary-section {
+  .hotel-booking-page .booking-summary-section {
     position: static;
   }
 
-  .form-row {
+  .hotel-booking-page .form-row {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
-  .booking-container {
+  .hotel-booking-page .booking-container {
     padding: 0 10px;
   }
 
-  form {
+  .hotel-booking-page form {
     padding: 20px 15px;
   }
 
-  .form-section h2 {
+  .hotel-booking-page .form-section h2 {
     font-size: 18px;
   }
 
-  .highlights-grid {
+  .hotel-booking-page .highlights-grid {
     grid-template-columns: 1fr;
   }
 }
