@@ -29,8 +29,23 @@ const createReview = async (req, res) => {
 
     // Validation
     if (!entityType || !entityId || !rating || !title || !reviewText) {
-      console.log('❌ Missing required fields:', { entityType, entityId, rating, title: !!title, reviewText: !!reviewText });
-      return res.status(400).json({ error: 'Missing required fields' });
+      console.log('❌ Missing required fields:', { 
+        entityType, 
+        entityId, 
+        rating, 
+        title: !!title, 
+        reviewText: !!reviewText 
+      });
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        details: {
+          entityType: !entityType ? 'Entity type is required' : null,
+          entityId: !entityId ? 'Entity ID is required' : null,
+          rating: !rating ? 'Rating is required' : null,
+          title: !title ? 'Title is required' : null,
+          reviewText: !reviewText ? 'Review text is required' : null
+        }
+      });
     }
 
     if (!['flight', 'hotel', 'car'].includes(entityType)) {
@@ -45,10 +60,19 @@ const createReview = async (req, res) => {
 
     // Get user info from MySQL
     const pool = require('../config/database');
-    const userResult = await pool.query(
-      'SELECT first_name, last_name FROM users WHERE id = ?',
-      [userId]
-    );
+    let userResult;
+    try {
+      userResult = await pool.query(
+        'SELECT first_name, last_name FROM users WHERE id = ?',
+        [userId]
+      );
+    } catch (dbError) {
+      console.error('❌ MySQL query error:', dbError);
+      return res.status(500).json({ 
+        error: 'Database error while fetching user info',
+        details: dbError.message 
+      });
+    }
 
     if (userResult.rows.length === 0) {
       console.log('❌ User not found:', userId);
@@ -59,24 +83,46 @@ const createReview = async (req, res) => {
     const userName = `${user.first_name} ${user.last_name}`;
 
     // Create review document
-    const db = await getDB();
+    let db;
+    try {
+      db = await getDB();
+      console.log('✅ MongoDB connection established');
+    } catch (mongoError) {
+      console.error('❌ MongoDB connection error:', mongoError);
+      return res.status(500).json({ 
+        error: 'Failed to connect to database',
+        details: mongoError.message 
+      });
+    }
+
     const review = {
-      bookingId: parseInt(bookingId),
-      entityType,
-      entityId: parseInt(entityId),
-      userId: parseInt(userId),
-      userName,
-      rating: parseFloat(rating),
-      title,
-      reviewText,
-      verified: true, // Verified since it's from an actual booking
-      helpfulCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      user_id: parseInt(userId),
+      user_name: userName,
+      target_type: entityType,
+      target_id: parseInt(entityId),
+      rating: parseInt(rating),
+      title: title,
+      comment: reviewText,
+      booking_id: bookingId ? parseInt(bookingId) : null,
+      verified: true,
+      helpful_count: 0,
+      created_at: new Date(),
+      updated_at: new Date()
     };
 
-    const result = await db.collection('reviews').insertOne(review);
-    console.log('✅ Review created successfully:', result.insertedId);
+    console.log('📄 Review document to insert:', review);
+
+    let result;
+    try {
+      result = await db.collection('reviews').insertOne(review);
+      console.log('✅ Review created successfully:', result.insertedId);
+    } catch (insertError) {
+      console.error('❌ MongoDB insert error:', insertError);
+      return res.status(500).json({ 
+        error: 'Failed to save review',
+        details: insertError.message 
+      });
+    }
 
     res.status(201).json({
       message: 'Review created successfully',
@@ -110,15 +156,15 @@ const getReviewsByEntity = async (req, res) => {
     const db = await getDB();
 
     // Build sort criteria
-    let sort = { createdAt: -1 }; // Default: most recent
-    if (sortBy === 'rating_high') sort = { rating: -1, createdAt: -1 };
-    if (sortBy === 'rating_low') sort = { rating: 1, createdAt: -1 };
-    if (sortBy === 'helpful') sort = { helpfulCount: -1, createdAt: -1 };
+    let sort = { created_at: -1 }; // Default: most recent
+    if (sortBy === 'rating_high') sort = { rating: -1, created_at: -1 };
+    if (sortBy === 'rating_low') sort = { rating: 1, created_at: -1 };
+    if (sortBy === 'helpful') sort = { helpful_count: -1, created_at: -1 };
 
     const reviews = await db.collection('reviews')
       .find({
-        entityType,
-        entityId: parseInt(entityId)
+        target_type: entityType,
+        target_id: parseInt(entityId)
       })
       .sort(sort)
       .limit(parseInt(limit))
@@ -129,8 +175,8 @@ const getReviewsByEntity = async (req, res) => {
     const stats = await db.collection('reviews').aggregate([
       {
         $match: {
-          entityType,
-          entityId: parseInt(entityId)
+          target_type: entityType,
+          target_id: parseInt(entityId)
         }
       },
       {
@@ -184,6 +230,7 @@ const getReviewsByUser = async (req, res) => {
       .sort({ created_at: -1 })
       .toArray();
 
+    console.log(`✅ Found ${reviews.length} reviews for user ${userId}`);
     res.json({ reviews });
   } catch (error) {
     console.error('Get user reviews error:', error);
@@ -212,7 +259,7 @@ const updateReview = async (req, res) => {
     // Check if review belongs to user
     const existingReview = await db.collection('reviews').findOne({
       _id: new ObjectId(id),
-      userId: parseInt(userId)
+      user_id: parseInt(userId)
     });
 
     if (!existingReview) {
@@ -221,11 +268,11 @@ const updateReview = async (req, res) => {
 
     // Update review
     const updateData = {
-      updatedAt: new Date()
+      updated_at: new Date()
     };
-    if (rating) updateData.rating = parseFloat(rating);
+    if (rating) updateData.rating = parseInt(rating);
     if (title) updateData.title = title;
-    if (reviewText) updateData.reviewText = reviewText;
+    if (reviewText) updateData.comment = reviewText;
 
     await db.collection('reviews').updateOne(
       { _id: new ObjectId(id) },
@@ -266,7 +313,7 @@ const deleteReview = async (req, res) => {
     // Check if review belongs to user
     const result = await db.collection('reviews').deleteOne({
       _id: new ObjectId(id),
-      userId: parseInt(userId)
+      user_id: parseInt(userId)
     });
 
     if (result.deletedCount === 0) {
@@ -295,7 +342,7 @@ const markHelpful = async (req, res) => {
     const db = await getDB();
     await db.collection('reviews').updateOne(
       { _id: new ObjectId(id) },
-      { $inc: { helpfulCount: 1 } }
+      { $inc: { helpful_count: 1 } }
     );
 
     const review = await db.collection('reviews').findOne({

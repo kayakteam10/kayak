@@ -94,28 +94,69 @@ function Header() {
                 </button>
                 {showDropdown && (
                   <div className="user-dropdown">
-                    {userRole === 'admin' && (
-                      <Link
-                        to="/admin"
-                        className="dropdown-item"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        ⚙️ Admin Panel
-                      </Link>
+                    {userRole === 'admin' ? (
+                      <>
+                        <Link
+                          to="/admin"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          ⚙️ Admin Panel
+                        </Link>
+                        <Link
+                          to="/profile?tab=profile"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          👤 Profile Settings
+                        </Link>
+                        <div className="dropdown-divider"></div>
+                        <button
+                          className="dropdown-item logout-item"
+                          onClick={handleLogout}
+                        >
+                          Logout
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          to="/profile?tab=bookings"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          📋 My Bookings
+                        </Link>
+                        <Link
+                          to="/profile?tab=reviews"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          ⭐ My Reviews
+                        </Link>
+                        <Link
+                          to="/profile?tab=profile"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          👤 Profile Settings
+                        </Link>
+                        <Link
+                          to="/profile?tab=payment"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          💳 Payment Methods
+                        </Link>
+                        <div className="dropdown-divider"></div>
+                        <button
+                          className="dropdown-item logout-item"
+                          onClick={handleLogout}
+                        >
+                          Logout
+                        </button>
+                      </>
                     )}
-                    <Link
-                      to="/profile"
-                      className="dropdown-item"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      {userRole === 'admin' ? '👤 Profile' : '📋 My Bookings'}
-                    </Link>
-                    <button
-                      className="dropdown-item logout-item"
-                      onClick={handleLogout}
-                    >
-                      🚪 Logout
-                    </button>
                   </div>
                 )}
               </div>

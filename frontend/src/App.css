@@ -221,6 +221,12 @@
   background: var(--color-bg-secondary);
 }
 
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-border-light);
+  margin: 8px 0;
+}
+
 .logout-item {
   border-top: 1px solid var(--color-border-light);
   color: var(--color-error);

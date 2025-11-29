@@ -118,6 +118,11 @@ const HomePage = () => {
 
   const [activeTab, setActiveTab] = useState('flights');
   const [tripType, setTripType] = useState('roundtrip');
+  const [userProfile, setUserProfile] = useState({
+    isLoggedIn: false,
+    name: '',
+    picture: ''
+  });
   const [formData, setFormData] = useState({
     origin: '',
     destination: '',
@@ -148,6 +153,34 @@ const HomePage = () => {
   const [showTravelersDropdown, setShowTravelersDropdown] = useState(false);
   const [showHotelGuestsDropdown, setShowHotelGuestsDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+
+  // Load user profile on mount and when login state changes
+  useEffect(() => {
+    const updateUserProfile = () => {
+      const token = localStorage.getItem('token');
+      const userName = localStorage.getItem('userName');
+      const profilePicture = localStorage.getItem('profilePicture');
+      
+      setUserProfile({
+        isLoggedIn: !!token,
+        name: userName || '',
+        picture: profilePicture || ''
+      });
+    };
+
+    updateUserProfile();
+
+    // Listen for login/logout events
+    window.addEventListener('login', updateUserProfile);
+    window.addEventListener('logout', updateUserProfile);
+    window.addEventListener('storage', updateUserProfile);
+
+    return () => {
+      window.removeEventListener('login', updateUserProfile);
+      window.removeEventListener('logout', updateUserProfile);
+      window.removeEventListener('storage', updateUserProfile);
+    };
+  }, []);
 
   const updateHotelGuests = (type, delta) => {
     setHotelData((prev) => {
