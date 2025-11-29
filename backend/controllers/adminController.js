@@ -16,15 +16,15 @@ const getAllBookings = async (req, res) => {
 
     if (startDate) {
       params.push(startDate);
-      query += ` AND DATE(created_at) >= ?`;
+      query += ` AND DATE(booking_date) >= ?`;
     }
 
     if (endDate) {
       params.push(endDate);
-      query += ` AND DATE(created_at) <= ?`;
+      query += ` AND DATE(booking_date) <= ?`;
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY booking_date DESC';
 
     const result = await pool.query(query, params);
 
@@ -247,8 +247,8 @@ const getAnalytics = async (req, res) => {
   try {
     const bookingsCount = await pool.query('SELECT COUNT(*) as count FROM bookings');
     const totalRevenue = await pool.query(
-      'SELECT SUM(total_amount) as sum FROM bookings WHERE payment_status = ?',
-      ['paid']
+      'SELECT SUM(total_amount) as sum FROM bookings WHERE status = ?',
+      ['confirmed']
     );
     const usersCount = await pool.query('SELECT COUNT(*) as count FROM users');
     const flightsCount = await pool.query('SELECT COUNT(*) as count FROM flights');
@@ -280,11 +280,11 @@ const getRevenueAnalytics = async (req, res) => {
 
     const result = await pool.query(
       `SELECT 
-        DATE_FORMAT(created_at, ?) as period,
+        DATE_FORMAT(booking_date, ?) as period,
         SUM(total_amount) as revenue,
         COUNT(*) as bookings
        FROM bookings
-       WHERE payment_status = 'paid'
+       WHERE status = 'confirmed'
        GROUP BY period
        ORDER BY period DESC
        LIMIT 30`,
@@ -297,6 +297,7 @@ const getRevenueAnalytics = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
 
 const getPopularRoutes = async (req, res) => {
   try {
@@ -321,6 +322,41 @@ const getPopularRoutes = async (req, res) => {
   }
 };
 
+// ========== USERS ==========
+const getAllUsers = async (req, res) => {
+  try {
+    console.log('📊 getAllUsers called');
+    // IMPORTANT: Exclude password and password_hash for security
+    const result = await pool.query(
+      `SELECT 
+        id, 
+        email, 
+        first_name, 
+        last_name, 
+        phone_number, 
+        role,
+        address,
+        city,
+        state,
+        zip_code,
+        created_at
+       FROM users
+       ORDER BY created_at DESC`
+    );
+
+    console.log('✅ Users query result:', result.rows.length, 'users found');
+    console.log('Sample user:', result.rows[0]);
+
+    res.json({
+      users: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('❌ Error in getAllUsers:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 module.exports = {
   // Bookings
   getAllBookings,
@@ -336,5 +372,8 @@ module.exports = {
   // Analytics
   getAnalytics,
   getRevenueAnalytics,
-  getPopularRoutes
+  getPopularRoutes,
+
+  // Users
+  getAllUsers
 };

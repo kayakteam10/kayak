@@ -18,6 +18,7 @@ function LoginPage() {
       const response = await authAPI.login(formData);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('userName', response.data.user.firstName);
+      localStorage.setItem('userRole', response.data.user.role);
 
       // Store user data including role
       localStorage.setItem('user', JSON.stringify(response.data.user));

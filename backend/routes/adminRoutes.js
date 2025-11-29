@@ -23,4 +23,7 @@ router.get('/analytics', adminController.getAnalytics);
 router.get('/analytics/revenue', adminController.getRevenueAnalytics);
 router.get('/analytics/routes', adminController.getPopularRoutes);
 
+// Users
+router.get('/users', adminController.getAllUsers);
+
 module.exports = router;
