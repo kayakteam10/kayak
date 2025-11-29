@@ -80,7 +80,7 @@ const searchFlights = async (req, res) => {
         const legEnd = `${leg.date} 23:59:59`;
 
         const legQuery = `
-          SELECT f.* 
+          SELECT f.*, dep.city as departure_city, arr.city as arrival_city 
           FROM flights f
           INNER JOIN airports dep ON f.departure_airport = dep.code
           INNER JOIN airports arr ON f.arrival_airport = arr.code
@@ -174,7 +174,7 @@ const searchFlights = async (req, res) => {
     // Search for outbound flights with case-insensitive matching and day-range date filter
     // Join with airports table to search by city name
     const outboundQuery = `
-      SELECT f.* 
+      SELECT f.*, dep.city as departure_city, arr.city as arrival_city 
       FROM flights f
       INNER JOIN airports dep ON f.departure_airport = dep.code
       INNER JOIN airports arr ON f.arrival_airport = arr.code
@@ -226,7 +226,7 @@ const searchFlights = async (req, res) => {
       // Return flights: destination → origin (reversed route)
       // Join with airports table to search by city name
       const returnQuery = `
-        SELECT f.* 
+        SELECT f.*, dep.city as departure_city, arr.city as arrival_city 
         FROM flights f
         INNER JOIN airports dep ON f.departure_airport = dep.code
         INNER JOIN airports arr ON f.arrival_airport = arr.code
@@ -348,7 +348,11 @@ const getFlightDetails = async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      'SELECT * FROM flights WHERE id = ?',
+      `SELECT f.*, dep.city as departure_city, arr.city as arrival_city 
+       FROM flights f
+       INNER JOIN airports dep ON f.departure_airport = dep.code
+       INNER JOIN airports arr ON f.arrival_airport = arr.code
+       WHERE f.id = ?`,
       [id]
     );
 
@@ -366,11 +370,42 @@ const getFlightDetails = async (req, res) => {
 // Book flight
 const bookFlight = async (req, res) => {
   try {
-    const { flight_id, passenger_details, payment_details, selected_seats } = req.body;
+    const { flight_id, passenger_details, passengers, payment_details, selected_seats } = req.body;
     const userId = req.user ? req.user.userId : null;
 
-    if (!flight_id || !passenger_details) {
-      return res.status(400).json({ error: 'Missing required booking information' });
+    // Support both old format (passenger_details) and new format (passengers array)
+    let passengerData;
+    let passengerCount = 1;
+
+    if (passengers && Array.isArray(passengers)) {
+      // New format: array of passengers
+      passengerData = passengers;
+      passengerCount = passengers.length;
+
+      // Validate passengers array
+      if (passengers.length === 0) {
+        return res.status(400).json({ error: 'At least one passenger is required' });
+      }
+
+      // Validate each passenger
+      for (let i = 0; i < passengers.length; i++) {
+        const p = passengers[i];
+        if (!p.firstName || !p.lastName || !p.email) {
+          return res.status(400).json({
+            error: `Passenger ${i + 1}: Missing required fields (firstName, lastName, email)`
+          });
+        }
+      }
+    } else if (passenger_details) {
+      // Old format: single passenger object (backward compatibility)
+      passengerData = passenger_details;
+      passengerCount = 1;
+    } else {
+      return res.status(400).json({ error: 'Missing required passenger information' });
+    }
+
+    if (!flight_id) {
+      return res.status(400).json({ error: 'Missing flight_id' });
     }
 
     // Check flight availability
@@ -383,17 +418,27 @@ const bookFlight = async (req, res) => {
       return res.status(404).json({ error: 'Flight not found' });
     }
 
-    if (flight.rows[0].available_seats < 1) {
-      return res.status(400).json({ error: 'No seats available' });
+    // Check if enough seats available for all passengers
+    if (flight.rows[0].available_seats < passengerCount) {
+      return res.status(400).json({
+        error: `Not enough seats available. Required: ${passengerCount}, Available: ${flight.rows[0].available_seats}`
+      });
     }
 
     const flightData = flight.rows[0];
-    let totalAmount = flightData.price; // Base price
+    let totalAmount = flightData.price * passengerCount; // Base price × number of passengers
 
     // Handle seat selection
     let seatInfo = null;
     if (selected_seats && selected_seats.length > 0) {
       const seatService = require('../services/seatService');
+
+      // Validate seat count matches passenger count (or multiple thereof for round-trip/multi-leg)
+      if (selected_seats.length % passengerCount !== 0) {
+        return res.status(400).json({
+          error: `Seat count (${selected_seats.length}) must be a multiple of passenger count (${passengerCount}) for multi-leg flights`
+        });
+      }
 
       try {
         // Calculate seat price modifier
@@ -444,7 +489,8 @@ const bookFlight = async (req, res) => {
         totalAmount,
         JSON.stringify({
           flight_id,
-          passenger_details,
+          passengers: passengerData, // Store as 'passengers' regardless of input format
+          passenger_count: passengerCount,
           flight_details: flightData,
           payment_info: paymentResult,
           seat_info: seatInfo
@@ -461,11 +507,19 @@ const bookFlight = async (req, res) => {
     ) : { rows: [] };
     const bookingRow = bookingRowResult.rows?.[0] || null;
 
-    // Update available seats
+    // Update available seats (reduce by passenger count)
     await pool.query(
-      'UPDATE flights SET available_seats = available_seats - 1 WHERE id = ?',
-      [flight_id]
+      'UPDATE flights SET available_seats = available_seats - ? WHERE id = ?',
+      [passengerCount, flight_id]
     );
+
+    console.log('✅ Booking created:', {
+      bookingId,
+      bookingReference,
+      passengerCount,
+      totalAmount,
+      seatsReserved: selected_seats?.length || 0
+    });
 
     res.status(201).json({
       message: 'Booking created successfully',
