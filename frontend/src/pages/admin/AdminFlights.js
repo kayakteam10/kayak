@@ -11,17 +11,18 @@ const AdminFlights = () => {
     const [formData, setFormData] = useState({
         airline: '',
         flight_number: '',
-        departure_city: '',
-        arrival_city: '',
+        departure_airport: '',
+        arrival_airport: '',
         departure_time: '',
         arrival_time: '',
+        duration: '',
         price: '',
         available_seats: '',
         total_seats: '',
-        aircraft_type: 'Boeing 737',
+        status: 'scheduled',
         carry_on_fee: '0',
-        checked_bag_fee: '0',
-        baggage_allowance: '1 carry-on, 1 checked bag'
+        checked_bag_fee: '35',
+        baggage_allowance: '1 Carry-on included'
     });
     const [errors, setErrors] = useState({});
 
@@ -44,37 +45,51 @@ const AdminFlights = () => {
     const handleOpenModal = (flight = null) => {
         if (flight) {
             setEditingFlight(flight);
+            // Format datetime for datetime-local input (YYYY-MM-DDTHH:MM)
+            const formatDatetime = (dt) => {
+                if (!dt) return '';
+                const date = new Date(dt);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            };
+
             setFormData({
-                airline: flight.airline,
-                flight_number: flight.flight_number,
-                departure_city: flight.departure_city,
-                arrival_city: flight.arrival_city,
-                departure_time: flight.departure_time,
-                arrival_time: flight.arrival_time,
-                price: flight.price,
-                available_seats: flight.available_seats,
-                total_seats: flight.total_seats || flight.available_seats,
-                aircraft_type: flight.aircraft_type || 'Boeing 737',
+                airline: flight.airline || '',
+                flight_number: flight.flight_number || '',
+                departure_airport: flight.departure_airport || '',
+                arrival_airport: flight.arrival_airport || '',
+                departure_time: formatDatetime(flight.departure_time),
+                arrival_time: formatDatetime(flight.arrival_time),
+                duration: flight.duration || '',
+                price: flight.price || '',
+                available_seats: flight.available_seats || '',
+                total_seats: flight.total_seats || '',
+                status: flight.status || 'scheduled',
                 carry_on_fee: flight.carry_on_fee || '0',
-                checked_bag_fee: flight.checked_bag_fee || '0',
-                baggage_allowance: flight.baggage_allowance || '1 carry-on, 1 checked bag'
+                checked_bag_fee: flight.checked_bag_fee || '35',
+                baggage_allowance: flight.baggage_allowance || '1 Carry-on included'
             });
         } else {
             setEditingFlight(null);
             setFormData({
                 airline: '',
                 flight_number: '',
-                departure_city: '',
-                arrival_city: '',
+                departure_airport: '',
+                arrival_airport: '',
                 departure_time: '',
                 arrival_time: '',
+                duration: '',
                 price: '',
                 available_seats: '',
                 total_seats: '',
-                aircraft_type: 'Boeing 737',
+                status: 'scheduled',
                 carry_on_fee: '0',
-                checked_bag_fee: '0',
-                baggage_allowance: '1 carry-on, 1 checked bag'
+                checked_bag_fee: '35',
+                baggage_allowance: '1 Carry-on included'
             });
         }
         setErrors({});
@@ -138,6 +153,7 @@ const AdminFlights = () => {
                             <th>Route</th>
                             <th>Departure</th>
                             <th>Arrival</th>
+                            <th>Duration</th>
                             <th>Price</th>
                             <th>Seats</th>
                             <th>Actions</th>
@@ -146,7 +162,7 @@ const AdminFlights = () => {
                     <tbody>
                         {flights.length === 0 ? (
                             <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
+                                <td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>
                                     No flights found. Click "Add Flight" to create one.
                                 </td>
                             </tr>
@@ -155,11 +171,28 @@ const AdminFlights = () => {
                                 <tr key={flight.id}>
                                     <td>{flight.flight_number}</td>
                                     <td>{flight.airline}</td>
-                                    <td>{flight.departure_city} → {flight.arrival_city}</td>
-                                    <td>{flight.departure_time?.slice(0, 5)}</td>
-                                    <td>{flight.arrival_time?.slice(0, 5)}</td>
+                                    <td>{flight.departure_airport} → {flight.arrival_airport}</td>
+                                    <td>
+                                        {new Date(flight.departure_time).toLocaleString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </td>
+                                    <td>
+                                        {new Date(flight.arrival_time).toLocaleString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </td>
+                                    <td>{flight.duration ? `${flight.duration} min` : 'N/A'}</td>
                                     <td>${parseFloat(flight.price).toFixed(2)}</td>
-                                    <td>{flight.available_seats}/{flight.total_seats || flight.available_seats}</td>
+                                    <td>{flight.available_seats}/{flight.total_seats}</td>
                                     <td>
                                         <button
                                             className="admin-btn admin-btn-secondary admin-btn-sm"
@@ -214,31 +247,35 @@ const AdminFlights = () => {
                                 </div>
 
                                 <div className="admin-form-group">
-                                    <label>Departure City *</label>
+                                    <label>Departure Airport Code * (e.g., SFO)</label>
                                     <input
                                         type="text"
                                         className="admin-form-input"
-                                        value={formData.departure_city}
-                                        onChange={(e) => setFormData({ ...formData, departure_city: e.target.value })}
+                                        value={formData.departure_airport}
+                                        onChange={(e) => setFormData({ ...formData, departure_airport: e.target.value.toUpperCase() })}
+                                        placeholder="SFO"
+                                        maxLength="5"
                                         required
                                     />
                                 </div>
 
                                 <div className="admin-form-group">
-                                    <label>Arrival City *</label>
+                                    <label>Arrival Airport Code * (e.g., JFK)</label>
                                     <input
                                         type="text"
                                         className="admin-form-input"
-                                        value={formData.arrival_city}
-                                        onChange={(e) => setFormData({ ...formData, arrival_city: e.target.value })}
+                                        value={formData.arrival_airport}
+                                        onChange={(e) => setFormData({ ...formData, arrival_airport: e.target.value.toUpperCase() })}
+                                        placeholder="JFK"
+                                        maxLength="5"
                                         required
                                     />
                                 </div>
 
                                 <div className="admin-form-group">
-                                    <label>Departure Time *</label>
+                                    <label>Departure Date & Time *</label>
                                     <input
-                                        type="time"
+                                        type="datetime-local"
                                         className="admin-form-input"
                                         value={formData.departure_time}
                                         onChange={(e) => setFormData({ ...formData, departure_time: e.target.value })}
@@ -247,9 +284,9 @@ const AdminFlights = () => {
                                 </div>
 
                                 <div className="admin-form-group">
-                                    <label>Arrival Time *</label>
+                                    <label>Arrival Date & Time *</label>
                                     <input
-                                        type="time"
+                                        type="datetime-local"
                                         className="admin-form-input"
                                         value={formData.arrival_time}
                                         onChange={(e) => setFormData({ ...formData, arrival_time: e.target.value })}
@@ -258,7 +295,32 @@ const AdminFlights = () => {
                                 </div>
 
                                 <div className="admin-form-group">
-                                    <label>Price *</label>
+                                    <label>Duration (minutes)</label>
+                                    <input
+                                        type="number"
+                                        className="admin-form-input"
+                                        value={formData.duration}
+                                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                                        placeholder="120"
+                                    />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label>Status *</label>
+                                    <select
+                                        className="admin-form-input"
+                                        value={formData.status}
+                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                        required
+                                    >
+                                        <option value="scheduled">Scheduled</option>
+                                        <option value="delayed">Delayed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label>Price (USD) *</label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -277,6 +339,50 @@ const AdminFlights = () => {
                                         value={formData.available_seats}
                                         onChange={(e) => setFormData({ ...formData, available_seats: e.target.value })}
                                         required
+                                    />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label>Total Seats *</label>
+                                    <input
+                                        type="number"
+                                        className="admin-form-input"
+                                        value={formData.total_seats}
+                                        onChange={(e) => setFormData({ ...formData, total_seats: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label>Carry-On Fee (USD)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        className="admin-form-input"
+                                        value={formData.carry_on_fee}
+                                        onChange={(e) => setFormData({ ...formData, carry_on_fee: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label>Checked Bag Fee (USD)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        className="admin-form-input"
+                                        value={formData.checked_bag_fee}
+                                        onChange={(e) => setFormData({ ...formData, checked_bag_fee: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="admin-form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <label>Baggage Allowance</label>
+                                    <input
+                                        type="text"
+                                        className="admin-form-input"
+                                        value={formData.baggage_allowance}
+                                        onChange={(e) => setFormData({ ...formData, baggage_allowance: e.target.value })}
+                                        placeholder="1 Carry-on included"
                                     />
                                 </div>
                             </div>
