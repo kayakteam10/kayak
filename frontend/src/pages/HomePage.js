@@ -288,6 +288,59 @@ const HomePage = () => {
     event.preventDefault();
     setValidationError('');
 
+    // Handle hotel search
+    if (activeTab === 'hotels') {
+      if (!hotelData.location.trim()) {
+        setValidationError('Enter a location.');
+        return;
+      }
+      if (!hotelData.checkIn || !hotelData.checkOut) {
+        setValidationError('Select check-in and check-out dates.');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set('location', hotelData.location);
+      params.set('checkIn', hotelData.checkIn);
+      params.set('checkOut', hotelData.checkOut);
+      params.set('rooms', String(hotelData.guests.rooms));
+      params.set('adults', String(hotelData.guests.adults));
+      params.set('children', String(hotelData.guests.children));
+
+      setShowHotelGuestsDropdown(false);
+      navigate(`/hotels?${params.toString()}`);
+      return;
+    }
+
+    // Handle car search
+    if (activeTab === 'cars') {
+      if (!carData.pickupLocation.trim()) {
+        setValidationError('Enter a pickup location.');
+        return;
+      }
+      if (!carData.sameDropoff && !carData.dropoffLocation.trim()) {
+        setValidationError('Enter a drop-off location.');
+        return;
+      }
+      if (!carData.pickupDate || !carData.dropoffDate) {
+        setValidationError('Select pickup and drop-off dates.');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set('type', 'cars');
+      params.set('pickupLocation', carData.pickupLocation);
+      params.set('dropoffLocation', carData.sameDropoff ? carData.pickupLocation : carData.dropoffLocation);
+      params.set('pickupDate', carData.pickupDate);
+      params.set('pickupTime', carData.pickupTime);
+      params.set('dropoffDate', carData.dropoffDate);
+      params.set('dropoffTime', carData.dropoffTime);
+
+      navigate(`/search?${params.toString()}`);
+      return;
+    }
+
+    // Handle flight search
     if (tripType === 'multicity') {
       const hasIncompleteLeg = multiCityLegs.some((leg) => !leg.from.trim() || !leg.to.trim() || !leg.departDate);
       if (hasIncompleteLeg) {

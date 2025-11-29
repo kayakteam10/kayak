@@ -1,0 +1,576 @@
+.hotel-booking-page {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  padding: 20px 0;
+}
+
+.booking-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 30px;
+}
+
+/* Left Column - Form */
+.booking-form-section {
+  background: white;
+}
+
+.security-badge {
+  background: #e8f5e9;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px 8px 0 0;
+  color: #2e7d32;
+  font-size: 14px;
+}
+
+.security-badge svg {
+  font-size: 18px;
+}
+
+form {
+  padding: 30px;
+}
+
+.form-section {
+  margin-bottom: 30px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+}
+
+.form-section h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.form-section h3 {
+  font-size: 18px;
+  margin: 20px 0 15px 0;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #ff6b35;
+}
+
+.form-group input.error {
+  border-color: #d32f2f;
+}
+
+.error-text {
+  color: #d32f2f;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* Payment Methods */
+.payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border: 2px solid #d0d0d0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.payment-option:hover {
+  border-color: #ff6b35;
+}
+
+.payment-option.selected {
+  border-color: #ff6b35;
+  background-color: #fff5f2;
+}
+
+.payment-option input[type="radio"] {
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.payment-option span {
+  flex: 1;
+  font-weight: 500;
+}
+
+.payment-option .card-icon {
+  font-size: 24px;
+}
+
+.payment-option img {
+  height: 20px;
+}
+
+.payment-option .affirm-logo {
+  font-weight: 600;
+  color: #00b2e3;
+  font-size: 18px;
+}
+
+.card-details {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.card-logos {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.card-logos img {
+  height: 24px;
+}
+
+/* Protection Options */
+.protection-options {
+  margin-bottom: 20px;
+}
+
+.protection-option {
+  display: flex;
+  padding: 15px;
+  border: 2px solid #d0d0d0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.protection-option:hover {
+  border-color: #ff6b35;
+}
+
+.protection-option.selected {
+  border-color: #ff6b35;
+  background-color: #fff5f2;
+}
+
+.protection-option input[type="radio"] {
+  margin-right: 12px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.protection-content {
+  flex: 1;
+}
+
+.protection-content strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.protection-content p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.insurance-info {
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.insurance-info .info-icon {
+  color: #4caf50;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.insurance-info p {
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.testimonial {
+  font-style: italic;
+  color: #666;
+}
+
+.testimonial-author {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Cancellation Policy */
+.cancellation-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  background: #e8f5e9;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.cancellation-badge .success-icon {
+  color: #4caf50;
+  font-size: 20px;
+}
+
+.cancellation-badge strong {
+  font-size: 15px;
+  color: #2e7d32;
+}
+
+.policy-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #666;
+}
+
+/* Terms and Submit */
+.terms-section {
+  margin: 25px 0;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.terms-section a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.terms-section a:hover {
+  text-decoration: underline;
+}
+
+.book-now-button {
+  width: 100%;
+  padding: 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.2s;
+}
+
+.book-now-button:hover {
+  background: #0056b3;
+}
+
+.book-now-button svg {
+  font-size: 18px;
+}
+
+/* Right Column - Summary */
+.booking-summary-section {
+  position: sticky;
+  top: 20px;
+  height: fit-content;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.hotel-summary {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.hotel-summary img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.hotel-info h3 {
+  font-size: 20px;
+  margin-bottom: 5px;
+  color: #1a1a1a;
+}
+
+.hotel-info p {
+  color: #666;
+  font-size: 14px;
+}
+
+.dates-summary {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.date-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.date-row strong {
+  color: #333;
+}
+
+.date-row span {
+  color: #666;
+  text-align: right;
+}
+
+.nights-badge {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.property-highlights {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.property-highlights h4 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #1a1a1a;
+}
+
+.highlights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #555;
+}
+
+.highlight-item svg {
+  color: #ff6b35;
+  font-size: 18px;
+}
+
+.room-info {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.room-info h4 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #1a1a1a;
+}
+
+.room-features {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #555;
+}
+
+.feature-item svg {
+  color: #4caf50;
+  font-size: 16px;
+}
+
+.special-requests {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.special-requests h4 {
+  font-size: 14px;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.taste-message {
+  padding: 20px;
+  background: #e8f5e9;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.taste-message .check-icon {
+  color: #4caf50;
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.taste-message p {
+  font-size: 14px;
+  color: #2e7d32;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.price-details {
+  padding: 20px;
+}
+
+.price-details h4 {
+  font-size: 18px;
+  margin-bottom: 15px;
+  color: #1a1a1a;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.price-row span {
+  color: #666;
+}
+
+.price-row.total {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 2px solid #e0e0e0;
+  font-size: 18px;
+}
+
+.price-row.total strong {
+  color: #1a1a1a;
+}
+
+.currency-note {
+  font-size: 12px;
+  color: #999;
+  margin-top: 10px;
+}
+
+/* Loading & Error States */
+.booking-loading,
+.booking-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 18px;
+  color: #666;
+}
+
+.booking-error {
+  color: #d32f2f;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+  .booking-container {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-summary-section {
+    position: static;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .booking-container {
+    padding: 0 10px;
+  }
+
+  form {
+    padding: 20px 15px;
+  }
+
+  .form-section h2 {
+    font-size: 18px;
+  }
+
+  .highlights-grid {
+    grid-template-columns: 1fr;
+  }
+}

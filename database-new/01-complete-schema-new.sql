@@ -117,8 +117,34 @@ CREATE TABLE IF NOT EXISTS hotels (
     user_rating DECIMAL(3, 2) DEFAULT 0.00 COMMENT 'Cached aggregate User Rating from Mongo',
     amenities JSON COMMENT 'JSON list of amenities',
     description TEXT,
+    price_per_night DECIMAL(10, 2) DEFAULT 100.00,
+    available_rooms INT DEFAULT 10,
+    total_rooms INT DEFAULT 50,
+    free_cancellation BOOLEAN DEFAULT TRUE,
+    free_breakfast BOOLEAN DEFAULT FALSE,
+    discount_percentage INT DEFAULT 0,
+    image_url VARCHAR(500),
+    location VARCHAR(255),
+    review_count INT DEFAULT 0,
     INDEX idx_city (city),
     INDEX idx_stars (star_rating)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3.5 ROOM_TYPES (Optional - for hotels with multiple room categories)
+CREATE TABLE IF NOT EXISTS room_types (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    hotel_id INT NOT NULL,
+    room_type_name VARCHAR(100) NOT NULL,
+    bed_configuration VARCHAR(100),
+    room_size_sqft INT,
+    max_occupancy INT DEFAULT 2,
+    price_per_night DECIMAL(10, 2) NOT NULL,
+    available_rooms INT DEFAULT 0,
+    amenities JSON,
+    description TEXT,
+    image_url VARCHAR(500),
+    FOREIGN KEY (hotel_id) REFERENCES hotels(id) ON DELETE CASCADE,
+    INDEX idx_hotel_id (hotel_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. CARS (Updated for Airport Pick-up)

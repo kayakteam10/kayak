@@ -156,61 +156,115 @@ INSERT INTO flights (id, flight_number, airline, departure_airport, arrival_airp
 (50, 'FL050', 'AirlineA', 'SFO', 'JFK', '2025-12-10 10:00', '2025-12-10 18:00', 200.00, 100, 150, 4.0);
 
 -- ========================================================
--- 3. HOTELS (50 Rows) - User Rating cached
+-- 3. HOTELS (50 Rows) - Complete with all fields from current database
 -- ========================================================
 TRUNCATE TABLE hotels;
-INSERT INTO hotels (id, hotel_name, address, city, state, zip_code, star_rating, user_rating, amenities) VALUES
-(1, 'Hilton SF', '123 Market', 'San Francisco', 'CA', '94103', 4.5, 4.2, '["wifi", "pool"]'),
-(2, 'Marriott NY', '456 Broadway', 'New York', 'NY', '10001', 5.0, 4.8, '["spa", "bar"]'),
-(3, 'Hyatt Chi', '789 Michigan', 'Chicago', 'IL', '60611', 4.0, 4.1, '["gym"]'),
-(4, 'Motel 6', '101 Highway', 'Austin', 'TX', '78701', 2.0, 3.5, '["parking"]'),
-(5, 'Four Seasons', '202 Beach', 'Miami', 'FL', '33101', 5.0, 4.9, '["ocean_view", "pool"]'),
--- Filling rest with generic data to ensure 50 rows
-(6, 'Hotel 06', 'Street 6', 'City A', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(7, 'Hotel 07', 'Street 7', 'City B', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(8, 'Hotel 08', 'Street 8', 'City C', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(9, 'Hotel 09', 'Street 9', 'City D', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(10, 'Hotel 10', 'Street 10', 'City E', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(11, 'Hotel 11', 'Street 11', 'City F', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(12, 'Hotel 12', 'Street 12', 'City G', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(13, 'Hotel 13', 'Street 13', 'City H', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(14, 'Hotel 14', 'Street 14', 'City I', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(15, 'Hotel 15', 'Street 15', 'City J', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(16, 'Hotel 16', 'Street 16', 'City K', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(17, 'Hotel 17', 'Street 17', 'City L', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(18, 'Hotel 18', 'Street 18', 'City M', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(19, 'Hotel 19', 'Street 19', 'City N', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(20, 'Hotel 20', 'Street 20', 'City O', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(21, 'Hotel 21', 'Street 21', 'City P', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(22, 'Hotel 22', 'Street 22', 'City Q', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(23, 'Hotel 23', 'Street 23', 'City R', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(24, 'Hotel 24', 'Street 24', 'City S', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(25, 'Hotel 25', 'Street 25', 'City T', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(26, 'Hotel 26', 'Street 26', 'City U', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(27, 'Hotel 27', 'Street 27', 'City V', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(28, 'Hotel 28', 'Street 28', 'City W', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(29, 'Hotel 29', 'Street 29', 'City X', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(30, 'Hotel 30', 'Street 30', 'City Y', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(31, 'Hotel 31', 'Street 31', 'City Z', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(32, 'Hotel 32', 'Street 32', 'City AA', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(33, 'Hotel 33', 'Street 33', 'City BB', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(34, 'Hotel 34', 'Street 34', 'City CC', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(35, 'Hotel 35', 'Street 35', 'City DD', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(36, 'Hotel 36', 'Street 36', 'City EE', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(37, 'Hotel 37', 'Street 37', 'City FF', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(38, 'Hotel 38', 'Street 38', 'City GG', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(39, 'Hotel 39', 'Street 39', 'City HH', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(40, 'Hotel 40', 'Street 40', 'City II', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(41, 'Hotel 41', 'Street 41', 'City JJ', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(42, 'Hotel 42', 'Street 42', 'City KK', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(43, 'Hotel 43', 'Street 43', 'City LL', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(44, 'Hotel 44', 'Street 44', 'City MM', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(45, 'Hotel 45', 'Street 45', 'City NN', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(46, 'Hotel 46', 'Street 46', 'City OO', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(47, 'Hotel 47', 'Street 47', 'City PP', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(48, 'Hotel 48', 'Street 48', 'City QQ', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(49, 'Hotel 49', 'Street 49', 'City RR', 'CA', '90000', 3.0, 3.0, '["wifi"]'),
-(50, 'Hotel 50', 'Street 50', 'City SS', 'CA', '90000', 3.0, 3.0, '["wifi"]');
+INSERT INTO hotels (id, hotel_name, address, city, state, zip_code, star_rating, user_rating, amenities, description, price_per_night, available_rooms, total_rooms, free_cancellation, free_breakfast, discount_percentage, image_url, location, review_count) VALUES
+(1, 'Hilton SF', '123 Market', 'San Francisco', 'CA', '94103', 4.5, 4.2, '["wifi", "pool"]', 'Rate: $72', 72.00, 15, 50, 1, 0, 0, NULL, NULL, 0),
+(2, 'Marriott NY', '456 Broadway', 'New York', 'NY', '10001', 5.0, 4.8, '["spa", "bar"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(3, 'Hyatt Chi', '789 Michigan', 'Chicago', 'IL', '60611', 4.0, 4.1, '["gym"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(4, 'Motel 6', '101 Highway', 'Austin', 'TX', '78701', 2.0, 3.5, '["parking"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(5, 'Four Seasons', '202 Beach', 'Miami', 'FL', '33101', 5.0, 4.9, '["ocean_view", "pool"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(6, 'Hotel 06', 'Street 6', 'City A', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(7, 'Hotel 07', 'Street 7', 'City B', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(8, 'Hotel 08', 'Street 8', 'City C', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(9, 'Hotel 09', 'Street 9', 'City D', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(10, 'Hotel 10', 'Street 10', 'City E', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(11, 'Hotel 11', 'Street 11', 'City F', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(12, 'Hotel 12', 'Street 12', 'City G', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(13, 'Hotel 13', 'Street 13', 'City H', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(14, 'Hotel 14', 'Street 14', 'City I', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(15, 'Hotel 15', 'Street 15', 'City J', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(16, 'Hotel 16', 'Street 16', 'City K', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(17, 'Hotel 17', 'Street 17', 'City L', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(18, 'Hotel 18', 'Street 18', 'City M', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(19, 'Hotel 19', 'Street 19', 'City N', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(20, 'Hotel 20', 'Street 20', 'City O', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(21, 'Hotel 21', 'Street 21', 'City P', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(22, 'Hotel 22', 'Street 22', 'City Q', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(23, 'Hotel 23', 'Street 23', 'City R', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(24, 'Hotel 24', 'Street 24', 'City S', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(25, 'Hotel 25', 'Street 25', 'City T', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(26, 'Hotel 26', 'Street 26', 'City U', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(27, 'Hotel 27', 'Street 27', 'City V', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(28, 'Hotel 28', 'Street 28', 'City W', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(29, 'Hotel 29', 'Street 29', 'City X', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(30, 'Hotel 30', 'Street 30', 'City Y', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(31, 'Hotel 31', 'Street 31', 'City Z', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(32, 'Hotel 32', 'Street 32', 'City AA', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(33, 'Hotel 33', 'Street 33', 'City BB', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(34, 'Hotel 34', 'Street 34', 'City CC', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(35, 'Hotel 35', 'Street 35', 'City DD', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(36, 'Hotel 36', 'Street 36', 'City EE', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(37, 'Hotel 37', 'Street 37', 'City FF', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(38, 'Hotel 38', 'Street 38', 'City GG', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(39, 'Hotel 39', 'Street 39', 'City HH', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(40, 'Hotel 40', 'Street 40', 'City II', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(41, 'Hotel 41', 'Street 41', 'City JJ', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(42, 'Hotel 42', 'Street 42', 'City KK', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(43, 'Hotel 43', 'Street 43', 'City LL', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(44, 'Hotel 44', 'Street 44', 'City MM', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(45, 'Hotel 45', 'Street 45', 'City NN', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(46, 'Hotel 46', 'Street 46', 'City OO', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(47, 'Hotel 47', 'Street 47', 'City PP', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(48, 'Hotel 48', 'Street 48', 'City QQ', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(49, 'Hotel 49', 'Street 49', 'City RR', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0),
+(50, 'Hotel 50', 'Street 50', 'City SS', 'CA', '90000', 3.0, 3.0, '["wifi"]', NULL, 100.00, 10, 50, 1, 0, 0, NULL, NULL, 0);
+
+-- ========================================================
+-- 3.5 ROOM TYPES (150 Rows - 3 room types per hotel for first 10 hotels)
+-- ========================================================
+TRUNCATE TABLE room_types;
+INSERT INTO room_types (id, hotel_id, room_type_name, bed_configuration, room_size_sqft, max_occupancy, price_per_night, available_rooms, amenities, description, image_url) VALUES
+-- Hilton SF (Hotel 1)
+(1, 1, 'Standard Queen', '1 Queen Bed', 300, 2, 72.00, 5, '["wifi", "tv", "desk"]', 'Comfortable room with queen bed and city views', NULL),
+(2, 1, 'Deluxe King', '1 King Bed', 400, 2, 120.00, 4, '["wifi", "tv", "desk", "minibar"]', 'Spacious room with king bed and premium amenities', NULL),
+(3, 1, 'Suite', '1 King Bed + Sofa Bed', 600, 4, 200.00, 2, '["wifi", "tv", "desk", "minibar", "kitchenette"]', 'Luxurious suite with separate living area', NULL),
+
+-- Marriott NY (Hotel 2)
+(4, 2, 'Classic Room', '2 Double Beds', 350, 4, 100.00, 3, '["wifi", "tv", "safe"]', 'Perfect for families or business partners', NULL),
+(5, 2, 'Executive King', '1 King Bed', 450, 2, 150.00, 3, '["wifi", "tv", "safe", "work_station"]', 'Premium room with executive lounge access', NULL),
+(6, 2, 'Presidential Suite', '1 King Bed + Living Room', 800, 4, 350.00, 1, '["wifi", "tv", "safe", "work_station", "spa_bath", "bar"]', 'Ultimate luxury with panoramic city views', NULL),
+
+-- Hyatt Chi (Hotel 3)
+(7, 3, 'Standard Room', '1 Queen Bed', 320, 2, 85.00, 4, '["wifi", "tv", "gym_access"]', 'Comfortable room with modern amenities', NULL),
+(8, 3, 'Premium King', '1 King Bed', 420, 2, 130.00, 3, '["wifi", "tv", "gym_access", "minibar"]', 'Upgraded room with premium bedding', NULL),
+(9, 3, 'Corner Suite', '1 King Bed + Parlor', 650, 3, 220.00, 2, '["wifi", "tv", "gym_access", "minibar", "lake_view"]', 'Corner suite with stunning lake views', NULL),
+
+-- Motel 6 (Hotel 4)
+(10, 4, 'Economy Room', '1 Queen Bed', 250, 2, 60.00, 5, '["wifi", "parking"]', 'Budget-friendly room with essentials', NULL),
+(11, 4, 'Double Room', '2 Double Beds', 280, 4, 80.00, 4, '["wifi", "parking", "microwave"]', 'Spacious room for families', NULL),
+(12, 4, 'King Room', '1 King Bed', 260, 2, 75.00, 3, '["wifi", "parking", "microwave"]', 'Comfortable king bed room', NULL),
+
+-- Four Seasons (Hotel 5)
+(13, 5, 'Ocean View Room', '1 King Bed', 500, 2, 180.00, 3, '["wifi", "tv", "balcony", "ocean_view"]', 'Breathtaking ocean views from private balcony', NULL),
+(14, 5, 'Beach Front Suite', '1 King Bed + Living Area', 700, 3, 280.00, 2, '["wifi", "tv", "balcony", "ocean_view", "minibar"]', 'Direct beach access with luxury amenities', NULL),
+(15, 5, 'Presidential Villa', '2 Bedrooms + Full Kitchen', 1200, 6, 500.00, 1, '["wifi", "tv", "balcony", "ocean_view", "minibar", "kitchen", "private_pool"]', 'Ultimate luxury villa with private pool', NULL),
+
+-- Hotel 06 (Hotel 6)
+(16, 6, 'Basic Room', '1 Queen Bed', 280, 2, 90.00, 4, '["wifi"]', 'Simple and clean accommodation', NULL),
+(17, 6, 'Standard Room', '1 King Bed', 320, 2, 110.00, 3, '["wifi", "tv"]', 'Standard room with basic amenities', NULL),
+(18, 6, 'Family Room', '2 Queen Beds', 380, 4, 140.00, 2, '["wifi", "tv", "microwave"]', 'Perfect for families', NULL),
+
+-- Hotel 07 (Hotel 7)
+(19, 7, 'Single Room', '1 Queen Bed', 270, 2, 85.00, 4, '["wifi"]', 'Cozy room for solo travelers or couples', NULL),
+(20, 7, 'Double Room', '2 Double Beds', 320, 4, 115.00, 3, '["wifi", "tv"]', 'Spacious room for groups', NULL),
+(21, 7, 'Deluxe Room', '1 King Bed', 350, 2, 130.00, 2, '["wifi", "tv", "minibar"]', 'Upgraded room with premium features', NULL),
+
+-- Hotel 08 (Hotel 8)
+(22, 8, 'Standard Queen', '1 Queen Bed', 290, 2, 95.00, 3, '["wifi", "tv"]', 'Comfortable standard room', NULL),
+(23, 8, 'King Room', '1 King Bed', 330, 2, 120.00, 3, '["wifi", "tv", "desk"]', 'Spacious king bed room', NULL),
+(24, 8, 'Junior Suite', '1 King Bed + Sitting Area', 450, 3, 160.00, 2, '["wifi", "tv", "desk", "minibar"]', 'Suite with extra space', NULL),
+
+-- Hotel 09 (Hotel 9)
+(25, 9, 'Economy Room', '1 Queen Bed', 260, 2, 80.00, 4, '["wifi"]', 'Budget-friendly option', NULL),
+(26, 9, 'Standard Room', '1 King Bed', 300, 2, 105.00, 3, '["wifi", "tv"]', 'Standard accommodation', NULL),
+(27, 9, 'Premium Room', '1 King Bed', 350, 2, 135.00, 2, '["wifi", "tv", "minibar", "desk"]', 'Premium room with upgrades', NULL),
+
+-- Hotel 10 (Hotel 10)
+(28, 10, 'Basic Queen', '1 Queen Bed', 275, 2, 88.00, 4, '["wifi"]', 'Simple and affordable', NULL),
+(29, 10, 'Standard King', '1 King Bed', 315, 2, 112.00, 3, '["wifi", "tv"]', 'Comfortable king room', NULL),
+(30, 10, 'Deluxe Suite', '1 King Bed + Lounge', 480, 3, 170.00, 2, '["wifi", "tv", "minibar", "desk", "spa_bath"]', 'Luxurious suite with spa bathroom', NULL);
 
 -- ========================================================
 -- 4. CARS (50 Rows - Updated with Airport Codes)

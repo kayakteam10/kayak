@@ -3,27 +3,57 @@ const { v4: uuidv4 } = require('uuid');
 
 const searchHotels = async (req, res) => {
   try {
+    console.log('Hotel search request received:', req.query);
     const { location, check_in, check_out, guests = 1 } = req.query;
 
     if (!location || !check_in || !check_out) {
+      console.log('Missing parameters:', { location, check_in, check_out });
       return res.status(400).json({ error: 'Missing required search parameters' });
     }
 
-    const result = await pool.query(
-      `SELECT * FROM hotels 
-       WHERE (LOWER(city) LIKE LOWER(?) OR LOWER(location) LIKE LOWER(?))
-       AND available_rooms >= ?
-       ORDER BY price_per_night ASC, rating DESC`,
-      [`%${location}%`, `%${location}%`, guests]
+    console.log('Searching hotels for location:', location);
+    
+    // First, try to find if location matches an airport code
+    let airportCity = null;
+    const airportResult = await pool.query(
+      `SELECT city FROM airports WHERE LOWER(code) = LOWER(?) OR LOWER(name) LIKE LOWER(?) LIMIT 1`,
+      [location, `%${location}%`]
     );
+    
+    if (airportResult.rows.length > 0) {
+      airportCity = airportResult.rows[0].city;
+      console.log('Found airport city:', airportCity);
+    }
 
+    // Search hotels by city, hotel name, address, or airport city
+    const searchPattern = `%${location}%`;
+    let query = `SELECT * FROM hotels 
+       WHERE LOWER(city) LIKE LOWER(?) 
+          OR LOWER(hotel_name) LIKE LOWER(?)
+          OR LOWER(address) LIKE LOWER(?)
+          OR LOWER(state) LIKE LOWER(?)`;
+    
+    let params = [searchPattern, searchPattern, searchPattern, searchPattern];
+    
+    // If we found an airport, also search by that city
+    if (airportCity) {
+      query += ` OR LOWER(city) LIKE LOWER(?)`;
+      params.push(`%${airportCity}%`);
+    }
+    
+    query += ` ORDER BY star_rating DESC, user_rating DESC`;
+    
+    const result = await pool.query(query, params);
+
+    console.log('Hotels found:', result.rows.length);
     res.json({
       hotels: result.rows,
-      total: result.rows.length
+      total: result.rows.length,
+      searchType: airportCity ? 'airport' : 'direct'
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Hotel search error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 };
 
@@ -60,10 +90,13 @@ const bookHotel = async (req, res) => {
 
     const bookingReference = `HT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    // For base schema, use a default price or calculate from booking details
+    const totalAmount = guest_info.total_price || 200.00;
+    
     const bookingResult = await pool.query(
       `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
        VALUES (?, ?, ?, ?, ?, 'pending')`,
-      [userId, 'hotel', bookingReference, hotel.rows[0].price_per_night, 
+      [userId, 'hotel', bookingReference, totalAmount, 
        JSON.stringify({ hotel_id, guest_info, hotel_details: hotel.rows[0] })]
     );
     
@@ -80,7 +113,7 @@ const bookHotel = async (req, res) => {
   }
 };
 
-// Search cities for hotel locations (placeholder function)
+// Search cities, hotels, and airports for autocomplete
 const searchCities = async (req, res) => {
   try {
     const { query } = req.query;
@@ -91,29 +124,70 @@ const searchCities = async (req, res) => {
     }
 
     const searchTerm = query.trim();
+    const searchPattern = `%${searchTerm}%`;
+    const results = [];
 
-    // Simple city search from hotels table
-    const searchQuery = `
-      SELECT DISTINCT city, location
+    // 1. Search for cities
+    const cityQuery = `
+      SELECT DISTINCT city, state
       FROM hotels
       WHERE LOWER(city) LIKE LOWER(?) 
-         OR LOWER(location) LIKE LOWER(?)
-      LIMIT 10
+         OR LOWER(state) LIKE LOWER(?)
+      LIMIT 5
     `;
+    const cityResult = await pool.query(cityQuery, [searchPattern, searchPattern]);
+    
+    cityResult.rows.forEach(row => {
+      results.push({
+        label: `${row.city}, ${row.state}`,
+        value: row.city,
+        type: 'city',
+        icon: '📍'
+      });
+    });
 
-    const searchPattern = `%${searchTerm}%`;
-    const result = await pool.query(searchQuery, [searchPattern, searchPattern]);
+    // 2. Search for specific hotels
+    const hotelQuery = `
+      SELECT hotel_name, city, state
+      FROM hotels
+      WHERE LOWER(hotel_name) LIKE LOWER(?)
+      LIMIT 5
+    `;
+    const hotelResult = await pool.query(hotelQuery, [searchPattern]);
+    
+    hotelResult.rows.forEach(row => {
+      results.push({
+        label: `${row.hotel_name} - ${row.city}, ${row.state}`,
+        value: row.hotel_name,
+        type: 'hotel',
+        icon: '🏨'
+      });
+    });
 
-    // Format response
-    const cities = result.rows.map(row => ({
-      label: `${row.city}, ${row.location}`,
-      value: row.city,
-      type: 'city'
-    }));
+    // 3. Search for airports
+    const airportQuery = `
+      SELECT code, name, city
+      FROM airports
+      WHERE LOWER(code) LIKE LOWER(?)
+         OR LOWER(name) LIKE LOWER(?)
+         OR LOWER(city) LIKE LOWER(?)
+      LIMIT 5
+    `;
+    const airportResult = await pool.query(airportQuery, [searchPattern, searchPattern, searchPattern]);
+    
+    airportResult.rows.forEach(row => {
+      results.push({
+        label: `${row.code} - ${row.name} (${row.city})`,
+        value: row.code,
+        type: 'airport',
+        icon: '✈️'
+      });
+    });
 
-    res.json(cities);
+    // Return combined results (max 15 items)
+    res.json(results.slice(0, 15));
   } catch (error) {
-    console.error('City search error:', error);
+    console.error('Location search error:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 };

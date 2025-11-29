@@ -850,3 +850,236 @@
   gap: 8px;
   padding: 8px 0;
 }
+
+/* Billing Section Styles */
+.billing-section {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.no-billings {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.no-billings .empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.no-billings h3 {
+  font-size: 24px;
+  color: #1a202c;
+  margin-bottom: 8px;
+}
+
+.no-billings p {
+  color: #718096;
+  font-size: 16px;
+}
+
+.billings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.billing-card {
+  background: white;
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.2s;
+}
+
+.billing-card:hover {
+  border-color: #FF6B35;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+}
+
+.billing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.billing-id-section h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 4px 0;
+}
+
+.booking-ref {
+  font-size: 14px;
+  color: #718096;
+}
+
+.payment-status-badge {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.payment-status-badge.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.payment-status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.payment-status-badge.failed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.payment-status-badge.refunded {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.billing-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.billing-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.billing-detail .detail-label {
+  font-size: 13px;
+  color: #718096;
+  font-weight: 500;
+}
+
+.billing-detail .detail-value {
+  font-size: 15px;
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.booking-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #f0f0f0;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.payment-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.transaction-id {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #4a5568;
+}
+
+.total-amount-detail {
+  grid-column: 1 / -1;
+  padding-top: 16px;
+  border-top: 2px solid #f0f0f0;
+  margin-top: 8px;
+}
+
+.total-amount-detail .detail-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.total-amount-detail .total-amount {
+  font-size: 24px;
+  color: #FF6B35;
+  font-weight: 700;
+}
+
+.invoice-details-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.invoice-details-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0 0 12px 0;
+}
+
+.invoice-breakdown {
+  background: white;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.invoice-breakdown pre {
+  margin: 0;
+  color: #4a5568;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.billing-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.download-invoice-btn,
+.view-booking-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.download-invoice-btn {
+  background: #FF6B35;
+  color: white;
+}
+
+.download-invoice-btn:hover {
+  background: #e55a2b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 107, 53, 0.3);
+}
+
+.view-booking-btn {
+  background: #f0f0f0;
+  color: #1a202c;
+}
+
+.view-booking-btn:hover {
+  background: #e0e0e0;
+}

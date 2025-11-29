@@ -21,11 +21,11 @@ const getUserBookings = async (req, res) => {
 const getBookingDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
-
+    
+    // Allow fetching booking without authentication for confirmation page
     const result = await pool.query(
-      'SELECT * FROM bookings WHERE id = ? AND user_id = ?',
-      [id, userId]
+      'SELECT * FROM bookings WHERE id = ?',
+      [id]
     );
 
     if (result.rows.length === 0) {
@@ -155,11 +155,157 @@ const holdBooking = async (req, res) => {
   }
 };
 
+// Book hotel
+const bookHotel = async (req, res) => {
+  try {
+    console.log('🏨 Hotel booking request received:', {
+      hotel_id: req.body.hotel_id,
+      check_in: req.body.check_in,
+      check_out: req.body.check_out,
+      rooms: req.body.rooms,
+      user: req.user ? req.user.userId : 'guest'
+    });
+
+    const { hotel_id, check_in, check_out, rooms, adults, children, guest_details, payment_details, protection } = req.body;
+
+    if (!hotel_id || !check_in || !check_out || !guest_details) {
+      console.log('❌ Missing required fields:', { hotel_id, check_in, check_out, guest_details });
+      return res.status(400).json({ error: 'Missing required booking information' });
+    }
+
+    // Fetch hotel details
+    const hotel = await pool.query('SELECT * FROM hotels WHERE id = ?', [hotel_id]);
+
+    if (hotel.rows.length === 0) {
+      return res.status(404).json({ error: 'Hotel not found' });
+    }
+
+    // Calculate total
+    const checkInDate = new Date(check_in);
+    const checkOutDate = new Date(check_out);
+    const nights = Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
+    const pricePerNight = Number(hotel.rows[0].price_per_night) || 100;
+    const subtotal = pricePerNight * nights * (rooms || 1);
+    const taxes = subtotal * 0.15;
+    const totalAmount = subtotal + taxes;
+
+    // Create booking reference
+    const bookingReference = `HT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+    // Get user ID (optional for guest bookings)
+    const userId = req.user ? req.user.userId : null;
+
+    // Prepare booking details
+    const bookingDetails = {
+      hotel_id,
+      hotel_name: hotel.rows[0].hotel_name,
+      city: hotel.rows[0].city,
+      state: hotel.rows[0].state,
+      address: hotel.rows[0].address,
+      check_in,
+      check_out,
+      nights,
+      rooms: rooms || 1,
+      adults: adults || 2,
+      children: children || 0,
+      guest_details,
+      payment_details: {
+        method: payment_details?.method || 'card',
+        last4: payment_details?.cardNumber ? payment_details.cardNumber.slice(-4) : '****'
+      },
+      protection: protection || 'none',
+      price_breakdown: {
+        price_per_night: pricePerNight,
+        subtotal,
+        taxes,
+        total: totalAmount
+      }
+    };
+
+    // Insert booking
+    const bookingResult = await pool.query(
+      `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
+       VALUES (?, ?, ?, ?, ?, 'confirmed')`,
+      [userId, 'hotel', bookingReference, totalAmount, JSON.stringify(bookingDetails)]
+    );
+
+    // Get the booking ID - check if it's in rows or as insertId
+    let bookingId;
+    if (bookingResult.rows && bookingResult.rows.length > 0 && bookingResult.rows[0].id) {
+      bookingId = bookingResult.rows[0].id;
+    } else if (bookingResult.insertId) {
+      bookingId = bookingResult.insertId;
+    } else {
+      // If neither works, query for the most recent booking
+      const lastBooking = await pool.query(
+        'SELECT id FROM bookings WHERE booking_reference = ?',
+        [bookingReference]
+      );
+      bookingId = lastBooking.rows[0]?.id;
+    }
+
+    console.log('Hotel booking created:', { bookingId, bookingReference });
+
+    res.status(201).json({
+      success: true,
+      message: 'Hotel booking confirmed',
+      booking_id: bookingId,
+      booking_reference: bookingReference
+    });
+  } catch (error) {
+    console.error('Hotel booking error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
+// Get user billing/payment history
+const getUserBillings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Join billing, bookings, and payments tables to get complete billing information
+    const result = await pool.query(
+      `SELECT 
+        b.id,
+        b.billing_id,
+        b.user_id,
+        b.booking_id,
+        b.payment_id,
+        b.total_amount,
+        b.tax_amount,
+        b.billing_date,
+        b.invoice_details,
+        bk.booking_reference,
+        bk.booking_type,
+        bk.booking_details,
+        p.transaction_id,
+        p.payment_method,
+        p.payment_status,
+        p.payment_date
+      FROM billing b
+      JOIN bookings bk ON b.booking_id = bk.id
+      JOIN payments p ON b.payment_id = p.id
+      WHERE b.user_id = ?
+      ORDER BY b.billing_date DESC`,
+      [userId]
+    );
+
+    res.json({
+      billings: result.rows
+    });
+  } catch (error) {
+    console.error('Get billings error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
 module.exports = {
   getUserBookings,
   getBookingDetails,
   cancelBooking,
-  holdBooking
+  holdBooking,
+  bookHotel,
+  getUserBillings
 };
 
 

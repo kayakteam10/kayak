@@ -1,0 +1,330 @@
+/* Hotel Confirmation Page - Matching Flight Confirmation Style */
+.hotel-confirmation-page {
+  padding: 40px 20px;
+  min-height: 60vh;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.confirmation-container {
+  max-width: 650px;
+  width: 100%;
+  background: white;
+  padding: 50px 45px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin: 0 auto;
+}
+
+/* Success Header */
+.confirmation-success {
+  text-align: center;
+  margin-bottom: 35px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.success-icon-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.success-icon {
+  font-size: 70px;
+  color: #28a745;
+}
+
+.confirmation-title {
+  color: #212529;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  margin-top: 0;
+}
+
+.confirmation-subtitle {
+  color: #6c757d;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Booking Reference Section */
+.booking-reference-section {
+  background: #f8f9fa;
+  padding: 20px 25px;
+  border-radius: 6px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.section-label {
+  color: #6c757d;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
+.booking-reference {
+  color: #0066CC;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+}
+
+/* Booking Icon Section */
+.booking-icon-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.booking-type-icon {
+  font-size: 48px;
+  color: #0066CC;
+}
+
+/* Booking Details Section */
+.booking-details-section {
+  margin-bottom: 35px;
+}
+
+.booking-details-section .section-label {
+  text-align: left;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #212529;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: right;
+  max-width: 65%;
+  word-break: break-word;
+}
+
+.detail-value.amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #212529;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.status-badge.confirmed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.cancelled {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Action Buttons */
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 35px;
+  padding-top: 30px;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-print,
+.btn-bookings,
+.btn-continue,
+.btn-primary {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.btn-print {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-print:hover {
+  background: #5a6268;
+}
+
+.btn-bookings {
+  background: #0066CC;
+  color: white;
+}
+
+.btn-bookings:hover {
+  background: #0052a3;
+}
+
+.btn-continue {
+  background: #f8f9fa;
+  color: #212529;
+  border: 1px solid #dee2e6;
+}
+
+.btn-continue:hover {
+  background: #e9ecef;
+}
+
+.btn-primary {
+  background: #0066CC;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0052a3;
+}
+
+/* Loading & Error States */
+.confirmation-loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 18px;
+  color: #666;
+}
+
+.confirmation-error {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.confirmation-error h2 {
+  color: #d32f2f;
+  margin-bottom: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .confirmation-container {
+    padding: 35px 25px;
+  }
+
+  .confirmation-title {
+    font-size: 24px;
+  }
+
+  .success-icon {
+    font-size: 60px;
+  }
+
+  .booking-reference {
+    font-size: 16px;
+  }
+
+  .booking-type-icon {
+    font-size: 40px;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .detail-value {
+    text-align: left;
+    max-width: 100%;
+  }
+
+  .confirmation-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-print,
+  .btn-bookings,
+  .btn-continue {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hotel-confirmation-page {
+    padding: 20px 10px;
+  }
+
+  .confirmation-container {
+    padding: 30px 20px;
+  }
+
+  .confirmation-title {
+    font-size: 22px;
+  }
+
+  .booking-reference {
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .hotel-confirmation-page {
+    background: white;
+    padding: 0;
+  }
+
+  .confirmation-container {
+    box-shadow: none;
+    max-width: 100%;
+  }
+
+  .confirmation-actions {
+    display: none;
+  }
+
+  .detail-row {
+    page-break-inside: avoid;
+  }
+}

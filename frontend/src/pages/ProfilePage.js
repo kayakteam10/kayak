@@ -8,6 +8,7 @@ function ProfilePage() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [billings, setBillings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bookings');
   const [profile, setProfile] = useState({
@@ -40,14 +41,20 @@ function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [bookingsRes, profileRes, reviewsRes] = await Promise.all([
+        const [bookingsRes, profileRes, reviewsRes, billingsRes] = await Promise.all([
           bookingsAPI.getAll(),
           authAPI.me(),
-          reviewsAPI.getMyReviews().catch(() => ({ data: { reviews: [] } }))
+          reviewsAPI.getMyReviews().catch(() => ({ data: { reviews: [] } })),
+          fetch('http://localhost:8089/api/bookings/billing', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }).then(res => res.json()).catch(() => ({ billings: [] }))
         ]);
 
         setBookings(bookingsRes.data.bookings || []);
         setReviews(reviewsRes.data?.reviews || []);
+        setBillings(billingsRes.billings || []);
         
         const userData = profileRes.data;
         setProfile({
@@ -353,6 +360,12 @@ function ProfilePage() {
             My Bookings ({bookings.length})
           </button>
           <button 
+            className={`tab ${activeTab === 'billing' ? 'active' : ''}`}
+            onClick={() => setActiveTab('billing')}
+          >
+            Billing & Payments ({billings.length})
+          </button>
+          <button 
             className={`tab ${activeTab === 'reviews' ? 'active' : ''}`}
             onClick={() => setActiveTab('reviews')}
           >
@@ -456,6 +469,133 @@ function ProfilePage() {
                           Cancel Booking
                         </button>
                       )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="billing-section">
+            {billings.length === 0 ? (
+              <div className="no-billings">
+                <div className="empty-icon">💳</div>
+                <h3>No billing records yet</h3>
+                <p>Your payment history will appear here after you make bookings.</p>
+              </div>
+            ) : (
+              <div className="billings-list">
+                {billings.map((billing) => (
+                  <div key={billing.id} className="billing-card">
+                    <div className="billing-header">
+                      <div className="billing-id-section">
+                        <h3>Invoice #{billing.billing_id}</h3>
+                        <span className="booking-ref">Booking: {billing.booking_reference}</span>
+                      </div>
+                      <div className={`payment-status-badge ${billing.payment_status}`}>
+                        <span>{billing.payment_status?.toUpperCase()}</span>
+                      </div>
+                    </div>
+
+                    <div className="billing-details-grid">
+                      <div className="billing-detail">
+                        <span className="detail-label">Booking Type:</span>
+                        <span className="detail-value booking-type-badge">
+                          {getTypeIcon(billing.booking_type)}
+                          {billing.booking_type?.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">Transaction Date:</span>
+                        <span className="detail-value">
+                          {new Date(billing.payment_date || billing.billing_date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">Payment Method:</span>
+                        <span className="detail-value payment-method">
+                          {billing.payment_method === 'credit_card' && '💳 Credit Card'}
+                          {billing.payment_method === 'debit_card' && '💳 Debit Card'}
+                          {billing.payment_method === 'paypal' && '🅿️ PayPal'}
+                          {!['credit_card', 'debit_card', 'paypal'].includes(billing.payment_method) && billing.payment_method}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">Transaction ID:</span>
+                        <span className="detail-value transaction-id">
+                          {billing.transaction_id || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">Subtotal:</span>
+                        <span className="detail-value">
+                          ${Number(billing.total_amount - (billing.tax_amount || 0)).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">Tax:</span>
+                        <span className="detail-value">
+                          ${Number(billing.tax_amount || 0).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail total-amount-detail">
+                        <span className="detail-label">Total Amount Paid:</span>
+                        <span className="detail-value total-amount">
+                          ${Number(billing.total_amount).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">User ID:</span>
+                        <span className="detail-value">{billing.user_id}</span>
+                      </div>
+
+                      <div className="billing-detail">
+                        <span className="detail-label">Booking ID:</span>
+                        <span className="detail-value">{billing.booking_id}</span>
+                      </div>
+                    </div>
+
+                    {billing.invoice_details && (
+                      <div className="invoice-details-section">
+                        <h4>Invoice Details</h4>
+                        <div className="invoice-breakdown">
+                          {typeof billing.invoice_details === 'string' 
+                            ? <pre>{billing.invoice_details}</pre>
+                            : <pre>{JSON.stringify(billing.invoice_details, null, 2)}</pre>
+                          }
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="billing-actions">
+                      <button className="download-invoice-btn">
+                        📄 Download Invoice
+                      </button>
+                      <button className="view-booking-btn" onClick={() => {
+                        const typeSeg = (billing.booking_type || '').toLowerCase().includes('hotel')
+                          ? 'hotels'
+                          : (billing.booking_type || '').toLowerCase().includes('car')
+                            ? 'cars'
+                            : 'flights';
+                        navigate(`/booking/confirmation/${typeSeg}/${billing.booking_id}`);
+                      }}>
+                        View Booking
+                      </button>
                     </div>
                   </div>
                 ))}
