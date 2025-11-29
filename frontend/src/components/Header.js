@@ -6,6 +6,7 @@ function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('token') !== null);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User');
   const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || '');
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -15,6 +16,7 @@ function Header() {
       setIsLoggedIn(localStorage.getItem('token') !== null);
       setUserName(localStorage.getItem('userName') || 'User');
       setProfilePicture(localStorage.getItem('profilePicture') || '');
+      setUserRole(localStorage.getItem('userRole') || 'user');
     };
 
     // Initial check
@@ -92,19 +94,69 @@ function Header() {
                 </button>
                 {showDropdown && (
                   <div className="user-dropdown">
-                    <Link
-                      to="/profile"
-                      className="dropdown-item"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      📋 My Bookings
-                    </Link>
-                    <button
-                      className="dropdown-item logout-item"
-                      onClick={handleLogout}
-                    >
-                      🚪 Logout
-                    </button>
+                    {userRole === 'admin' ? (
+                      <>
+                        <Link
+                          to="/admin"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          ⚙️ Admin Panel
+                        </Link>
+                        <Link
+                          to="/profile?tab=profile"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          👤 Profile Settings
+                        </Link>
+                        <div className="dropdown-divider"></div>
+                        <button
+                          className="dropdown-item logout-item"
+                          onClick={handleLogout}
+                        >
+                          Logout
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          to="/profile?tab=bookings"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          📋 My Bookings
+                        </Link>
+                        <Link
+                          to="/profile?tab=reviews"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          ⭐ My Reviews
+                        </Link>
+                        <Link
+                          to="/profile?tab=profile"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          👤 Profile Settings
+                        </Link>
+                        <Link
+                          to="/profile?tab=payment"
+                          className="dropdown-item"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          💳 Payment Methods
+                        </Link>
+                        <div className="dropdown-divider"></div>
+                        <button
+                          className="dropdown-item logout-item"
+                          onClick={handleLogout}
+                        >
+                          Logout
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

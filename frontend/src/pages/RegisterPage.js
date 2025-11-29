@@ -45,9 +45,20 @@ function RegisterPage() {
 
     try {
       await authAPI.register(formData);
+      alert('Registration successful! Please login with your credentials.');
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      const errorMessage = err.response?.data?.error || 'Registration failed';
+      setError(errorMessage);
+      
+      // If it's a duplicate user error, suggest login
+      if (err.response?.status === 409 || errorMessage.includes('already exists')) {
+        setTimeout(() => {
+          if (window.confirm('This email is already registered. Would you like to go to login page?')) {
+            navigate('/login');
+          }
+        }, 100);
+      }
     } finally {
       setLoading(false);
     }

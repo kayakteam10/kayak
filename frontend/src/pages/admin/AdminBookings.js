@@ -165,7 +165,7 @@ const AdminBookings = () => {
                                             {booking.payment_status}
                                         </span>
                                     </td>
-                                    <td>{new Date(booking.created_at).toLocaleDateString()}</td>
+                                    <td>{new Date(booking.booking_date).toLocaleDateString()}</td>
                                     <td>
                                         <button
                                             className="admin-btn admin-btn-secondary admin-btn-sm"
@@ -229,16 +229,85 @@ const AdminBookings = () => {
                                 </div>
                                 <div>
                                     <strong>Created:</strong>
-                                    <p>{new Date(selectedBooking.created_at).toLocaleString()}</p>
+                                    <p>{new Date(selectedBooking.booking_date).toLocaleString()}</p>
                                 </div>
                             </div>
 
                             {selectedBooking.booking_details && (
                                 <div style={{ marginTop: '24px' }}>
                                     <strong>Booking Details:</strong>
-                                    <pre style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', overflow: 'auto', marginTop: '8px' }}>
-                                        {JSON.stringify(JSON.parse(selectedBooking.booking_details), null, 2)}
-                                    </pre>
+                                    <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginTop: '8px' }}>
+                                        {selectedBooking.booking_type === 'flight' && selectedBooking.booking_details.flight_details && (
+                                            <>
+                                                <h4 style={{ margin: '0 0 12px 0', color: '#475569' }}>Flight Information</h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                                                    <div>
+                                                        <strong>Flight Number:</strong> {selectedBooking.booking_details.flight_details.flight_number}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Airline:</strong> {selectedBooking.booking_details.flight_details.airline}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Route:</strong> {selectedBooking.booking_details.flight_details.departure_airport} → {selectedBooking.booking_details.flight_details.arrival_airport}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Departure:</strong> {new Date(selectedBooking.booking_details.flight_details.departure_time).toLocaleString()}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Arrival:</strong> {new Date(selectedBooking.booking_details.flight_details.arrival_time).toLocaleString()}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Price:</strong> ${selectedBooking.booking_details.flight_details.price}
+                                                    </div>
+                                                </div>
+
+                                                {selectedBooking.booking_details.seat_info && (
+                                                    <>
+                                                        <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Seat Information</h4>
+                                                        <div style={{ marginBottom: '16px' }}>
+                                                            <strong>Selected Seats:</strong> {selectedBooking.booking_details.seat_info.seats?.join(', ') || 'None'}
+                                                            {selectedBooking.booking_details.seat_info.seatPrice > 0 && (
+                                                                <span> (${selectedBooking.booking_details.seat_info.seatPrice})</span>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {selectedBooking.booking_details.passenger_details && (
+                                                    <>
+                                                        <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Passenger Information</h4>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                                                            <div>
+                                                                <strong>Name:</strong> {selectedBooking.booking_details.passenger_details.firstName} {selectedBooking.booking_details.passenger_details.lastName}
+                                                            </div>
+                                                            <div>
+                                                                <strong>Email:</strong> {selectedBooking.booking_details.passenger_details.email}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {selectedBooking.booking_details.payment_info && (
+                                                    <>
+                                                        <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Payment Information</h4>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                                            <div>
+                                                                <strong>Amount:</strong> ${selectedBooking.booking_details.payment_info.amount}
+                                                            </div>
+                                                            <div>
+                                                                <strong>Status:</strong> <span className={`admin-badge ${getPaymentStatusBadge(selectedBooking.booking_details.payment_info.status)}`}>{selectedBooking.booking_details.payment_info.status}</span>
+                                                            </div>
+                                                            {selectedBooking.booking_details.payment_info.transactionId && (
+                                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                                    <strong>Transaction ID:</strong> {selectedBooking.booking_details.payment_info.transactionId}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

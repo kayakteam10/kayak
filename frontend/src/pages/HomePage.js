@@ -118,6 +118,11 @@ const HomePage = () => {
 
   const [activeTab, setActiveTab] = useState('flights');
   const [tripType, setTripType] = useState('roundtrip');
+  const [userProfile, setUserProfile] = useState({
+    isLoggedIn: false,
+    name: '',
+    picture: ''
+  });
   const [formData, setFormData] = useState({
     origin: '',
     destination: '',
@@ -148,6 +153,34 @@ const HomePage = () => {
   const [showTravelersDropdown, setShowTravelersDropdown] = useState(false);
   const [showHotelGuestsDropdown, setShowHotelGuestsDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+
+  // Load user profile on mount and when login state changes
+  useEffect(() => {
+    const updateUserProfile = () => {
+      const token = localStorage.getItem('token');
+      const userName = localStorage.getItem('userName');
+      const profilePicture = localStorage.getItem('profilePicture');
+
+      setUserProfile({
+        isLoggedIn: !!token,
+        name: userName || '',
+        picture: profilePicture || ''
+      });
+    };
+
+    updateUserProfile();
+
+    // Listen for login/logout events
+    window.addEventListener('login', updateUserProfile);
+    window.addEventListener('logout', updateUserProfile);
+    window.addEventListener('storage', updateUserProfile);
+
+    return () => {
+      window.removeEventListener('login', updateUserProfile);
+      window.removeEventListener('logout', updateUserProfile);
+      window.removeEventListener('storage', updateUserProfile);
+    };
+  }, []);
 
   const updateHotelGuests = (type, delta) => {
     setHotelData((prev) => {
@@ -348,14 +381,24 @@ const HomePage = () => {
         return;
       }
     } else {
-      if (!formData.origin.trim() || !formData.destination.trim()) {
-        setValidationError('Enter both origin and destination.');
-        return;
+      // For flights, check both origin and destination
+      if (activeTab === 'flights') {
+        if (!formData.origin.trim() || !formData.destination.trim()) {
+          setValidationError('Enter both origin and destination.');
+          return;
+        }
+        if (normalizeCityName(formData.origin) === normalizeCityName(formData.destination)) {
+          setValidationError('Origin and destination must be different.');
+          return;
+        }
+      } else {
+        // For hotels and cars, only check destination
+        if (!formData.destination.trim()) {
+          setValidationError('Enter a destination.');
+          return;
+        }
       }
-      if (normalizeCityName(formData.origin) === normalizeCityName(formData.destination)) {
-        setValidationError('Origin and destination must be different.');
-        return;
-      }
+
       if (!formData.departure_date) {
         setValidationError('Select a departure date.');
         return;

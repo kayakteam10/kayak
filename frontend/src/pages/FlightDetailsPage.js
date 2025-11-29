@@ -28,7 +28,14 @@ function FlightDetailsPage() {
   }, [id]);
 
   const handleBook = () => {
-    navigate(`/booking/flights/${id}`);
+    // Extract passenger info from URL if available
+    const searchParams = new URLSearchParams(window.location.search);
+    const passengers = searchParams.get('passengers') || '1';
+    const adults = searchParams.get('adults') || passengers;
+    const children = searchParams.get('children') || '0';
+    const infants = searchParams.get('infants') || '0';
+
+    navigate(`/booking/flights/${id}?passengers=${passengers}&adults=${adults}&children=${children}&infants=${infants}`);
   };
 
   const handleBack = () => {
@@ -62,7 +69,7 @@ function FlightDetailsPage() {
 
   const isRoundtrip = flight.is_roundtrip || flight.return_flight;
   const returnFlight = flight.return_flight;
-  
+
   // Calculate display price and ensure it's always a number
   let displayPrice;
   if (isRoundtrip) {
