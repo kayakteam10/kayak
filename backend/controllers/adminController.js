@@ -74,14 +74,15 @@ const cancelBooking = async (req, res) => {
 
     // Update booking status
     await pool.query(
-      'UPDATE bookings SET status = ?, payment_status = ? WHERE id = ?',
-      ['cancelled', 'refunded', id]
+      'UPDATE bookings SET status = ? WHERE id = ?',
+      ['cancelled', id]
     );
 
     // If flight booking, restore seat availability
     const bookingData = booking.rows[0];
     if (bookingData.booking_type === 'flight') {
-      const details = JSON.parse(bookingData.booking_details);
+      // booking_details is already parsed by MySQL2
+      const details = bookingData.booking_details;
       if (details.flight_id) {
         await pool.query(
           'UPDATE flights SET available_seats = available_seats + 1 WHERE id = ?',
