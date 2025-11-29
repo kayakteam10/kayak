@@ -254,21 +254,21 @@ function ProfilePage() {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // SSN validation (###-##-####) - MANDATORY
     if (!profile.ssn) {
       newErrors.ssn = 'SSN is required';
     } else if (!/^\d{3}-\d{2}-\d{4}$/.test(profile.ssn)) {
       newErrors.ssn = 'SSN must be in format ###-##-####';
     }
-    
+
     // Phone validation - MANDATORY
     if (!profile.phone) {
       newErrors.phone = 'Phone number is required';
     } else if (!/^(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/.test(profile.phone)) {
       newErrors.phone = 'Invalid phone number format';
     }
-    
+
     // ZIP code validation (##### or #####-####)
     if (profile.zipCode && !/^\d{5}(-\d{4})?$/.test(profile.zipCode)) {
       newErrors.zipCode = 'ZIP code must be in format ##### or #####-####';
@@ -306,11 +306,11 @@ function ProfilePage() {
       alert('Please fix validation errors before saving');
       return;
     }
-    
+
     setSaving(true);
     try {
       const res = await authAPI.updateMe(profile);
-      
+
       // Check if response is successful
       if (res.data) {
         const updatedUser = res.data;
@@ -328,14 +328,14 @@ function ProfilePage() {
           creditCardLast4: updatedUser.creditCardLast4 || '',
           creditCardType: updatedUser.creditCardType || ''
         });
-        
+
         // Update localStorage for header to display
         if (updatedUser.profilePicture) {
           localStorage.setItem('profilePicture', updatedUser.profilePicture);
         } else {
           localStorage.removeItem('profilePicture');
         }
-        
+
         // Trigger header update
         window.dispatchEvent(new Event('login'));
         alert('Profile updated successfully!');
@@ -374,14 +374,14 @@ function ProfilePage() {
 
     const entityType = booking.booking_type === 'flight' ? 'flight' : booking.booking_type === 'hotel' ? 'hotel' : 'car';
     // Try to get entity ID from various possible fields in booking details
-    let entityId = details.flightId || details.hotelId || details.carId || 
-                   details.flight_id || details.hotel_id || details.car_id;
-    
+    let entityId = details.flightId || details.hotelId || details.carId ||
+      details.flight_id || details.hotel_id || details.car_id;
+
     // If no entity ID found in details, use the booking ID itself as fallback
     if (!entityId) {
       entityId = booking.id;
     }
-    
+
     const formData = {
       bookingId: booking.id,
       entityType,
@@ -402,14 +402,14 @@ function ProfilePage() {
       console.log('Submitting review:', reviewForm);
       const response = await reviewsAPI.create(reviewForm);
       console.log('Review response:', response);
-      
+
       // Add the new review to the reviews list
       setReviews([response.data.review, ...reviews]);
-      
+
       // Close modal and show success message
       setShowReviewModal(false);
       alert('Review submitted successfully!');
-      
+
       // Fetch updated reviews list to ensure we have the latest data
       try {
         const reviewsRes = await reviewsAPI.getMyReviews();
@@ -418,7 +418,7 @@ function ProfilePage() {
       } catch (fetchError) {
         console.error('Error refreshing reviews:', fetchError);
       }
-      
+
       // Reset form
       setReviewForm({
         bookingId: null,
@@ -433,7 +433,7 @@ function ProfilePage() {
       console.error('Error response:', error.response?.data);
       const errorMsg = error.response?.data?.error || error.message || 'Failed to submit review';
       const errorDetails = error.response?.data?.details;
-      
+
       let displayMsg = `Failed to submit review: ${errorMsg}`;
       if (errorDetails && typeof errorDetails === 'object') {
         const detailsArray = Object.entries(errorDetails)
@@ -445,7 +445,7 @@ function ProfilePage() {
       } else if (errorDetails) {
         displayMsg += '\n\nDetails: ' + errorDetails;
       }
-      
+
       alert(displayMsg);
     }
   };
@@ -505,15 +505,15 @@ function ProfilePage() {
                   <span className="stat-label">Pending</span>
                 </div>
                 <div className="profile-stat">
-                <span className="stat-value">{bookings.filter(b => b.status === 'cancelled').length}</span>
-                <span className="stat-label">Cancelled</span>
+                  <span className="stat-value">{bookings.filter(b => b.status === 'cancelled').length}</span>
+                  <span className="stat-label">Cancelled</span>
+                </div>
               </div>
-            </div>
             )}
           </div>
         </div>
 
-        <div className="profile-tabs">
+        <div className="tabs">
           {userRole !== 'admin' && (
             <>
               <button
@@ -536,12 +536,14 @@ function ProfilePage() {
           >
             Profile Settings
           </button>
-          <button 
-            className={`tab ${activeTab === 'payment' ? 'active' : ''}`}
-            onClick={() => setActiveTab('payment')}
-          >
-            Payment Methods
-          </button>
+          {userRole !== 'admin' && (
+            <button
+              className={`tab ${activeTab === 'payment' ? 'active' : ''}`}
+              onClick={() => setActiveTab('payment')}
+            >
+              Payment Methods
+            </button>
+          )}
         </div>
 
         {activeTab === 'bookings' && (
@@ -724,14 +726,14 @@ function ProfilePage() {
                     onChange={(e) => {
                       // Remove all non-digits
                       let value = e.target.value.replace(/\D/g, '');
-                      
+
                       // Format as xxx-xxx-xxxx
                       if (value.length >= 6) {
                         value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6, 10);
                       } else if (value.length >= 3) {
                         value = value.slice(0, 3) + '-' + value.slice(3, 6);
                       }
-                      
+
                       setProfile({ ...profile, phone: value });
                     }}
                     placeholder="123-456-7890"
@@ -882,7 +884,7 @@ function ProfilePage() {
                   </button>
                 )}
               </div>
-              
+
               {savedPaymentMethods.length > 0 && !isEditingPayment ? (
                 /* Display saved payment methods */
                 <div className="saved-payments-list">
@@ -922,18 +924,18 @@ function ProfilePage() {
                               </button>
                             </div>
                           </div>
-                          
+
                           <div className="payment-details-grid">
                             <div className="payment-detail-item">
                               <span className="detail-label">CARD NUMBER</span>
                               <span className="detail-value">•••• •••• •••• {payment.creditCardNumber.replace(/\s/g, '').slice(-4)}</span>
                             </div>
-                            
+
                             <div className="payment-detail-item">
                               <span className="detail-label">EXPIRY DATE</span>
                               <span className="detail-value">{payment.expiryMonth}/{payment.expiryYear}</span>
                             </div>
-                            
+
                             <div className="payment-detail-item full-width">
                               <span className="detail-label">BILLING ADDRESS</span>
                               <span className="detail-value">
@@ -977,7 +979,7 @@ function ProfilePage() {
                               </button>
                             </div>
                           </div>
-                          
+
                           <div className="payment-details-grid">
                             <div className="payment-detail-item full-width">
                               <span className="detail-label">PAYPAL EMAIL</span>
@@ -1013,255 +1015,255 @@ function ProfilePage() {
                   {paymentInfo.paymentType === 'card' ? (
                     /* Credit/Debit Card Form */
                     <div className="profile-form-grid">
-                <div className="form-group">
-                  <label>Card Type *</label>
-                  <select
-                    value={paymentInfo.creditCardType}
-                    onChange={(e) => setPaymentInfo({ ...paymentInfo, creditCardType: e.target.value })}
-                  >
-                    <option value="">Select card type</option>
-                    <option value="Visa">Visa</option>
-                    <option value="MasterCard">MasterCard</option>
-                    <option value="American Express">American Express</option>
-                    <option value="Discover">Discover</option>
-                  </select>
-                </div>
+                      <div className="form-group">
+                        <label>Card Type *</label>
+                        <select
+                          value={paymentInfo.creditCardType}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, creditCardType: e.target.value })}
+                        >
+                          <option value="">Select card type</option>
+                          <option value="Visa">Visa</option>
+                          <option value="MasterCard">MasterCard</option>
+                          <option value="American Express">American Express</option>
+                          <option value="Discover">Discover</option>
+                        </select>
+                      </div>
 
-                <div className="form-group">
-                  <label>Credit Card Number *</label>
-                  <input
-                    type="text"
-                    value={paymentInfo.creditCardNumber || ''}
-                    onChange={(e) => {
-                      // Remove all non-digits
-                      const digits = e.target.value.replace(/\D/g, '');
-                      
-                      // Format as #### #### #### ####
-                      let formatted = '';
-                      for (let i = 0; i < digits.length && i < 16; i++) {
-                        if (i > 0 && i % 4 === 0) {
-                          formatted += ' ';
-                        }
-                        formatted += digits[i];
-                      }
-                      
-                      setPaymentInfo({ ...paymentInfo, creditCardNumber: formatted });
-                    }}
-                    placeholder="1234 5678 9012 3456"
-                    maxLength="19"
-                    autoComplete="off"
-                  />
-                </div>
+                      <div className="form-group">
+                        <label>Credit Card Number *</label>
+                        <input
+                          type="text"
+                          value={paymentInfo.creditCardNumber || ''}
+                          onChange={(e) => {
+                            // Remove all non-digits
+                            const digits = e.target.value.replace(/\D/g, '');
 
-                <div className="form-group">
-                  <label>Expiry Month *</label>
-                  <select
-                    value={paymentInfo.expiryMonth}
-                    onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryMonth: e.target.value })}
-                  >
-                    <option value="">Month</option>
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const month = (i + 1).toString().padStart(2, '0');
-                      return <option key={month} value={month}>{month}</option>;
-                    })}
-                  </select>
-                </div>
+                            // Format as #### #### #### ####
+                            let formatted = '';
+                            for (let i = 0; i < digits.length && i < 16; i++) {
+                              if (i > 0 && i % 4 === 0) {
+                                formatted += ' ';
+                              }
+                              formatted += digits[i];
+                            }
 
-                <div className="form-group">
-                  <label>Expiry Year *</label>
-                  <select
-                    value={paymentInfo.expiryYear}
-                    onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryYear: e.target.value })}
-                  >
-                    <option value="">Year</option>
-                    {Array.from({ length: 15 }, (_, i) => {
-                      const year = new Date().getFullYear() + i;
-                      return <option key={year} value={year}>{year}</option>;
-                    })}
-                  </select>
-                </div>
+                            setPaymentInfo({ ...paymentInfo, creditCardNumber: formatted });
+                          }}
+                          placeholder="1234 5678 9012 3456"
+                          maxLength="19"
+                          autoComplete="off"
+                        />
+                      </div>
 
-                <div className="form-group">
-                  <label>CVV *</label>
-                  <input
-                    type="password"
-                    value={paymentInfo.cvv}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, '');
-                      setPaymentInfo({ ...paymentInfo, cvv: digits.substring(0, 3) });
-                    }}
-                    placeholder="123"
-                    maxLength="3"
-                  />
-                </div>
+                      <div className="form-group">
+                        <label>Expiry Month *</label>
+                        <select
+                          value={paymentInfo.expiryMonth}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryMonth: e.target.value })}
+                        >
+                          <option value="">Month</option>
+                          {Array.from({ length: 12 }, (_, i) => {
+                            const month = (i + 1).toString().padStart(2, '0');
+                            return <option key={month} value={month}>{month}</option>;
+                          })}
+                        </select>
+                      </div>
 
-                <div className="form-group full-width">
-                  <h4 style={{ marginTop: '20px', marginBottom: '10px', gridColumn: 'span 2' }}>Billing Address</h4>
-                </div>
+                      <div className="form-group">
+                        <label>Expiry Year *</label>
+                        <select
+                          value={paymentInfo.expiryYear}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryYear: e.target.value })}
+                        >
+                          <option value="">Year</option>
+                          {Array.from({ length: 15 }, (_, i) => {
+                            const year = new Date().getFullYear() + i;
+                            return <option key={year} value={year}>{year}</option>;
+                          })}
+                        </select>
+                      </div>
 
-                <div className="form-group full-width">
-                  <label>Street Address</label>
-                  <input
-                    type="text"
-                    value={paymentInfo.billingAddress}
-                    onChange={(e) => setPaymentInfo({ ...paymentInfo, billingAddress: e.target.value })}
-                    placeholder="123 Main Street"
-                  />
-                </div>
+                      <div className="form-group">
+                        <label>CVV *</label>
+                        <input
+                          type="password"
+                          value={paymentInfo.cvv}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '');
+                            setPaymentInfo({ ...paymentInfo, cvv: digits.substring(0, 3) });
+                          }}
+                          placeholder="123"
+                          maxLength="3"
+                        />
+                      </div>
 
-                <div className="form-group">
-                  <label>City</label>
-                  <input
-                    type="text"
-                    value={paymentInfo.billingCity}
-                    onChange={(e) => setPaymentInfo({ ...paymentInfo, billingCity: e.target.value })}
-                    placeholder="New York"
-                  />
-                </div>
+                      <div className="form-group full-width">
+                        <h4 style={{ marginTop: '20px', marginBottom: '10px', gridColumn: 'span 2' }}>Billing Address</h4>
+                      </div>
 
-                <div className="form-group">
-                  <label>State</label>
-                  <select
-                    value={paymentInfo.billingState}
-                    onChange={(e) => setPaymentInfo({ ...paymentInfo, billingState: e.target.value })}
-                  >
-                    <option value="">Select state</option>
-                    {USA_STATES.map(state => (
-                      <option key={state.code} value={state.code}>
-                        {state.code} - {state.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                      <div className="form-group full-width">
+                        <label>Street Address</label>
+                        <input
+                          type="text"
+                          value={paymentInfo.billingAddress}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, billingAddress: e.target.value })}
+                          placeholder="123 Main Street"
+                        />
+                      </div>
 
-                <div className="form-group">
-                  <label>ZIP Code</label>
-                  <input
-                    type="text"
-                    value={paymentInfo.billingZip}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, '');
-                      let formatted = '';
-                      if (digits.length > 0) {
-                        formatted = digits.substring(0, 5);
-                        if (digits.length > 5) {
-                          formatted += '-' + digits.substring(5, 9);
-                        }
-                      }
-                      setPaymentInfo({ ...paymentInfo, billingZip: formatted });
-                    }}
-                    placeholder="12345"
-                    maxLength="10"
-                  />
-                </div>
-              </div>
-                ) : (
-                  /* PayPal Form */
-                  <div className="profile-form-grid">
-                    <div className="form-group full-width">
-                      <label>PayPal Email Address *</label>
-                      <input
-                        type="email"
-                        value={paymentInfo.paypalEmail}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, paypalEmail: e.target.value })}
-                        placeholder="your.email@example.com"
-                      />
-                      <p className="field-hint">Enter the email address associated with your PayPal account</p>
+                      <div className="form-group">
+                        <label>City</label>
+                        <input
+                          type="text"
+                          value={paymentInfo.billingCity}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, billingCity: e.target.value })}
+                          placeholder="New York"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>State</label>
+                        <select
+                          value={paymentInfo.billingState}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, billingState: e.target.value })}
+                        >
+                          <option value="">Select state</option>
+                          {USA_STATES.map(state => (
+                            <option key={state.code} value={state.code}>
+                              {state.code} - {state.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label>ZIP Code</label>
+                        <input
+                          type="text"
+                          value={paymentInfo.billingZip}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '');
+                            let formatted = '';
+                            if (digits.length > 0) {
+                              formatted = digits.substring(0, 5);
+                              if (digits.length > 5) {
+                                formatted += '-' + digits.substring(5, 9);
+                              }
+                            }
+                            setPaymentInfo({ ...paymentInfo, billingZip: formatted });
+                          }}
+                          placeholder="12345"
+                          maxLength="10"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    /* PayPal Form */
+                    <div className="profile-form-grid">
+                      <div className="form-group full-width">
+                        <label>PayPal Email Address *</label>
+                        <input
+                          type="email"
+                          value={paymentInfo.paypalEmail}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, paypalEmail: e.target.value })}
+                          placeholder="your.email@example.com"
+                        />
+                        <p className="field-hint">Enter the email address associated with your PayPal account</p>
+                      </div>
+                    </div>
+                  )}
 
-              <div className="profile-actions">
-                <button
-                  className="cancel-edit-btn"
-                  onClick={() => {
-                    setIsEditingPayment(false);
-                    setEditingPaymentIndex(null);
-                    setPaymentInfo({
-                      paymentType: 'card',
-                      creditCardNumber: '',
-                      creditCardType: '',
-                      expiryMonth: '',
-                      expiryYear: '',
-                      cvv: '',
-                      billingAddress: '',
-                      billingCity: '',
-                      billingState: '',
-                      billingZip: '',
-                      paypalEmail: ''
-                    });
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="save-profile-btn"
-                  onClick={() => {
-                    // Validation
-                    if (paymentInfo.paymentType === 'card') {
-                      if (!paymentInfo.creditCardNumber || !paymentInfo.creditCardType) {
-                        alert('Please fill in card number and card type');
-                        return;
-                      }
-                      if (!paymentInfo.expiryMonth || !paymentInfo.expiryYear) {
-                        alert('Please select card expiry date');
-                        return;
-                      }
-                      if (!paymentInfo.cvv) {
-                        alert('Please enter CVV');
-                        return;
-                      }
-                      if (paymentInfo.cvv.length !== 3) {
-                        alert('CVV must be exactly 3 digits');
-                        return;
-                      }
-                    } else if (paymentInfo.paymentType === 'paypal') {
-                      if (!paymentInfo.paypalEmail) {
-                        alert('Please enter your PayPal email address');
-                        return;
-                      }
-                      // Email validation
-                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                      if (!emailRegex.test(paymentInfo.paypalEmail)) {
-                        alert('Please enter a valid email address');
-                        return;
-                      }
-                    }
-                    
-                    // Save or update payment method
-                    if (editingPaymentIndex !== null) {
-                      // Update existing payment
-                      const updated = [...savedPaymentMethods];
-                      updated[editingPaymentIndex] = { ...paymentInfo };
-                      setSavedPaymentMethods(updated);
-                      alert('Payment method updated successfully!');
-                    } else {
-                      // Add new payment
-                      setSavedPaymentMethods([...savedPaymentMethods, { ...paymentInfo }]);
-                      alert('Payment method added successfully!');
-                    }
-                    
-                    setIsEditingPayment(false);
-                    setEditingPaymentIndex(null);
-                    setPaymentInfo({
-                      paymentType: 'card',
-                      creditCardNumber: '',
-                      creditCardType: '',
-                      expiryMonth: '',
-                      expiryYear: '',
-                      cvv: '',
-                      billingAddress: '',
-                      billingCity: '',
-                      billingState: '',
-                      billingZip: '',
-                      paypalEmail: ''
-                    });
-                  }}
-                >
-                  {editingPaymentIndex !== null ? 'Update Payment Method' : 'Save Payment Method'}
-                </button>
-              </div>
-              </>
+                  <div className="profile-actions">
+                    <button
+                      className="cancel-edit-btn"
+                      onClick={() => {
+                        setIsEditingPayment(false);
+                        setEditingPaymentIndex(null);
+                        setPaymentInfo({
+                          paymentType: 'card',
+                          creditCardNumber: '',
+                          creditCardType: '',
+                          expiryMonth: '',
+                          expiryYear: '',
+                          cvv: '',
+                          billingAddress: '',
+                          billingCity: '',
+                          billingState: '',
+                          billingZip: '',
+                          paypalEmail: ''
+                        });
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="save-profile-btn"
+                      onClick={() => {
+                        // Validation
+                        if (paymentInfo.paymentType === 'card') {
+                          if (!paymentInfo.creditCardNumber || !paymentInfo.creditCardType) {
+                            alert('Please fill in card number and card type');
+                            return;
+                          }
+                          if (!paymentInfo.expiryMonth || !paymentInfo.expiryYear) {
+                            alert('Please select card expiry date');
+                            return;
+                          }
+                          if (!paymentInfo.cvv) {
+                            alert('Please enter CVV');
+                            return;
+                          }
+                          if (paymentInfo.cvv.length !== 3) {
+                            alert('CVV must be exactly 3 digits');
+                            return;
+                          }
+                        } else if (paymentInfo.paymentType === 'paypal') {
+                          if (!paymentInfo.paypalEmail) {
+                            alert('Please enter your PayPal email address');
+                            return;
+                          }
+                          // Email validation
+                          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                          if (!emailRegex.test(paymentInfo.paypalEmail)) {
+                            alert('Please enter a valid email address');
+                            return;
+                          }
+                        }
+
+                        // Save or update payment method
+                        if (editingPaymentIndex !== null) {
+                          // Update existing payment
+                          const updated = [...savedPaymentMethods];
+                          updated[editingPaymentIndex] = { ...paymentInfo };
+                          setSavedPaymentMethods(updated);
+                          alert('Payment method updated successfully!');
+                        } else {
+                          // Add new payment
+                          setSavedPaymentMethods([...savedPaymentMethods, { ...paymentInfo }]);
+                          alert('Payment method added successfully!');
+                        }
+
+                        setIsEditingPayment(false);
+                        setEditingPaymentIndex(null);
+                        setPaymentInfo({
+                          paymentType: 'card',
+                          creditCardNumber: '',
+                          creditCardType: '',
+                          expiryMonth: '',
+                          expiryYear: '',
+                          cvv: '',
+                          billingAddress: '',
+                          billingCity: '',
+                          billingState: '',
+                          billingZip: '',
+                          paypalEmail: ''
+                        });
+                      }}
+                    >
+                      {editingPaymentIndex !== null ? 'Update Payment Method' : 'Save Payment Method'}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
