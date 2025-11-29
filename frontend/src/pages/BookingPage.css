@@ -264,6 +264,101 @@
   margin-top: 10px;
 }
 
+/* Saved Cards Section */
+.saved-cards-section {
+  margin-bottom: 30px;
+}
+
+.saved-cards-section h3 {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.saved-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.saved-card-item {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.saved-card-item.new-card {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: 2px dashed rgba(255,255,255,0.5);
+}
+
+.saved-card-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.saved-card-item.selected {
+  border: 3px solid #4CAF50;
+  box-shadow: 0 8px 20px rgba(76,175,80,0.4);
+}
+
+.card-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.card-details {
+  flex: 1;
+}
+
+.card-type {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.card-number {
+  font-size: 18px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.card-expiry {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.card-selected-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  background: #4CAF50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
 @media (max-width: 968px) {
   .booking-content {
     grid-template-columns: 1fr;

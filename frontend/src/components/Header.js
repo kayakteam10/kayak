@@ -93,17 +93,39 @@ function Header() {
                 {showDropdown && (
                   <div className="user-dropdown">
                     <Link
-                      to="/profile"
+                      to="/profile?tab=bookings"
                       className="dropdown-item"
                       onClick={() => setShowDropdown(false)}
                     >
-                      📋 My Bookings
+                      My Bookings
                     </Link>
+                    <Link
+                      to="/profile?tab=reviews"
+                      className="dropdown-item"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      My Reviews
+                    </Link>
+                    <Link
+                      to="/profile?tab=profile"
+                      className="dropdown-item"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Profile Settings
+                    </Link>
+                    <Link
+                      to="/profile?tab=payment"
+                      className="dropdown-item"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Payment Methods
+                    </Link>
+                    <div className="dropdown-divider"></div>
                     <button
                       className="dropdown-item logout-item"
                       onClick={handleLogout}
                     >
-                      🚪 Logout
+                      Logout
                     </button>
                   </div>
                 )}

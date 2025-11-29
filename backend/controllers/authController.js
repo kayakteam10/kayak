@@ -8,20 +8,38 @@ const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, role = 'user' } = req.body;
 
+    // Validate required fields
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ 
+        error: 'All fields are required (email, password, firstName, lastName)' 
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 6 characters long' 
+      });
+    }
+
     // Validate email format
     const emailCheck = validateEmail(email);
     if (!emailCheck.valid) {
       return res.status(400).json({ error: emailCheck.error });
     }
 
-    // Check if user exists (duplicate prevention)
+    // DUPLICATE USER PREVENTION: Check if user exists
+    // Using case-insensitive email comparison
     const userExists = await pool.query(
-      'SELECT email FROM users WHERE email = ?',
+      'SELECT id, email FROM users WHERE LOWER(email) = LOWER(?)',
       [email]
     );
 
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists with this email' });
+      console.log(`⚠️ Duplicate registration attempt for email: ${email}`);
+      return res.status(409).json({ 
+        error: 'An account with this email already exists. Please login instead.' 
+      });
     }
 
     // Hash password
@@ -33,7 +51,7 @@ const register = async (req, res) => {
     // Insert user
     const result = await pool.query(
       'INSERT INTO users (email, password_hash, first_name, last_name, ssn, role) VALUES (?, ?, ?, ?, ?, ?)',
-      [email, hashedPassword, firstName, lastName, ssn, role]
+      [email.toLowerCase(), hashedPassword, firstName, lastName, ssn, role]
     );
 
     // Get the inserted user
@@ -44,13 +62,23 @@ const register = async (req, res) => {
     );
     const user = userResult.rows[0] || { id: userId, email, first_name: firstName, last_name: lastName };
 
+    console.log(`✅ New user registered successfully: ${email} (ID: ${userId})`);
+
     res.status(201).json({
       message: 'User registered successfully',
       user
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ Registration error:', error);
+    
+    // Handle MySQL duplicate key error (in case unique constraint exists)
+    if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+      return res.status(409).json({ 
+        error: 'An account with this email already exists. Please login instead.' 
+      });
+    }
+    
+    res.status(500).json({ error: 'Server error during registration. Please try again.' });
   }
 };
 
