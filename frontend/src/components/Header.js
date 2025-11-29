@@ -6,6 +6,7 @@ function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('token') !== null);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User');
   const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || '');
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -15,6 +16,7 @@ function Header() {
       setIsLoggedIn(localStorage.getItem('token') !== null);
       setUserName(localStorage.getItem('userName') || 'User');
       setProfilePicture(localStorage.getItem('profilePicture') || '');
+      setUserRole(localStorage.getItem('userRole') || 'user');
     };
 
     // Initial check
@@ -92,6 +94,15 @@ function Header() {
                 </button>
                 {showDropdown && (
                   <div className="user-dropdown">
+                    {userRole === 'admin' && (
+                      <Link
+                        to="/admin"
+                        className="dropdown-item"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        ⚙️ Admin Panel
+                      </Link>
+                    )}
                     <Link
                       to="/profile?tab=bookings"
                       className="dropdown-item"
@@ -118,7 +129,7 @@ function Header() {
                       className="dropdown-item"
                       onClick={() => setShowDropdown(false)}
                     >
-                      Payment Methods
+                      {userRole === 'admin' ? '👤 Profile' : '📋 My Bookings'}
                     </Link>
                     <div className="dropdown-divider"></div>
                     <button

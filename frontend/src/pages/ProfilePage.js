@@ -60,11 +60,12 @@ const USA_STATES = [
 
 function ProfilePage() {
   const navigate = useNavigate();
+  const [userRole] = useState(localStorage.getItem('userRole') || 'user');
   const [searchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('bookings');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('userRole') === 'admin' ? 'profile' : 'bookings');
   const [profile, setProfile] = useState({
     firstName: '',
     lastName: '',
@@ -163,7 +164,7 @@ function ProfilePage() {
 
         setBookings(bookingsRes.data.bookings || []);
         setReviews(reviewsRes.data?.reviews || []);
-        
+
         const userData = profileRes.data;
         setProfile({
           firstName: userData.firstName || '',
@@ -179,7 +180,7 @@ function ProfilePage() {
           creditCardLast4: userData.creditCardLast4 || '',
           creditCardType: userData.creditCardType || ''
         });
-        
+
         if (userData.profilePicture) {
           setImagePreview(userData.profilePicture);
         }
@@ -201,7 +202,7 @@ function ProfilePage() {
 
   const handleCancel = async (id) => {
     if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-    
+
     try {
       await bookingsAPI.cancel(id);
       setBookings(bookings.filter(b => b.id !== id));
@@ -236,7 +237,7 @@ function ProfilePage() {
         alert('Please upload an image file');
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -272,7 +273,7 @@ function ProfilePage() {
     if (profile.zipCode && !/^\d{5}(-\d{4})?$/.test(profile.zipCode)) {
       newErrors.zipCode = 'ZIP code must be in format ##### or #####-####';
     }
-    
+
     // State validation (2-letter abbreviation)
     const validStates = [
       'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -285,7 +286,17 @@ function ProfilePage() {
     if (profile.state && !validStates.includes(profile.state.toUpperCase())) {
       newErrors.state = 'Invalid state abbreviation';
     }
-    
+
+    // Phone validation
+    if (profile.phone && !/^(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/.test(profile.phone)) {
+      newErrors.phone = 'Invalid phone number format';
+    }
+
+    // Credit card last 4 validation
+    if (profile.creditCardLast4 && !/^\d{4}$/.test(profile.creditCardLast4)) {
+      newErrors.creditCardLast4 = 'Must be exactly 4 digits';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -345,7 +356,7 @@ function ProfilePage() {
 
   const openReviewModal = (booking) => {
     console.log('🔍 Opening review modal for booking:', booking);
-    
+
     // Handle booking_details - it might be a string or already parsed object
     let details = {};
     try {
@@ -358,9 +369,9 @@ function ProfilePage() {
       console.error('Error parsing booking details:', e);
       details = {};
     }
-    
+
     console.log('📋 Parsed booking details:', details);
-    
+
     const entityType = booking.booking_type === 'flight' ? 'flight' : booking.booking_type === 'hotel' ? 'hotel' : 'car';
     // Try to get entity ID from various possible fields in booking details
     let entityId = details.flightId || details.hotelId || details.carId || 
@@ -379,9 +390,9 @@ function ProfilePage() {
       title: '',
       reviewText: ''
     };
-    
+
     console.log('📝 Review form initialized:', formData);
-    
+
     setReviewForm(formData);
     setShowReviewModal(true);
   };
@@ -444,7 +455,7 @@ function ProfilePage() {
   return (
     <div className="profile-page">
       <div className="profile-banner"></div>
-      
+
       <div className="profile-container">
         <div className="profile-card-header">
           <div className="profile-avatar-section">
@@ -475,45 +486,51 @@ function ProfilePage() {
               )}
             </div>
           </div>
-          
+
           <div className="profile-info-section">
             <h1 className="profile-name">{profile.firstName || 'User'} {profile.lastName || ''}</h1>
             <p className="profile-email">{profile.email}</p>
-            <div className="profile-stats">
-              <div className="profile-stat">
-                <span className="stat-value">{bookings.length}</span>
-                <span className="stat-label">Bookings</span>
-              </div>
-              <div className="profile-stat">
-                <span className="stat-value">{bookings.filter(b => b.status === 'confirmed').length}</span>
-                <span className="stat-label">Confirmed</span>
-              </div>
-              <div className="profile-stat">
-                <span className="stat-value">{bookings.filter(b => b.status === 'pending').length}</span>
-                <span className="stat-label">Pending</span>
-              </div>
-              <div className="profile-stat">
+            {userRole !== 'admin' && (
+              <div className="profile-stats">
+                <div className="profile-stat">
+                  <span className="stat-value">{bookings.length}</span>
+                  <span className="stat-label">Bookings</span>
+                </div>
+                <div className="profile-stat">
+                  <span className="stat-value">{bookings.filter(b => b.status === 'confirmed').length}</span>
+                  <span className="stat-label">Confirmed</span>
+                </div>
+                <div className="profile-stat">
+                  <span className="stat-value">{bookings.filter(b => b.status === 'pending').length}</span>
+                  <span className="stat-label">Pending</span>
+                </div>
+                <div className="profile-stat">
                 <span className="stat-value">{bookings.filter(b => b.status === 'cancelled').length}</span>
                 <span className="stat-label">Cancelled</span>
               </div>
             </div>
+            )}
           </div>
         </div>
 
         <div className="profile-tabs">
-          <button 
-            className={`tab ${activeTab === 'bookings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('bookings')}
-          >
-            My Bookings ({bookings.length})
-          </button>
-          <button 
-            className={`tab ${activeTab === 'reviews' ? 'active' : ''}`}
-            onClick={() => setActiveTab('reviews')}
-          >
-            My Reviews ({reviews.length})
-          </button>
-          <button 
+          {userRole !== 'admin' && (
+            <>
+              <button
+                className={`tab ${activeTab === 'bookings' ? 'active' : ''}`}
+                onClick={() => setActiveTab('bookings')}
+              >
+                My Bookings ({bookings.length})
+              </button>
+              <button
+                className={`tab ${activeTab === 'reviews' ? 'active' : ''}`}
+                onClick={() => setActiveTab('reviews')}
+              >
+                My Reviews ({reviews.length})
+              </button>
+            </>
+          )}
+          <button
             className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
@@ -588,7 +605,7 @@ function ProfilePage() {
                     </div>
 
                     <div className="booking-actions">
-                      <button 
+                      <button
                         onClick={() => {
                           const typeSeg = (booking.booking_type || '').toLowerCase().includes('hotel')
                             ? 'hotels'
@@ -602,7 +619,7 @@ function ProfilePage() {
                         View Details
                       </button>
                       {booking.status === 'confirmed' && !reviews.find(r => r.bookingId === booking.id) && (
-                        <button 
+                        <button
                           onClick={() => openReviewModal(booking)}
                           className="review-btn"
                         >
@@ -610,7 +627,7 @@ function ProfilePage() {
                         </button>
                       )}
                       {booking.status !== 'cancelled' && (
-                        <button 
+                        <button
                           onClick={() => handleCancel(booking.id)}
                           className="cancel-btn"
                         >
@@ -668,7 +685,7 @@ function ProfilePage() {
           <div className="profile-section">
             <div className="profile-info-card">
               <h3>Personal Information</h3>
-              
+
               <div className="profile-form-grid">
                 <div className="form-group">
                   <label>First Name *</label>
@@ -732,7 +749,7 @@ function ProfilePage() {
                     onChange={(e) => {
                       // Remove all non-digits
                       const digits = e.target.value.replace(/\D/g, '');
-                      
+
                       // Format as ###-##-####
                       let formatted = '';
                       if (digits.length > 0) {
@@ -744,7 +761,7 @@ function ProfilePage() {
                           }
                         }
                       }
-                      
+
                       setProfile({ ...profile, ssn: formatted });
                     }}
                     placeholder="123-45-6789"
@@ -799,7 +816,7 @@ function ProfilePage() {
                     onChange={(e) => {
                       // Remove all non-digits
                       const digits = e.target.value.replace(/\D/g, '');
-                      
+
                       // Format as ##### or #####-####
                       let formatted = '';
                       if (digits.length > 0) {
@@ -808,7 +825,7 @@ function ProfilePage() {
                           formatted += '-' + digits.substring(5, 9);
                         }
                       }
-                      
+
                       setProfile({ ...profile, zipCode: formatted });
                     }}
                     placeholder="12345 or 12345-6789"
@@ -1258,7 +1275,7 @@ function ProfilePage() {
                 <h3>Write a Review</h3>
                 <button onClick={() => setShowReviewModal(false)} className="modal-close">×</button>
               </div>
-              
+
               <div className="modal-body">
                 <div className="form-group">
                   <label>Rating</label>
@@ -1298,8 +1315,8 @@ function ProfilePage() {
                 <button onClick={() => setShowReviewModal(false)} className="btn-secondary">
                   Cancel
                 </button>
-                <button 
-                  onClick={submitReview} 
+                <button
+                  onClick={submitReview}
                   className="btn-primary"
                   disabled={!reviewForm.title || !reviewForm.reviewText}
                 >

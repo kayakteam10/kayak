@@ -98,6 +98,16 @@
     border-radius: 12px;
     padding: 24px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.admin-stat-card.clickable {
+    cursor: pointer;
+}
+
+.admin-stat-card.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .admin-stat-header {
@@ -336,12 +346,33 @@
 
 .admin-modal-header {
     margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .admin-modal-header h2 {
     font-size: 1.5rem;
     color: #1a202c;
     margin: 0;
+}
+
+.admin-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+}
+
+.admin-modal-close:hover {
+    color: #1a202c;
+}
+
+.admin-modal-body {
+    overflow-x: auto;
 }
 
 .admin-modal-actions {

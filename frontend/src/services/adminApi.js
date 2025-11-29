@@ -40,4 +40,9 @@ export const adminAnalyticsAPI = {
     getPopularRoutes: () => api.get('/api/admin/analytics/routes'),
 };
 
+// Admin Users API
+export const adminUsersAPI = {
+    getAll: () => api.get('/api/admin/users'),
+};
+
 export default api;
