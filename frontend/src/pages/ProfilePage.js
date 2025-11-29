@@ -585,11 +585,32 @@ function ProfilePage() {
                       <div className="detail-row">
                         <span className="detail-label">Booking Date:</span>
                         <span className="detail-value">
-                          {new Date(booking.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
+                          {(() => {
+                            // Try to get date from created_at or use current date
+                            let dateToUse = booking.created_at || booking.createdAt || new Date().toISOString();
+
+                            // Handle MySQL timestamp format (YYYY-MM-DD HH:MM:SS)
+                            if (typeof dateToUse === 'string' && dateToUse.includes(' ')) {
+                              dateToUse = dateToUse.replace(' ', 'T');
+                            }
+
+                            const date = new Date(dateToUse);
+
+                            // If still invalid, use current date
+                            if (isNaN(date.getTime())) {
+                              return new Date().toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              });
+                            }
+
+                            return date.toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            });
+                          })()}
                         </span>
                       </div>
                       {booking.departure_date && (

@@ -95,7 +95,52 @@ const getAvailableSeats = async (flightId) => {
 const reserveSeats = async (flightId, seatNumbers) => {
     try {
         if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
-            throw new Error('Seat numbers must be a non-empty array');
+            return { message: 'No seats to reserve', seats: [] };
+        }
+
+        // Check if seatNumbers contains objects with flightId (multi-leg) or just strings (single flight)
+        const isMultiLeg = seatNumbers.some(seat => typeof seat === 'object' && seat.flightId);
+
+        if (isMultiLeg) {
+            // Group seats by flight ID
+            const seatsByFlight = {};
+            seatNumbers.forEach(seat => {
+                const fId = seat.flightId || flightId;
+                if (!seatsByFlight[fId]) {
+                    seatsByFlight[fId] = [];
+                }
+                seatsByFlight[fId].push(typeof seat === 'object' ? seat.seatNumber : seat);
+            });
+
+            // Reserve seats for each flight
+            const results = [];
+            for (const [fId, seats] of Object.entries(seatsByFlight)) {
+                const result = await reserveSeatsForFlight(fId, seats);
+                results.push(result);
+            }
+
+            return {
+                message: 'Seats reserved successfully for all flights',
+                seats: results.flatMap(r => r.seats)
+            };
+        } else {
+            // Single flight - use existing logic
+            const seats = seatNumbers.map(s => typeof s === 'object' ? s.seatNumber : s);
+            return await reserveSeatsForFlight(flightId, seats);
+        }
+    } catch (error) {
+        console.error('Error reserving seats:', error);
+        throw error;
+    }
+};
+
+/**
+ * Reserve seats for a single flight
+ */
+const reserveSeatsForFlight = async (flightId, seatNumbers) => {
+    try {
+        if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+            return { message: 'No seats to reserve for this flight', seats: [] };
         }
 
         // Check if all seats are available
@@ -126,7 +171,7 @@ const reserveSeats = async (flightId, seatNumbers) => {
 
         return { message: 'Seats reserved successfully', seats: seatNumbers };
     } catch (error) {
-        console.error('Error reserving seats:', error);
+        console.error('Error reserving seats for flight:', error);
         throw error;
     }
 };
@@ -140,15 +185,47 @@ const calculateSeatPrice = async (flightId, seatNumbers) => {
             return 0;
         }
 
-        const placeholders = seatNumbers.map(() => '?').join(', ');
-        const result = await pool.query(
-            `SELECT SUM(price_modifier) as total 
+        // Check if seatNumbers contains objects with flightId (multi-leg) or just strings (single flight)
+        const isMultiLeg = seatNumbers.some(seat => typeof seat === 'object' && seat.flightId);
+
+        if (isMultiLeg) {
+            // Group seats by flight ID
+            const seatsByFlight = {};
+            seatNumbers.forEach(seat => {
+                const fId = seat.flightId || flightId;
+                if (!seatsByFlight[fId]) {
+                    seatsByFlight[fId] = [];
+                }
+                seatsByFlight[fId].push(typeof seat === 'object' ? seat.seatNumber : seat);
+            });
+
+            // Calculate price for each flight
+            let totalPrice = 0;
+            for (const [fId, seats] of Object.entries(seatsByFlight)) {
+                const placeholders = seats.map(() => '?').join(', ');
+                const result = await pool.query(
+                    `SELECT SUM(price_modifier) as total 
+           FROM flight_seats 
+           WHERE flight_id = ? AND seat_number IN (${placeholders})`,
+                    [fId, ...seats]
+                );
+                totalPrice += parseFloat(result.rows[0].total || 0);
+            }
+
+            return totalPrice;
+        } else {
+            // Single flight - use existing logic
+            const seats = seatNumbers.map(s => typeof s === 'object' ? s.seatNumber : s);
+            const placeholders = seats.map(() => '?').join(', ');
+            const result = await pool.query(
+                `SELECT SUM(price_modifier) as total 
        FROM flight_seats 
        WHERE flight_id = ? AND seat_number IN (${placeholders})`,
-            [flightId, ...seatNumbers]
-        );
+                [flightId, ...seats]
+            );
 
-        return parseFloat(result.rows[0].total || 0);
+            return parseFloat(result.rows[0].total || 0);
+        }
     } catch (error) {
         console.error('Error calculating seat price:', error);
         return 0;

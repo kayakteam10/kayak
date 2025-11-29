@@ -92,7 +92,20 @@ function BookingConfirmationPage() {
                 </div>
                 <div className="detail-row">
                   <span>Booking Date:</span>
-                  <span>{booking?.created_at ? new Date(booking.created_at).toLocaleDateString() : '-'}</span>
+                  <span>
+                    {booking?.created_at
+                      ? new Date(booking.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                      : new Date().toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                    }
+                  </span>
                 </div>
                 <div className="detail-row">
                   <span>Status:</span>

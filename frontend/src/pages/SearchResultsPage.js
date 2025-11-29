@@ -431,14 +431,25 @@ function SearchResultsPage() {
     setSortBy(sort);
   };
 
-  const handleBook = async (flight) => {
+  const handleBook = async (flight, explicitLegs = null) => {
     try {
+      console.log('handleBook called with:', { flight, explicitLegs });
+      // Extract passenger info from search params
+      const passengers = searchParams.get('passengers') || '1';
+      const adults = searchParams.get('adults') || passengers;
+      const children = searchParams.get('children') || '0';
+      const infants = searchParams.get('infants') || '0';
+      const tripType = searchParams.get('tripType') || searchParams.get('type') || 'oneway';
+
+      // Build passenger query string
+      const passengerParams = `passengers=${passengers}&adults=${adults}&children=${children}&infants=${infants}&tripType=${tripType}`;
+
       // For roundtrip flights, create a hold with both legs
-      if (flight.is_roundtrip || flight.return_flight) {
+      if (flight.is_roundtrip || flight.return_flight || tripType === 'roundtrip') {
         const holdData = {
           flight_id: flight.id,
           return_flight_id: flight.return_flight?.id,
-          passengers: parseInt(searchParams.get('passengers') || 1),
+          passengers: parseInt(passengers),
           trip_type: 'roundtrip'
         };
 
@@ -446,7 +457,7 @@ function SearchResultsPage() {
 
         if (response.data && response.data.booking_reference) {
           // Navigate to booking page with flight ID and pass booking reference via state
-          navigate(`/booking/flights/${flight.id}`, {
+          navigate(`/booking/flights/${flight.id}?${passengerParams}`, {
             state: {
               bookingReference: response.data.booking_reference,
               holdExpiry: response.data.expires_at,
@@ -456,16 +467,42 @@ function SearchResultsPage() {
           });
         } else {
           // Fallback to booking page
-          navigate(`/booking/flights/${flight.id}`);
+          navigate(`/booking/flights/${flight.id}?${passengerParams}`, {
+            state: {
+              isRoundtrip: true,
+              returnFlight: flight.return_flight
+            }
+          });
         }
-      } else {
+      }
+      // For multi-city flights
+      else if (tripType === 'multicity' || flight.is_multicity || (flight.legs && flight.legs.length > 0) || (explicitLegs && explicitLegs.length > 0)) {
+        const legsToPass = explicitLegs || flight.legs || [flight];
+        // Use the ID of the first leg if the top-level flight object doesn't have an ID
+        const flightId = flight.id || (legsToPass.length > 0 ? legsToPass[0].id : null);
+
+        console.log('Navigating to multi-city booking:', { flightId, legsCount: legsToPass.length });
+
+        navigate(`/booking/flights/${flightId}?${passengerParams}`, {
+          state: {
+            isMultiCity: true,
+            legs: legsToPass
+          }
+        });
+      }
+      else {
         // For one-way, navigate to booking page
-        navigate(`/booking/flights/${flight.id || flight}`);
+        navigate(`/booking/flights/${flight.id || flight}?${passengerParams}`);
       }
     } catch (error) {
       console.error('Error creating hold:', error);
-      // Fallback to booking page
-      navigate(`/booking/flights/${flight.id || flight}`);
+      // Fallback to booking page with passenger params
+      const passengers = searchParams.get('passengers') || '1';
+      const adults = searchParams.get('adults') || passengers;
+      const children = searchParams.get('children') || '0';
+      const infants = searchParams.get('infants') || '0';
+      const passengerParams = `passengers=${passengers}&adults=${adults}&children=${children}&infants=${infants}`;
+      navigate(`/booking/flights/${flight.id || flight}?${passengerParams}`);
     }
   };
 
@@ -585,7 +622,7 @@ function SearchResultsPage() {
                 </button>
                 <button
                   className="book-btn"
-                  onClick={() => handleBook(legs[0] || flight)}
+                  onClick={() => handleBook(legs[0] || flight, legs)}
                   aria-label="Book this flight now"
                 >
                   Book Now
@@ -819,7 +856,7 @@ function SearchResultsPage() {
             </button>
             <button
               className="book-btn"
-              onClick={() => handleBook(isMultiCity ? flight.legs?.[0] : flight)}
+              onClick={() => handleBook(isMultiCity ? flight.legs?.[0] : flight, isMultiCity ? flight.legs : null)}
               aria-label="Select this flight"
             >
               Select

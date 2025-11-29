@@ -4,10 +4,10 @@
 -- strict adherence to Hybrid Architecture (Reviews/Images moved to Mongo)
 -- ============================================================================
 
-DROP DATABASE IF EXISTS kayak_db;
 
-CREATE DATABASE IF NOT EXISTS kayak_db;
-USE kayak_db;
+
+
+USE kayakgit;
 
 -- ============================================================================
 -- 1. USERS (Updated with Role)

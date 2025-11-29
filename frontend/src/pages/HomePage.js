@@ -160,7 +160,7 @@ const HomePage = () => {
       const token = localStorage.getItem('token');
       const userName = localStorage.getItem('userName');
       const profilePicture = localStorage.getItem('profilePicture');
-      
+
       setUserProfile({
         isLoggedIn: !!token,
         name: userName || '',
@@ -328,14 +328,24 @@ const HomePage = () => {
         return;
       }
     } else {
-      if (!formData.origin.trim() || !formData.destination.trim()) {
-        setValidationError('Enter both origin and destination.');
-        return;
+      // For flights, check both origin and destination
+      if (activeTab === 'flights') {
+        if (!formData.origin.trim() || !formData.destination.trim()) {
+          setValidationError('Enter both origin and destination.');
+          return;
+        }
+        if (normalizeCityName(formData.origin) === normalizeCityName(formData.destination)) {
+          setValidationError('Origin and destination must be different.');
+          return;
+        }
+      } else {
+        // For hotels and cars, only check destination
+        if (!formData.destination.trim()) {
+          setValidationError('Enter a destination.');
+          return;
+        }
       }
-      if (normalizeCityName(formData.origin) === normalizeCityName(formData.destination)) {
-        setValidationError('Origin and destination must be different.');
-        return;
-      }
+
       if (!formData.departure_date) {
         setValidationError('Select a departure date.');
         return;

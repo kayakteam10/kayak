@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './SeatMap.css';
 
-const SeatMap = ({ flightId, passengerCount, onSeatsSelected }) => {
+const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) => {
     const [seats, setSeats] = useState([]);
     const [selectedSeats, setSelectedSeats] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -24,31 +24,45 @@ const SeatMap = ({ flightId, passengerCount, onSeatsSelected }) => {
         }
     };
 
-    const handleSeatClick = (seatNumber, isAvailable, isTaken) => {
+    useEffect(() => {
+        if (initialSeats && initialSeats.length > 0) {
+            // Handle both array of strings and array of objects
+            const seatNumbers = initialSeats.map(s => typeof s === 'string' ? s : s.seatNumber);
+            setSelectedSeats(seatNumbers);
+        }
+    }, [initialSeats]);
+
+    const handleSeatClick = (seatNumber, isAvailable, isTaken, priceModifier) => {
         if (isTaken) return;
 
+        let newSelected;
         if (selectedSeats.includes(seatNumber)) {
             // Deselect
-            const newSelected = selectedSeats.filter(s => s !== seatNumber);
-            setSelectedSeats(newSelected);
-            const newPrice = seats
-                .filter(seat => newSelected.includes(seat.seat_number))
-                .reduce((sum, seat) => sum + parseFloat(seat.price_modifier || 0), 0);
-            onSeatsSelected(newSelected, newPrice);
+            newSelected = selectedSeats.filter(s => s !== seatNumber);
         } else {
             // Select
             if (selectedSeats.length >= passengerCount) {
                 setError(`You can only select ${passengerCount} seat(s)`);
                 return;
             }
-            const newSelected = [...selectedSeats, seatNumber];
-            setSelectedSeats(newSelected);
-            const newPrice = seats
-                .filter(seat => newSelected.includes(seat.seat_number))
-                .reduce((sum, seat) => sum + parseFloat(seat.price_modifier || 0), 0);
-            onSeatsSelected(newSelected, newPrice);
-            setError('');
+            newSelected = [...selectedSeats, seatNumber];
         }
+
+        setSelectedSeats(newSelected);
+        setError('');
+
+        // Calculate total price and create seat objects
+        const selectedSeatObjects = seats
+            .filter(seat => newSelected.includes(seat.seat_number))
+            .map(seat => ({
+                seatNumber: seat.seat_number,
+                price: parseFloat(seat.price_modifier || 0),
+                type: seat.seat_type
+            }));
+
+        const newPrice = selectedSeatObjects.reduce((sum, seat) => sum + seat.price, 0);
+
+        onSeatsSelected(selectedSeatObjects, newPrice);
     };
 
     const getSeatPrice = () => {
@@ -83,7 +97,7 @@ const SeatMap = ({ flightId, passengerCount, onSeatsSelected }) => {
             <button
                 key={seat.seat_number}
                 className={className}
-                onClick={() => handleSeatClick(seat.seat_number, seat.is_available, isTaken)}
+                onClick={() => handleSeatClick(seat.seat_number, seat.is_available, isTaken, seat.price_modifier)}
                 disabled={isTaken}
                 title={`${seat.seat_number}${isPremium ? ' (Premium +$' + seat.price_modifier + ')' : ''}`}
             >

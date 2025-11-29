@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { flightsAPI, hotelsAPI, carsAPI, bookingsAPI, authAPI } from '../services/api';
 import { FaPlane, FaHotel, FaCar, FaCheckCircle, FaArrowRight } from 'react-icons/fa';
 import SeatMap from '../components/SeatMap';
@@ -8,6 +8,7 @@ import './BookingPage.css';
 function BookingPage() {
   const { type, id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
@@ -33,6 +34,22 @@ function BookingPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [useNewCard, setUseNewCard] = useState(false);
 
+  // Multi-passenger support
+  const [passengers, setPassengers] = useState([{
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    ssn: '',
+    passengerType: 'adult'
+  }]);
+  const [passengerCount, setPassengerCount] = useState(1);
+
+  // Multi-leg flight support (round-trip and multi-city)
+  const [flightLegs, setFlightLegs] = useState([]);
+  const [currentLegIndex, setCurrentLegIndex] = useState(0);
+  const [legSeats, setLegSeats] = useState({}); // { 0: [...seats], 1: [...seats] }
+
   // Fetch user profile and auto-populate data
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -41,18 +58,18 @@ function BookingPage() {
         if (token) {
           const response = await authAPI.me();
           const userData = response.data;
-          
+
           // Check if SSN or phone is missing
           if (!userData.ssn || !userData.phone) {
             const missingFields = [];
             if (!userData.ssn) missingFields.push('SSN');
             if (!userData.phone) missingFields.push('Phone Number');
-            
+
             alert(`Please complete your profile before booking!\n\nMissing required fields: ${missingFields.join(', ')}\n\nYou will be redirected to Profile Settings.`);
             navigate('/profile?tab=profile');
             return;
           }
-          
+
           // Get saved payment methods from localStorage (since they're not in backend yet)
           const savedPayments = localStorage.getItem('savedPaymentMethods');
           let paymentMethods = [];
@@ -66,16 +83,16 @@ function BookingPage() {
               console.error('Error parsing saved payments:', e);
             }
           }
-          
+
           // Find first card payment method
           const firstCard = paymentMethods.find(p => p.paymentType === 'card');
-          
+
           // If cards exist, don't auto-populate (let user choose)
           // If no cards, set useNewCard to true
           if (paymentMethods.length === 0) {
             setUseNewCard(true);
           }
-          
+
           // Auto-populate booking data
           setBookingData(prevData => ({
             ...prevData,
@@ -95,8 +112,62 @@ function BookingPage() {
         console.error('Failed to load user profile:', err);
       }
     };
-    
+
     fetchUserProfile();
+  }, []);
+
+  // Initialize passengers from URL parameters
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const totalPassengers = parseInt(searchParams.get('passengers')) || 1;
+    const adults = parseInt(searchParams.get('adults')) || totalPassengers;
+    const children = parseInt(searchParams.get('children')) || 0;
+    const infants = parseInt(searchParams.get('infants')) || 0;
+
+    setPassengerCount(totalPassengers);
+
+    // Initialize passengers array based on breakdown
+    const passengersArray = [];
+
+    // Add adults
+    for (let i = 0; i < adults; i++) {
+      passengersArray.push({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        ssn: '',
+        passengerType: 'adult'
+      });
+    }
+
+    // Add children
+    for (let i = 0; i < children; i++) {
+      passengersArray.push({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        ssn: '',
+        passengerType: 'child'
+      });
+    }
+
+    // Add infants
+    for (let i = 0; i < infants; i++) {
+      passengersArray.push({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        ssn: '',
+        passengerType: 'infant'
+      });
+    }
+
+    if (passengersArray.length > 0) {
+      setPassengers(passengersArray);
+    }
   }, []);
 
   useEffect(() => {
@@ -110,7 +181,111 @@ function BookingPage() {
         } else {
           response = await carsAPI.getDetails(id);
         }
-        setItem(response.data);
+
+        const itemData = response.data;
+        setItem(itemData);
+
+        // For flights, detect if it's round-trip or multi-city
+        if (type === 'flights') {
+          const legs = [];
+
+          // Check URL parameters for trip type
+          const searchParams = new URLSearchParams(window.location.search);
+          const tripType = searchParams.get('tripType') || searchParams.get('type');
+          const isRoundTrip = tripType === 'roundtrip' || tripType === 'round-trip';
+          const isMultiCity = tripType === 'multicity';
+
+          console.log('BookingPage Debug:', { tripType, isMultiCity, state: location.state, itemData });
+
+          // Check if it's a multi-city flight
+          if (isMultiCity || itemData.is_multicity || itemData.legs || location.state?.isMultiCity || (location.state?.legs && location.state.legs.length > 1)) {
+            // Multi-city flight
+            // Prioritize legs from state as they are passed from search results
+            const multiCityLegs = (location.state?.legs && location.state.legs.length > 0)
+              ? location.state.legs
+              : (itemData.legs || []);
+
+            console.log('MultiCity Legs:', multiCityLegs);
+
+            multiCityLegs.forEach((leg, index) => {
+              legs.push({
+                id: leg.id,
+                flightNumber: leg.flight_number || leg.flightNumber,
+                airline: leg.airline,
+                from: leg.departure_city || leg.from || leg.origin,
+                to: leg.arrival_city || leg.to || leg.destination,
+                departureTime: leg.departure_time || leg.departureTime,
+                arrivalTime: leg.arrival_time || leg.arrivalTime,
+                legType: `Leg ${index + 1}`
+              });
+            });
+          }
+          // Check if it's a round-trip flight (from backend or URL)
+          else if (itemData.is_roundtrip || itemData.return_flight || isRoundTrip) {
+            // Outbound leg
+            legs.push({
+              id: itemData.id,
+              flightNumber: itemData.flight_number,
+              airline: itemData.airline,
+              from: itemData.departure_city || itemData.origin || itemData.from,
+              to: itemData.arrival_city || itemData.destination || itemData.to,
+              departureTime: itemData.departure_time,
+              arrivalTime: itemData.arrival_time,
+              legType: 'Outbound'
+            });
+
+            // Return leg - use backend data if available, otherwise check state, otherwise create mock
+            const returnFlight = itemData.return_flight || location.state?.returnFlight;
+
+            if (returnFlight) {
+              legs.push({
+                id: returnFlight.id,
+                flightNumber: returnFlight.flight_number || returnFlight.flightNumber,
+                airline: returnFlight.airline,
+                from: returnFlight.departure_city || returnFlight.from || returnFlight.origin,
+                to: returnFlight.arrival_city || returnFlight.to || returnFlight.destination,
+                departureTime: returnFlight.departure_time || returnFlight.departureTime,
+                arrivalTime: returnFlight.arrival_time || returnFlight.arrivalTime,
+                legType: 'Return'
+              });
+            } else if (isRoundTrip) {
+              // Create mock return flight (swap origin/destination)
+              legs.push({
+                id: itemData.id, // Use same flight ID for now
+                flightNumber: itemData.flight_number,
+                airline: itemData.airline,
+                from: itemData.arrival_city || itemData.destination, // Swapped
+                to: itemData.departure_city || itemData.origin, // Swapped
+                departureTime: itemData.arrival_time,
+                arrivalTime: itemData.departure_time,
+                legType: 'Return'
+              });
+            }
+          }
+          // One-way flight
+          else {
+            legs.push({
+              id: itemData.id,
+              flightNumber: itemData.flight_number,
+              airline: itemData.airline,
+              from: itemData.departure_city,
+              to: itemData.arrival_city,
+              departureTime: itemData.departure_time,
+              arrivalTime: itemData.arrival_time,
+              legType: 'Flight'
+            });
+          }
+
+          console.log('🛫 Flight legs detected:', legs);
+          setFlightLegs(legs);
+
+          // Initialize leg seats object
+          const initialLegSeats = {};
+          legs.forEach((_, index) => {
+            initialLegSeats[index] = [];
+          });
+          setLegSeats(initialLegSeats);
+        }
       } catch (err) {
         console.error('Failed to load item');
       } finally {
@@ -120,27 +295,51 @@ function BookingPage() {
     fetchItem();
   }, [type, id]);
 
+  // Helper function to update a specific passenger
+  const updatePassenger = (index, field, value) => {
+    setPassengers(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+    // Clear error for this field
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[`passenger${index}_${field}`];
+      return newErrors;
+    });
+  };
+
   const validateStep1 = () => {
     const newErrors = {};
-    if (!bookingData.firstName) newErrors.firstName = 'First name is required';
-    if (!bookingData.lastName) newErrors.lastName = 'Last name is required';
-    if (!bookingData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(bookingData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-    if (!bookingData.phone) {
-      newErrors.phone = 'Phone is required';
-    } else if (!/^\d{3}-\d{3}-\d{4}$/.test(bookingData.phone)) {
-      newErrors.phone = 'Phone must be in format: xxx-xxx-xxxx';
-    } else if (bookingData.phone.replace(/-/g, '') === '0000000000') {
-      newErrors.phone = 'Phone number cannot be all zeros';
-    }
-    if (!bookingData.ssn) {
-      newErrors.ssn = 'SSN is required';
-    } else if (!/^\d{3}-\d{2}-\d{4}$/.test(bookingData.ssn)) {
-      newErrors.ssn = 'SSN must be in format ###-##-####';
-    }
+
+    // Validate all passengers
+    passengers.forEach((passenger, index) => {
+      if (!passenger.firstName) {
+        newErrors[`passenger${index}_firstName`] = 'First name is required';
+      }
+      if (!passenger.lastName) {
+        newErrors[`passenger${index}_lastName`] = 'Last name is required';
+      }
+      if (!passenger.email) {
+        newErrors[`passenger${index}_email`] = 'Email is required';
+      } else if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(passenger.email)) {
+        newErrors[`passenger${index}_email`] = 'Please enter a valid email address';
+      }
+      if (!passenger.phone) {
+        newErrors[`passenger${index}_phone`] = 'Phone is required';
+      } else if (!/^\d{3}-\d{3}-\d{4}$/.test(passenger.phone)) {
+        newErrors[`passenger${index}_phone`] = 'Phone must be in format: xxx-xxx-xxxx';
+      } else if (passenger.phone.replace(/-/g, '') === '0000000000') {
+        newErrors[`passenger${index}_phone`] = 'Phone number cannot be all zeros';
+      }
+      if (!passenger.ssn) {
+        newErrors[`passenger${index}_ssn`] = 'SSN is required';
+      } else if (!/^\d{3}-\d{2}-\d{4}$/.test(passenger.ssn)) {
+        newErrors[`passenger${index}_ssn`] = 'SSN must be in format ###-##-####';
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -261,10 +460,10 @@ function BookingPage() {
       if (savedPayments) {
         paymentMethods = JSON.parse(savedPayments);
       }
-      
+
       const [month, year] = bookingData.expiryDate.split('/');
       const fullYear = '20' + year;
-      
+
       const newPayment = {
         paymentType: 'card',
         creditCardNumber: bookingData.cardNumber.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim(),
@@ -277,13 +476,13 @@ function BookingPage() {
         billingState: bookingData.state,
         billingZip: bookingData.zipCode
       };
-      
+
       // Check if this card already exists (compare last 4 digits)
       const last4 = bookingData.cardNumber.replace(/\s/g, '').slice(-4);
-      const existingIndex = paymentMethods.findIndex(p => 
+      const existingIndex = paymentMethods.findIndex(p =>
         p.paymentType === 'card' && p.creditCardNumber.replace(/\s/g, '').slice(-4) === last4
       );
-      
+
       if (existingIndex >= 0) {
         // Update existing card
         paymentMethods[existingIndex] = newPayment;
@@ -291,7 +490,7 @@ function BookingPage() {
         // Add new card
         paymentMethods.push(newPayment);
       }
-      
+
       localStorage.setItem('savedPaymentMethods', JSON.stringify(paymentMethods));
     } catch (e) {
       console.error('Error saving payment method:', e);
@@ -305,19 +504,59 @@ function BookingPage() {
       return;
     }
 
+    // Validate seat selection for flights
+    if (type === 'flights') {
+      // For multi-leg flights, validate all legs have seats
+      if (flightLegs.length > 1) {
+        for (let i = 0; i < flightLegs.length; i++) {
+          if (!legSeats[i] || legSeats[i].length !== passengers.length) {
+            alert(`Please select ${passengers.length} seat${passengers.length > 1 ? 's' : ''} for ${flightLegs[i].legType} flight`);
+            return;
+          }
+        }
+      } else {
+        // Single leg flight
+        if (!legSeats[0] || legSeats[0].length !== passengers.length) {
+          alert(`Please select ${passengers.length} seat${passengers.length > 1 ? 's' : ''} for all passengers`);
+          return;
+        }
+      }
+    }
+
     try {
       let response;
+
+      // Prepare seat assignments for all legs
+      const allSeats = [];
+      Object.values(legSeats).forEach(seats => {
+        allSeats.push(...seats);
+      });
+
       const bookingPayload = {
         // Use correct key names per type
         ...(type === 'flights' ? { flight_id: parseInt(id) } : {}),
         ...(type === 'hotels' ? { hotel_id: parseInt(id) } : {}),
         ...(type === 'cars' ? { car_id: parseInt(id) } : {}),
-        passenger_details: {
-          firstName: bookingData.firstName,
-          lastName: bookingData.lastName,
-          email: bookingData.email,
-          phone: bookingData.phone
-        },
+        passengers: passengers.map((p, index) => {
+          // For multi-leg flights, assign seats from each leg
+          const passengerSeats = {};
+          flightLegs.forEach((leg, legIndex) => {
+            if (legSeats[legIndex] && legSeats[legIndex][index]) {
+              passengerSeats[`leg${legIndex}`] = legSeats[legIndex][index].seatNumber;
+            }
+          });
+
+          return {
+            firstName: p.firstName,
+            lastName: p.lastName,
+            email: p.email,
+            phone: p.phone,
+            ssn: p.ssn,
+            passengerType: p.passengerType,
+            seatNumber: legSeats[0]?.[index]?.seatNumber || null, // Primary seat (for backward compatibility)
+            seats: passengerSeats // All seats across legs
+          };
+        }),
         payment_details: {
           cardNumber: bookingData.cardNumber,
           expiryDate: bookingData.expiryDate,
@@ -328,9 +567,10 @@ function BookingPage() {
         }
       };
 
-      // Add selected seats for flights
-      if (type === 'flights' && selectedSeats.length > 0) {
-        bookingPayload.selected_seats = selectedSeats;
+      // Add selected seats for flights (all legs combined)
+      if (type === 'flights' && allSeats.length > 0) {
+        bookingPayload.selected_seats = allSeats;
+        bookingPayload.leg_seats = legSeats; // Include leg-specific seats
       }
 
       if (type === 'flights') {
@@ -343,10 +583,10 @@ function BookingPage() {
 
       // Extract booking ID from response (flights API returns response.data.booking.id)
       const bookingId = response.data.booking?.id || response.data.booking_id || response.data.id;
-      
+
       // Save payment method to user's profile
       savePaymentMethod();
-      
+
       navigate(`/booking/confirmation/${type}/${bookingId}`);
     } catch (err) {
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
@@ -422,108 +662,190 @@ function BookingPage() {
             {currentStep === 1 && (
               <div className="form-step">
                 <h2>Passenger Information</h2>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>First Name *</label>
-                    <input
-                      type="text"
-                      value={bookingData.firstName}
-                      onChange={(e) => setBookingData({ ...bookingData, firstName: e.target.value })}
-                      className={errors.firstName ? 'error' : ''}
-                    />
-                    {errors.firstName && <span className="error-text">{errors.firstName}</span>}
+                <p className="passenger-count-info">Please provide details for all {passengers.length} passenger{passengers.length > 1 ? 's' : ''}</p>
+
+                {passengers.map((passenger, index) => (
+                  <div key={index} className="passenger-form-section">
+                    <h3>Passenger {index + 1}</h3>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>First Name *</label>
+                        <input
+                          type="text"
+                          value={passenger.firstName}
+                          onChange={(e) => updatePassenger(index, 'firstName', e.target.value)}
+                          className={errors[`passenger${index}_firstName`] ? 'error' : ''}
+                        />
+                        {errors[`passenger${index}_firstName`] && <span className="error-text">{errors[`passenger${index}_firstName`]}</span>}
+                      </div>
+                      <div className="form-group">
+                        <label>Last Name *</label>
+                        <input
+                          type="text"
+                          value={passenger.lastName}
+                          onChange={(e) => updatePassenger(index, 'lastName', e.target.value)}
+                          className={errors[`passenger${index}_lastName`] ? 'error' : ''}
+                        />
+                        {errors[`passenger${index}_lastName`] && <span className="error-text">{errors[`passenger${index}_lastName`]}</span>}
+                      </div>
+                      <div className="form-group">
+                        <label>Email *</label>
+                        <input
+                          type="email"
+                          value={passenger.email}
+                          onChange={(e) => updatePassenger(index, 'email', e.target.value)}
+                          placeholder="example@email.com"
+                          className={errors[`passenger${index}_email`] ? 'error' : ''}
+                        />
+                        {errors[`passenger${index}_email`] && <span className="error-text">{errors[`passenger${index}_email`]}</span>}
+                      </div>
+                      <div className="form-group">
+                        <label>Phone *</label>
+                        <input
+                          type="tel"
+                          value={passenger.phone}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(/\D/g, '');
+                            if (value.length >= 6) {
+                              value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6, 10);
+                            } else if (value.length >= 3) {
+                              value = value.slice(0, 3) + '-' + value.slice(3, 6);
+                            }
+                            updatePassenger(index, 'phone', value);
+                          }}
+                          placeholder="123-456-7890"
+                          maxLength="12"
+                          className={errors[`passenger${index}_phone`] ? 'error' : ''}
+                        />
+                        {errors[`passenger${index}_phone`] && <span className="error-text">{errors[`passenger${index}_phone`]}</span>}
+                      </div>
+                      <div className="form-group">
+                        <label>SSN *</label>
+                        <input
+                          type="text"
+                          value={passenger.ssn}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(/\D/g, '');
+                            if (value.length >= 5) {
+                              value = value.slice(0, 3) + '-' + value.slice(3, 5) + '-' + value.slice(5, 9);
+                            } else if (value.length >= 3) {
+                              value = value.slice(0, 3) + '-' + value.slice(3, 5);
+                            }
+                            updatePassenger(index, 'ssn', value);
+                          }}
+                          placeholder="123-45-6789"
+                          maxLength="11"
+                          className={errors[`passenger${index}_ssn`] ? 'error' : ''}
+                        />
+                        {errors[`passenger${index}_ssn`] && <span className="error-text">{errors[`passenger${index}_ssn`]}</span>}
+                      </div>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Last Name *</label>
-                    <input
-                      type="text"
-                      value={bookingData.lastName}
-                      onChange={(e) => setBookingData({ ...bookingData, lastName: e.target.value })}
-                      className={errors.lastName ? 'error' : ''}
-                    />
-                    {errors.lastName && <span className="error-text">{errors.lastName}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>Email *</label>
-                    <input
-                      type="email"
-                      value={bookingData.email}
-                      onChange={(e) => setBookingData({ ...bookingData, email: e.target.value })}
-                      placeholder="example@email.com"
-                      className={errors.email ? 'error' : ''}
-                    />
-                    {errors.email && <span className="error-text">{errors.email}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>Phone *</label>
-                    <input
-                      type="tel"
-                      value={bookingData.phone}
-                      onChange={(e) => {
-                        let value = e.target.value.replace(/\D/g, '');
-                        if (value.length >= 6) {
-                          value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6, 10);
-                        } else if (value.length >= 3) {
-                          value = value.slice(0, 3) + '-' + value.slice(3, 6);
-                        }
-                        setBookingData({ ...bookingData, phone: value });
-                      }}
-                      placeholder="123-456-7890"
-                      maxLength="12"
-                      className={errors.phone ? 'error' : ''}
-                    />
-                    {errors.phone && <span className="error-text">{errors.phone}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>SSN *</label>
-                    <input
-                      type="text"
-                      value={bookingData.ssn}
-                      onChange={(e) => {
-                        let value = e.target.value.replace(/\D/g, '');
-                        if (value.length >= 5) {
-                          value = value.slice(0, 3) + '-' + value.slice(3, 5) + '-' + value.slice(5, 9);
-                        } else if (value.length >= 3) {
-                          value = value.slice(0, 3) + '-' + value.slice(3, 5);
-                        }
-                        setBookingData({ ...bookingData, ssn: value });
-                      }}
-                      placeholder="123-45-6789"
-                      maxLength="11"
-                      className={errors.ssn ? 'error' : ''}
-                    />
-                    {errors.ssn && <span className="error-text">{errors.ssn}</span>}
-                  </div>
-                </div>
+                ))}
               </div>
             )}
 
             {currentStep === 2 && type === 'flights' && (
               <div className="form-step">
                 <h2>Select Your Seats</h2>
+
+                {/* Show current leg info if multiple legs */}
+                {flightLegs.length > 1 && (
+                  <div className="leg-progress">
+                    <p className="leg-info">
+                      Selecting seats for <strong>{flightLegs[currentLegIndex]?.legType}</strong> Flight
+                      ({currentLegIndex + 1} of {flightLegs.length})
+                    </p>
+                    <p className="route-info">
+                      {flightLegs[currentLegIndex]?.airline} {flightLegs[currentLegIndex]?.flightNumber} •
+                      {flightLegs[currentLegIndex]?.from} → {flightLegs[currentLegIndex]?.to}
+                    </p>
+                  </div>
+                )}
+
+                <p className="seat-selection-info">
+                  Please select {passengers.length} seat{passengers.length > 1 ? 's' : ''} for your passengers
+                </p>
+
                 <SeatMap
-                  flightId={id}
-                  passengerCount={1}
+                  key={`leg-${currentLegIndex}-${flightLegs[currentLegIndex]?.id}`}
+                  flightId={flightLegs[currentLegIndex]?.id || id}
+                  passengerCount={passengers.length}
                   onSeatsSelected={(seats, price) => {
-                    setSelectedSeats(seats);
-                    setSeatPrice(price || 0);
+                    // Add flight ID to each seat object
+                    const seatsWithFlightId = seats.map(seat => ({
+                      ...seat,
+                      flightId: flightLegs[currentLegIndex]?.id || id
+                    }));
+
+                    // Store seats for current leg
+                    setLegSeats(prev => ({
+                      ...prev,
+                      [currentLegIndex]: seatsWithFlightId
+                    }));
+
+                    // Update total seat price (sum of all legs)
+                    const totalSeatPrice = Object.values({
+                      ...legSeats,
+                      [currentLegIndex]: seatsWithFlightId
+                    }).reduce((sum, legSeatsArr) => {
+                      return sum + (legSeatsArr.reduce((s, seat) => s + (seat.price || 0), 0));
+                    }, 0);
+                    setSeatPrice(totalSeatPrice);
                   }}
+                  initialSeats={legSeats[currentLegIndex] || []}
                 />
+
+                {/* Navigation buttons for multiple legs */}
+                {flightLegs.length > 1 && (
+                  <div className="leg-navigation">
+                    {currentLegIndex > 0 && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setCurrentLegIndex(prev => prev - 1)}
+                      >
+                        ← Previous Leg
+                      </button>
+                    )}
+
+                    {currentLegIndex < flightLegs.length - 1 ? (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => {
+                          // Check if seats are selected for current leg
+                          if (!legSeats[currentLegIndex] || legSeats[currentLegIndex].length !== passengers.length) {
+                            alert(`Please select ${passengers.length} seat${passengers.length > 1 ? 's' : ''} for this leg`);
+                            return;
+                          }
+                          setCurrentLegIndex(prev => prev + 1);
+                        }}
+                      >
+                        Next Leg →
+                      </button>
+                    ) : (
+                      <div className="seats-complete-message">
+                        <p>✓ All legs configured. Click Continue below to proceed to payment.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {currentStep === (type === 'flights' ? 3 : 2) && (
               <div className="form-step">
                 <h2>Payment Information</h2>
-                
+
                 {/* Saved Payment Methods */}
                 {savedPaymentMethods.length > 0 && (
                   <div className="saved-cards-section">
                     <h3>Select a Saved Card</h3>
                     <div className="saved-cards-grid">
                       {savedPaymentMethods.map((card, index) => (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className={`saved-card-item ${selectedPaymentMethod === index ? 'selected' : ''}`}
                           onClick={() => handleSelectSavedCard(card, index)}
                         >
@@ -547,9 +869,9 @@ function BookingPage() {
                           )}
                         </div>
                       ))}
-                      
+
                       {/* Use New Card Option */}
-                      <div 
+                      <div
                         className={`saved-card-item new-card ${useNewCard ? 'selected' : ''}`}
                         onClick={handleUseNewCard}
                       >
@@ -761,54 +1083,123 @@ function BookingPage() {
             </div>
           </div>
 
+          {/* Booking Summary Sidebar */}
           <div className="booking-summary-section">
             <div className="booking-summary">
               <h3>Booking Summary</h3>
+              {/* Static Booking Summary */}
               <div className="summary-item">
-                <div className="summary-icon">{getTypeIcon()}</div>
-                <div className="summary-content">
-                  {type === 'flights' && (
-                    <>
-                      <h4>{item.airline} {item.flight_number}</h4>
-                      <p>{item.departure_city} → {item.arrival_city}</p>
-                      <p className="summary-time">{item.departure_time?.slice(0, 5)} - {item.arrival_time?.slice(0, 5)}</p>
-                    </>
-                  )}
-                  {type === 'hotels' && (
-                    <>
-                      <h4>{item.name}</h4>
-                      <p>{item.location}</p>
-                      {item.rating && <p className="summary-rating">⭐ {item.rating}</p>}
-                    </>
-                  )}
-                  {type === 'cars' && (
-                    <>
-                      <h4>{item.model}</h4>
-                      <p>{item.provider || item.brand}</p>
-                      <p className="summary-location">{item.location}</p>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="price-breakdown">
-                <div className="price-row">
-                  <span>Flight Price</span>
-                  <span>${(type === 'flights' ? parsePrice(item.total_price ?? item.price) : getPrice()).toFixed(2)}</span>
-                </div>
-                {type === 'flights' && seatPrice > 0 && (
-                  <div className="price-row">
-                    <span>Seat Selection</span>
-                    <span>${seatPrice.toFixed(2)}</span>
+                {type === 'flights' && (
+                  <div className="summary-details">
+                    {flightLegs.length > 0 ? (
+                      flightLegs.map((leg, index) => (
+                        <div key={index} className={`summary-leg ${index > 0 ? 'mt-4 pt-4' : ''}`} style={{ marginBottom: '16px' }}>
+                          <h4 style={{ fontSize: '1.1em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>✈️</span> {leg.airline} {leg.flightNumber} — <span style={{ color: '#555' }}>{leg.legType === 'Flight' ? 'One-way' : leg.legType}</span>
+                          </h4>
+                          <p style={{ fontSize: '1.1em', fontWeight: 'bold', marginBottom: '4px', marginLeft: '28px' }}>
+                            {leg.from} → {leg.to}
+                          </p>
+                          <p style={{ fontSize: '1.1em', marginLeft: '28px' }}>
+                            {(() => {
+                              if (!leg.departureTime || !leg.arrivalTime) return '';
+                              const depDate = new Date(leg.departureTime).toLocaleDateString();
+                              const arrDate = new Date(leg.arrivalTime).toLocaleDateString();
+                              return depDate === arrDate ? depDate : `${depDate} - ${arrDate}`;
+                            })()}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="summary-leg">
+                        <h4 style={{ fontSize: '1.1em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>✈️</span> {item.airline} {item.flight_number}
+                        </h4>
+                        <p style={{ fontSize: '1.1em', fontWeight: 'bold', marginBottom: '4px', marginLeft: '28px' }}>
+                          {item.departure_city} → {item.arrival_city}
+                        </p>
+                        <p style={{ fontSize: '1.1em', marginLeft: '28px' }}>
+                          {(() => {
+                            if (!item.departure_time || !item.arrival_time) return '';
+                            const depDate = new Date(item.departure_time).toLocaleDateString();
+                            const arrDate = new Date(item.arrival_time).toLocaleDateString();
+                            return depDate === arrDate ? depDate : `${depDate} - ${arrDate}`;
+                          })()}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
+                {type === 'hotels' && (
+                  <div className="summary-details">
+                    <div className="summary-leg">
+                      <h4 style={{ fontSize: '1.1em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>🏨</span> {item.name}
+                      </h4>
+                      <p style={{ fontSize: '1.1em', fontWeight: 'bold', marginBottom: '4px', marginLeft: '28px' }}>
+                        {item.location}
+                      </p>
+                      {item.rating && (
+                        <p style={{ fontSize: '1.1em', marginLeft: '28px', color: '#f5a623' }}>
+                          {'⭐'.repeat(Math.round(item.rating))} ({item.rating})
+                        </p>
+                      )}
+                      <p style={{ fontSize: '1.1em', marginLeft: '28px', marginTop: '8px' }}>
+                        {(() => {
+                          const searchParams = new URLSearchParams(window.location.search);
+                          const checkIn = searchParams.get('checkIn') || searchParams.get('checkin');
+                          const checkOut = searchParams.get('checkOut') || searchParams.get('checkout');
+                          if (!checkIn || !checkOut) return 'Dates not selected';
+                          return `${new Date(checkIn).toLocaleDateString()} - ${new Date(checkOut).toLocaleDateString()}`;
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {type === 'cars' && (
+                  <div className="summary-details">
+                    <div className="summary-leg">
+                      <h4 style={{ fontSize: '1.1em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>🚗</span> {item.brand} {item.model}
+                      </h4>
+                      <p style={{ fontSize: '1.1em', fontWeight: 'bold', marginBottom: '4px', marginLeft: '28px' }}>
+                        {item.provider}
+                      </p>
+                      <p style={{ fontSize: '1.1em', marginLeft: '28px' }}>
+                        📍 {item.location}
+                      </p>
+                      <p style={{ fontSize: '1.1em', marginLeft: '28px', marginTop: '8px' }}>
+                        {(() => {
+                          const searchParams = new URLSearchParams(window.location.search);
+                          const pickup = searchParams.get('pickupDate') || searchParams.get('pickup');
+                          const dropoff = searchParams.get('dropoffDate') || searchParams.get('dropoff');
+                          if (!pickup || !dropoff) return 'Dates not selected';
+                          return `${new Date(pickup).toLocaleDateString()} - ${new Date(dropoff).toLocaleDateString()}`;
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="price-breakdown">
+              <div className="price-row">
+                <span>Flight Price</span>
+                <span>${(type === 'flights' ? parsePrice(item.total_price ?? item.price) : getPrice()).toFixed(2)}</span>
+              </div>
+              {type === 'flights' && seatPrice > 0 && (
                 <div className="price-row">
-                  <span>Taxes & Fees</span>
-                  <span>${(getPrice() * 0.1).toFixed(2)}</span>
+                  <span>Seat Selection</span>
+                  <span>${seatPrice.toFixed(2)}</span>
                 </div>
-                <div className="price-row total">
-                  <span>Total</span>
-                  <span>${(getPrice() * 1.1).toFixed(2)}</span>
-                </div>
+              )}
+              <div className="price-row">
+                <span>Taxes & Fees</span>
+                <span>${(getPrice() * 0.1).toFixed(2)}</span>
+              </div>
+              <div className="price-row total">
+                <span>Total</span>
+                <span>${(getPrice() * 1.1).toFixed(2)}</span>
               </div>
             </div>
           </div>
