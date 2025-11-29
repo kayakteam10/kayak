@@ -107,6 +107,22 @@ function BookingPage() {
             state: userData.state || '',
             zipCode: userData.zipCode || ''
           }));
+
+          // Also auto-populate the first passenger with user data
+          setPassengers(prev => {
+            const updated = [...prev];
+            if (updated.length > 0) {
+              updated[0] = {
+                ...updated[0],
+                firstName: userData.firstName || '',
+                lastName: userData.lastName || '',
+                email: userData.email || '',
+                phone: userData.phone || '',
+                ssn: userData.ssn || ''
+              };
+            }
+            return updated;
+          });
         }
       } catch (err) {
         console.error('Failed to load user profile:', err);
@@ -532,6 +548,14 @@ function BookingPage() {
         allSeats.push(...seats);
       });
 
+      console.log('🔍 Booking Debug:', {
+        type,
+        id,
+        passengersArray: passengers,
+        legSeats,
+        bookingData
+      });
+
       const bookingPayload = {
         // Use correct key names per type
         ...(type === 'flights' ? { flight_id: parseInt(id) } : {}),
@@ -558,11 +582,13 @@ function BookingPage() {
           };
         }),
         payment_details: {
+          cardType: bookingData.cardType,
           cardNumber: bookingData.cardNumber,
           expiryDate: bookingData.expiryDate,
           cvv: bookingData.cvv,
           billingAddress: bookingData.billingAddress,
           city: bookingData.city,
+          state: bookingData.state,
           zipCode: bookingData.zipCode
         }
       };
@@ -572,6 +598,8 @@ function BookingPage() {
         bookingPayload.selected_seats = allSeats;
         bookingPayload.leg_seats = legSeats; // Include leg-specific seats
       }
+
+      console.log('📤 Sending booking payload:', JSON.stringify(bookingPayload, null, 2));
 
       if (type === 'flights') {
         response = await flightsAPI.book(bookingPayload);
@@ -589,11 +617,16 @@ function BookingPage() {
 
       navigate(`/booking/confirmation/${type}/${bookingId}`);
     } catch (err) {
+      console.error('❌ Booking Error:', err);
+      console.error('❌ Error Response:', err.response?.data);
+      console.error('❌ Error Status:', err.response?.status);
+      
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
         alert('Session expired. Please login again.');
         navigate('/login');
       } else {
-        alert(err.response?.data?.error || 'Booking failed');
+        const errorMsg = err.response?.data?.error || err.response?.data?.details || 'Booking failed';
+        alert(`Booking failed: ${errorMsg}`);
       }
     }
   };

@@ -4,6 +4,10 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import SearchResultsPage from './pages/SearchResultsPage';
+import HotelSearchPage from './pages/HotelSearchPage';
+import HotelDetailsPage from './pages/HotelDetailsPage';
+import HotelBookingPage from './pages/HotelBookingPage';
+import HotelConfirmationPage from './pages/HotelConfirmationPage';
 import FlightDetailsPage from './pages/FlightDetailsPage';
 import BookingPage from './pages/BookingPage';
 import BookingConfirmationPage from './pages/BookingConfirmationPage';
@@ -38,6 +42,10 @@ function App() {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/search" element={<SearchResultsPage />} />
+                <Route path="/hotels" element={<HotelSearchPage />} />
+                <Route path="/hotel-details/:id" element={<HotelDetailsPage />} />
+                <Route path="/booking/hotel/:id" element={<HotelBookingPage />} />
+                <Route path="/hotel-confirmation/:id" element={<HotelConfirmationPage />} />
                 <Route path="/flight-details/:id" element={<FlightDetailsPage />} />
                 <Route path="/booking/:type/:id" element={<BookingPage />} />
                 <Route path="/booking/confirmation/:type/:id" element={<BookingConfirmationPage />} />
