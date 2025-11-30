@@ -19,6 +19,11 @@ function LoginPage() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('userName', response.data.user.firstName);
       localStorage.setItem('userRole', response.data.user.role);
+      
+      // Store profile picture if available
+      if (response.data.user.profilePicture) {
+        localStorage.setItem('profilePicture', response.data.user.profilePicture);
+      }
 
       // Store user data including role
       localStorage.setItem('user', JSON.stringify(response.data.user));

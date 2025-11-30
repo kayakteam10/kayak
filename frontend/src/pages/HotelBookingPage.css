@@ -163,6 +163,116 @@
   border-radius: 8px;
 }
 
+/* Card Details Form - New Design */
+.hotel-booking-page .card-details-form {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  padding: 28px;
+  border-radius: 12px;
+  margin-top: 20px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.hotel-booking-page .form-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1a1a1a;
+}
+
+.hotel-booking-page .accepted-cards {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e8e8e8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.hotel-booking-page .accepted-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #555;
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hotel-booking-page .card-brands {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hotel-booking-page .card-brand-logo {
+  opacity: 0.75;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.hotel-booking-page .card-brand-logo:hover {
+  opacity: 1;
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.hotel-booking-page .form-row-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.hotel-booking-page .form-group-full {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.hotel-booking-page .form-group-full label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+}
+
+.hotel-booking-page .form-group-full input,
+.hotel-booking-page .form-group-full select {
+  padding: 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  background: white;
+  width: 100%;
+}
+
+.hotel-booking-page .form-group-full select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+.hotel-booking-page .form-group-full input:focus,
+.hotel-booking-page .form-group-full select:focus {
+  outline: none;
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.hotel-booking-page .form-group-full input.error,
+.hotel-booking-page .form-group-full select.error {
+  border-color: #dc3545;
+}
+
 .hotel-booking-page .card-logos {
   display: flex;
   gap: 15px;
@@ -575,3 +685,130 @@
   }
 }
 
+/* Saved Payment Methods Styles */
+.hotel-booking-page .saved-cards-section {
+  margin-bottom: 24px;
+}
+
+.hotel-booking-page .payment-method-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hotel-booking-page .payment-radio-option {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  background: white;
+}
+
+.hotel-booking-page .payment-radio-option:hover {
+  border-color: #FF6B35;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
+  transform: translateY(-2px);
+}
+
+.hotel-booking-page .payment-radio-option.selected {
+  border-color: #FF6B35;
+  background: linear-gradient(135deg, #fff9f7 0%, #fff5f0 100%);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+}
+
+.hotel-booking-page .payment-radio-option input[type="radio"] {
+  display: none;
+}
+
+.hotel-booking-page .radio-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.hotel-booking-page .card-brand-icon-box {
+  flex-shrink: 0;
+}
+
+.hotel-booking-page .brand-logo {
+  display: block;
+}
+
+.hotel-booking-page .card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hotel-booking-page .card-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.hotel-booking-page .card-label-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hotel-booking-page .card-mini-logo {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.hotel-booking-page .card-type-text {
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.hotel-booking-page .card-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.hotel-booking-page .card-ending {
+  color: #666;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+}
+
+.hotel-booking-page .radio-check {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  background: #FF6B35;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.hotel-booking-page .add-new-card-option {
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.hotel-booking-page .add-new-card-option:hover {
+  background: linear-gradient(135deg, #fff9f7 0%, #fff5f0 100%);
+}
+
+.hotel-booking-page .new-card-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

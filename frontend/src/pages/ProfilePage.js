@@ -67,6 +67,7 @@ function ProfilePage() {
   const [billings, setBillings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('userRole') === 'admin' ? 'profile' : 'bookings');
+  const [bookingFilter, setBookingFilter] = useState('all'); // 'all', 'confirmed', 'pending', 'cancelled'
   const [profile, setProfile] = useState({
     firstName: '',
     lastName: '',
@@ -212,7 +213,10 @@ function ProfilePage() {
 
     try {
       await bookingsAPI.cancel(id);
-      setBookings(bookings.filter(b => b.id !== id));
+      // Update the booking status in the state instead of removing it
+      setBookings(bookings.map(b => 
+        b.id === id ? { ...b, status: 'cancelled' } : b
+      ));
       alert('Booking cancelled successfully');
     } catch (err) {
       alert('Failed to cancel booking');
@@ -457,6 +461,16 @@ function ProfilePage() {
     }
   };
 
+  const handleStatClick = (status) => {
+    setActiveTab('bookings');
+    setBookingFilter(status);
+  };
+
+  const getFilteredBookings = () => {
+    if (bookingFilter === 'all') return bookings;
+    return bookings.filter(b => b.status === bookingFilter);
+  };
+
   if (loading) return <div className="profile-loading">Loading your bookings...</div>;
 
   return (
@@ -499,19 +513,19 @@ function ProfilePage() {
             <p className="profile-email">{profile.email}</p>
             {userRole !== 'admin' && (
               <div className="profile-stats">
-                <div className="profile-stat">
+                <div className="profile-stat stat-clickable" onClick={() => handleStatClick('all')}>
                   <span className="stat-value">{bookings.length}</span>
-                  <span className="stat-label">Bookings</span>
+                  <span className="stat-label">Total Bookings</span>
                 </div>
-                <div className="profile-stat">
+                <div className="profile-stat stat-clickable stat-confirmed" onClick={() => handleStatClick('confirmed')}>
                   <span className="stat-value">{bookings.filter(b => b.status === 'confirmed').length}</span>
                   <span className="stat-label">Confirmed</span>
                 </div>
-                <div className="profile-stat">
+                <div className="profile-stat stat-clickable stat-pending" onClick={() => handleStatClick('pending')}>
                   <span className="stat-value">{bookings.filter(b => b.status === 'pending').length}</span>
                   <span className="stat-label">Pending</span>
                 </div>
-                <div className="profile-stat">
+                <div className="profile-stat stat-clickable stat-cancelled" onClick={() => handleStatClick('cancelled')}>
                   <span className="stat-value">{bookings.filter(b => b.status === 'cancelled').length}</span>
                   <span className="stat-label">Cancelled</span>
                 </div>
@@ -528,12 +542,6 @@ function ProfilePage() {
                 onClick={() => setActiveTab('bookings')}
               >
                 My Bookings ({bookings.length})
-              </button>
-              <button 
-                className={`tab ${activeTab === 'billing' ? 'active' : ''}`}
-                onClick={() => setActiveTab('billing')}
-              >
-                Billing & Payments ({billings.length})
               </button>
               <button
                 className={`tab ${activeTab === 'reviews' ? 'active' : ''}`}
@@ -561,6 +569,12 @@ function ProfilePage() {
 
         {activeTab === 'bookings' && (
           <div className="bookings-section">
+            {bookingFilter !== 'all' && (
+              <div className="filter-indicator">
+                <span>Showing: <strong>{bookingFilter.charAt(0).toUpperCase() + bookingFilter.slice(1)}</strong> bookings</span>
+                <button className="clear-filter-btn" onClick={() => setBookingFilter('all')}>Show All</button>
+              </div>
+            )}
             {bookings.length === 0 ? (
               <div className="no-bookings">
                 <div className="empty-icon">📋</div>
@@ -570,9 +584,18 @@ function ProfilePage() {
                   Start Searching
                 </button>
               </div>
+            ) : getFilteredBookings().length === 0 ? (
+              <div className="no-bookings">
+                <div className="empty-icon">🔍</div>
+                <h3>No {bookingFilter} bookings</h3>
+                <p>You don't have any {bookingFilter} bookings at the moment.</p>
+                <button onClick={() => setBookingFilter('all')} className="explore-btn">
+                  Show All Bookings
+                </button>
+              </div>
             ) : (
               <div className="bookings-list">
-                {bookings.map((booking) => (
+                {getFilteredBookings().map((booking) => (
                   <div key={booking.id} className="booking-card">
                     <div className="booking-header">
                       <div className="booking-type-icon">
@@ -650,153 +673,26 @@ function ProfilePage() {
                               : 'flights';
                           navigate(`/booking/confirmation/${typeSeg}/${booking.id}`);
                         }}
-                        className="view-details-btn"
+                        className="action-btn view-details-btn"
                       >
                         View Details
                       </button>
                       {booking.status === 'confirmed' && !reviews.find(r => r.bookingId === booking.id) && (
                         <button
                           onClick={() => openReviewModal(booking)}
-                          className="review-btn"
+                          className="action-btn review-btn"
                         >
-                          ⭐ Write Review
+                          <FaStar /> Write Review
                         </button>
                       )}
                       {booking.status !== 'cancelled' && (
                         <button
                           onClick={() => handleCancel(booking.id)}
-                          className="cancel-btn"
+                          className="action-btn cancel-btn"
                         >
-                          Cancel Booking
+                          <FaTimes /> Cancel Booking
                         </button>
                       )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'billing' && (
-          <div className="billing-section">
-            {billings.length === 0 ? (
-              <div className="no-billings">
-                <div className="empty-icon">💳</div>
-                <h3>No billing records yet</h3>
-                <p>Your payment history will appear here after you make bookings.</p>
-              </div>
-            ) : (
-              <div className="billings-list">
-                {billings.map((billing) => (
-                  <div key={billing.id} className="billing-card">
-                    <div className="billing-header">
-                      <div className="billing-id-section">
-                        <h3>Invoice #{billing.billing_id}</h3>
-                        <span className="booking-ref">Booking: {billing.booking_reference}</span>
-                      </div>
-                      <div className={`payment-status-badge ${billing.payment_status}`}>
-                        <span>{billing.payment_status?.toUpperCase()}</span>
-                      </div>
-                    </div>
-
-                    <div className="billing-details-grid">
-                      <div className="billing-detail">
-                        <span className="detail-label">Booking Type:</span>
-                        <span className="detail-value booking-type-badge">
-                          {getTypeIcon(billing.booking_type)}
-                          {billing.booking_type?.toUpperCase()}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">Transaction Date:</span>
-                        <span className="detail-value">
-                          {new Date(billing.payment_date || billing.billing_date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">Payment Method:</span>
-                        <span className="detail-value payment-method">
-                          {billing.payment_method === 'credit_card' && '💳 Credit Card'}
-                          {billing.payment_method === 'debit_card' && '💳 Debit Card'}
-                          {billing.payment_method === 'paypal' && '🅿️ PayPal'}
-                          {!['credit_card', 'debit_card', 'paypal'].includes(billing.payment_method) && billing.payment_method}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">Transaction ID:</span>
-                        <span className="detail-value transaction-id">
-                          {billing.transaction_id || 'N/A'}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">Subtotal:</span>
-                        <span className="detail-value">
-                          ${Number(billing.total_amount - (billing.tax_amount || 0)).toFixed(2)}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">Tax:</span>
-                        <span className="detail-value">
-                          ${Number(billing.tax_amount || 0).toFixed(2)}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail total-amount-detail">
-                        <span className="detail-label">Total Amount Paid:</span>
-                        <span className="detail-value total-amount">
-                          ${Number(billing.total_amount).toFixed(2)}
-                        </span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">User ID:</span>
-                        <span className="detail-value">{billing.user_id}</span>
-                      </div>
-
-                      <div className="billing-detail">
-                        <span className="detail-label">Booking ID:</span>
-                        <span className="detail-value">{billing.booking_id}</span>
-                      </div>
-                    </div>
-
-                    {billing.invoice_details && (
-                      <div className="invoice-details-section">
-                        <h4>Invoice Details</h4>
-                        <div className="invoice-breakdown">
-                          {typeof billing.invoice_details === 'string' 
-                            ? <pre>{billing.invoice_details}</pre>
-                            : <pre>{JSON.stringify(billing.invoice_details, null, 2)}</pre>
-                          }
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="billing-actions">
-                      <button className="download-invoice-btn">
-                        📄 Download Invoice
-                      </button>
-                      <button className="view-booking-btn" onClick={() => {
-                        const typeSeg = (billing.booking_type || '').toLowerCase().includes('hotel')
-                          ? 'hotels'
-                          : (billing.booking_type || '').toLowerCase().includes('car')
-                            ? 'cars'
-                            : 'flights';
-                        navigate(`/booking/confirmation/${typeSeg}/${billing.booking_id}`);
-                      }}>
-                        View Booking
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -1049,14 +945,53 @@ function ProfilePage() {
               {savedPaymentMethods.length > 0 && !isEditingPayment ? (
                 /* Display saved payment methods */
                 <div className="saved-payments-list">
-                  {savedPaymentMethods.map((payment, index) => (
-                    <div key={index} className="payment-card-display">
+                  {savedPaymentMethods.map((payment, index) => {
+                    // Determine card gradient class based on card type
+                    const getCardClass = () => {
+                      if (payment.paymentType === 'paypal') return 'card-paypal';
+                      switch(payment.creditCardType) {
+                        case 'Visa': return 'card-visa';
+                        case 'MasterCard': return 'card-mastercard';
+                        case 'American Express': return 'card-amex';
+                        case 'Discover': return 'card-discover';
+                        default: return 'card-default';
+                      }
+                    };
+
+                    return (
+                    <div key={index} className={`payment-card-display ${getCardClass()}`}>
                       {payment.paymentType === 'card' ? (
                         /* Credit/Debit Card Display */
                         <>
                           <div className="payment-card-header">
                             <div className="card-type-badge">
-                              💳 {payment.creditCardType}
+                              {payment.creditCardType === 'Visa' && (
+                                <svg width="40" height="26" viewBox="0 0 40 26" className="card-brand-mini-logo">
+                                  <rect width="40" height="26" rx="3" fill="#1434CB"/>
+                                  <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">VISA</text>
+                                </svg>
+                              )}
+                              {payment.creditCardType === 'MasterCard' && (
+                                <svg width="40" height="26" viewBox="0 0 40 26" className="card-brand-mini-logo">
+                                  <rect width="40" height="26" rx="3" fill="#EB001B"/>
+                                  <circle cx="14" cy="13" r="8" fill="#FF5F00"/>
+                                  <circle cx="26" cy="13" r="8" fill="#F79E1B"/>
+                                </svg>
+                              )}
+                              {payment.creditCardType === 'American Express' && (
+                                <svg width="40" height="26" viewBox="0 0 40 26" className="card-brand-mini-logo">
+                                  <rect width="40" height="26" rx="3" fill="#006FCF"/>
+                                  <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">AMEX</text>
+                                </svg>
+                              )}
+                              {payment.creditCardType === 'Discover' && (
+                                <svg width="40" height="26" viewBox="0 0 40 26" className="card-brand-mini-logo">
+                                  <rect width="40" height="26" rx="3" fill="#FF6000"/>
+                                  <circle cx="12" cy="13" r="6" fill="#FF9900"/>
+                                  <text x="65%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="6" fontWeight="bold">DISCOVER</text>
+                                </svg>
+                              )}
+                              {payment.creditCardType}
                             </div>
                             <div className="payment-card-actions">
                               <button
@@ -1068,7 +1003,10 @@ function ProfilePage() {
                                 }}
                                 title="Edit"
                               >
-                                ✏️
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56262 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
                               </button>
                               <button
                                 className="delete-payment-btn-icon"
@@ -1081,25 +1019,66 @@ function ProfilePage() {
                                 }}
                                 title="Delete"
                               >
-                                🗑️
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <path d="M3 6H5H21" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M10 11V17" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M14 11V17" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
                               </button>
                             </div>
                           </div>
 
                           <div className="payment-details-grid">
-                            <div className="payment-detail-item">
-                              <span className="detail-label">CARD NUMBER</span>
-                              <span className="detail-value">•••• •••• •••• {payment.creditCardNumber.replace(/\s/g, '').slice(-4)}</span>
+                            <div className="payment-detail-item" style={
+                              (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                              ? { background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.2)' } 
+                              : {}
+                            }>
+                              <span className="detail-label" style={
+                                (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                                ? { color: '#ffffff', textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)', fontWeight: '900', opacity: 1 } 
+                                : {}
+                              }>CARD NUMBER</span>
+                              <span className="detail-value" style={
+                                (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                                ? { color: '#ffffff', textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)', fontWeight: '800', fontSize: '20px' } 
+                                : {}
+                              }>•••• •••• •••• {payment.creditCardNumber.replace(/\s/g, '').slice(-4)}</span>
                             </div>
 
-                            <div className="payment-detail-item">
-                              <span className="detail-label">EXPIRY DATE</span>
-                              <span className="detail-value">{payment.expiryMonth}/{payment.expiryYear}</span>
+                            <div className="payment-detail-item" style={
+                              (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                              ? { background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.2)' } 
+                              : {}
+                            }>
+                              <span className="detail-label" style={
+                                (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                                ? { color: '#ffffff', textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)', fontWeight: '900', opacity: 1 } 
+                                : {}
+                              }>EXPIRY DATE</span>
+                              <span className="detail-value" style={
+                                (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                                ? { color: '#ffffff', textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)', fontWeight: '800', fontSize: '20px' } 
+                                : {}
+                              }>{payment.expiryMonth}/{payment.expiryYear}</span>
                             </div>
 
-                            <div className="payment-detail-item full-width">
-                              <span className="detail-label">BILLING ADDRESS</span>
-                              <span className="detail-value">
+                            <div className="payment-detail-item full-width" style={
+                              (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                              ? { background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.2)' } 
+                              : {}
+                            }>
+                              <span className="detail-label" style={
+                                (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                                ? { color: '#ffffff', textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)', fontWeight: '900', opacity: 1 } 
+                                : {}
+                              }>BILLING ADDRESS</span>
+                              <span className="detail-value" style={
+                                (payment.creditCardType === 'MasterCard' || payment.creditCardType === 'Discover') 
+                                ? { color: '#ffffff', textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)', fontWeight: '800', fontSize: '20px' } 
+                                : {}
+                              }>
                                 {payment.billingAddress}<br />
                                 {payment.billingCity}, {payment.billingState} {payment.billingZip}
                               </span>
@@ -1111,7 +1090,9 @@ function ProfilePage() {
                         <>
                           <div className="payment-card-header">
                             <div className="card-type-badge paypal-badge">
-                              💙 PayPal
+                              <svg width="80" height="24" viewBox="0 0 100 32" style={{marginRight: '8px'}}>
+                                <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">PayPal</text>
+                              </svg>
                             </div>
                             <div className="payment-card-actions">
                               <button
@@ -1123,7 +1104,10 @@ function ProfilePage() {
                                 }}
                                 title="Edit"
                               >
-                                ✏️
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56262 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
                               </button>
                               <button
                                 className="delete-payment-btn-icon"
@@ -1136,7 +1120,12 @@ function ProfilePage() {
                                 }}
                                 title="Delete"
                               >
-                                🗑️
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <path d="M3 6H5H21" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M10 11V17" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M14 11V17" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
                               </button>
                             </div>
                           </div>
@@ -1150,7 +1139,8 @@ function ProfilePage() {
                         </>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 /* Editable payment form */
@@ -1169,7 +1159,11 @@ function ProfilePage() {
                       className={`payment-type-btn ${paymentInfo.paymentType === 'paypal' ? 'active' : ''}`}
                       onClick={() => setPaymentInfo({ ...paymentInfo, paymentType: 'paypal' })}
                     >
-                      💙 PayPal
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
+                        <path d="M20.067 8.478c.492.88.556 2.014.3 3.327-.74 3.806-3.276 5.12-6.514 5.12h-.5a.805.805 0 00-.794.68l-.04.22-.63 3.993-.03.17a.804.804 0 01-.794.68H7.72a.483.483 0 01-.477-.558L9.15 7.975a.953.953 0 01.941-.803h4.921c.992 0 1.799.084 2.416.26.155.043.306.092.452.148.153.057.3.12.44.19.14.07.274.145.402.226.126.08.245.166.355.257.485.394.84.945 1.048 1.674.155.539.232 1.143.232 1.808v.277z"/>
+                        <path d="M10.91 8.58a.77.77 0 01.762-.657h4.92c.874 0 1.576.07 2.12.21.492.122.903.298 1.243.534.155.11.293.228.418.356.124.127.232.264.326.41.093.146.17.303.229.47.06.167.104.346.134.537.015.094.026.19.034.288v.062c0 .06.006.12.006.18.003.06.003.12.003.18 0 .12-.006.238-.015.357-.009.118-.027.237-.053.357a5.086 5.086 0 01-.232.973c-.39 1.06-1.08 1.828-2.054 2.29-.488.23-1.062.385-1.716.466-.327.04-.678.06-1.05.06h-.5a.805.805 0 00-.794.68l-.04.22-.63 3.993-.03.17a.804.804 0 01-.794.68H7.72a.483.483 0 01-.477-.558l1.667-13.25z" opacity=".7"/>
+                      </svg>
+                      PayPal
                     </button>
                   </div>
 

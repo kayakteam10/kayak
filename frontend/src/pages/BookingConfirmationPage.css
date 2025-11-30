@@ -202,7 +202,39 @@
 }
 
 @media print {
+  /* Hide header, navigation, and action buttons when printing */
+  header,
+  .header,
+  nav,
   .confirmation-actions {
-    display: none;
+    display: none !important;
+  }
+
+  /* Reset page styling for print */
+  .confirmation-page {
+    padding: 0;
+    background: white;
+    min-height: auto;
+  }
+
+  .confirmation-container {
+    max-width: 100%;
+    padding: 20px;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* Ensure good page breaks */
+  .confirmation-details {
+    page-break-inside: avoid;
+  }
+
+  .detail-card {
+    page-break-inside: avoid;
+  }
+
+  /* Adjust colors for print */
+  body {
+    background: white !important;
   }
 }

@@ -157,6 +157,11 @@ const bookCar = async (req, res) => {
 
     const bookingReference = `CR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    // Calculate base amount and tax (10% for cars)
+    const baseAmount = rental_details.total_price || car.rows[0].price_per_day;
+    const taxAmount = baseAmount * 0.1;
+    const totalAmount = baseAmount + taxAmount;
+    
     const bookingResult = await pool.query(
       `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
        VALUES (?, ?, ?, ?, ?, 'pending')`,

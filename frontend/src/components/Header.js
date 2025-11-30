@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { authAPI } from '../services/api';
 import '../App.css';
 
 function Header() {
@@ -9,6 +10,26 @@ function Header() {
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Fetch user profile data from API if needed
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (token && !localStorage.getItem('profilePicture')) {
+        try {
+          const response = await authAPI.me();
+          if (response.data.profilePicture) {
+            localStorage.setItem('profilePicture', response.data.profilePicture);
+            setProfilePicture(response.data.profilePicture);
+          }
+        } catch (error) {
+          console.error('Failed to fetch user profile:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [isLoggedIn]);
 
   // Update login state when storage changes or login/logout events
   useEffect(() => {
@@ -101,14 +122,14 @@ function Header() {
                           className="dropdown-item"
                           onClick={() => setShowDropdown(false)}
                         >
-                          ⚙️ Admin Panel
+                          Admin Panel
                         </Link>
                         <Link
                           to="/profile?tab=profile"
                           className="dropdown-item"
                           onClick={() => setShowDropdown(false)}
                         >
-                          👤 Profile Settings
+                          Profile Settings
                         </Link>
                         <div className="dropdown-divider"></div>
                         <button
@@ -125,28 +146,28 @@ function Header() {
                           className="dropdown-item"
                           onClick={() => setShowDropdown(false)}
                         >
-                          📋 My Bookings
+                          My Bookings
                         </Link>
                         <Link
                           to="/profile?tab=reviews"
                           className="dropdown-item"
                           onClick={() => setShowDropdown(false)}
                         >
-                          ⭐ My Reviews
+                          My Reviews
                         </Link>
                         <Link
                           to="/profile?tab=profile"
                           className="dropdown-item"
                           onClick={() => setShowDropdown(false)}
                         >
-                          👤 Profile Settings
+                          Profile Settings
                         </Link>
                         <Link
                           to="/profile?tab=payment"
                           className="dropdown-item"
                           onClick={() => setShowDropdown(false)}
                         >
-                          💳 Payment Methods
+                          Payment Methods
                         </Link>
                         <div className="dropdown-divider"></div>
                         <button
