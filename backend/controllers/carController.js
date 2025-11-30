@@ -145,8 +145,23 @@ const getCarDetails = async (req, res) => {
 
 const bookCar = async (req, res) => {
   try {
-    const { car_id, rental_details } = req.body;
+    const { 
+      car_id, 
+      pickup_location, 
+      dropoff_location, 
+      pickup_date, 
+      dropoff_date,
+      pickup_time,
+      dropoff_time,
+      rental_days,
+      total_price
+    } = req.body;
+    
     const userId = req.user ? req.user.userId : null;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User must be logged in to book a car' });
+    }
 
     const carResult = await pool.query('SELECT * FROM cars WHERE id = ?', [car_id]);
     const cars = carResult.rows || carResult || [];
@@ -155,31 +170,68 @@ const bookCar = async (req, res) => {
       return res.status(404).json({ error: 'Car not found' });
     }
 
-    const bookingReference = `CR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const car = cars[0];
+    const bookingReference = `CR-${Date.now().toString().slice(-8)}`;
     
-    // Calculate base amount and tax (10% for cars)
-    const baseAmount = rental_details.total_price || car.rows[0].price_per_day;
-    const taxAmount = baseAmount * 0.1;
+    // Calculate amounts
+    const baseAmount = parseFloat(total_price) || (parseFloat(car.daily_rental_price) * parseInt(rental_days));
+    const taxAmount = baseAmount * 0.15; // 15% tax
     const totalAmount = baseAmount + taxAmount;
     
+    // Prepare booking details
+    const bookingDetails = {
+      car_id: car_id,
+      car_model: car.model,
+      car_company: car.company,
+      car_type: car.car_type,
+      pickup_location: pickup_location,
+      dropoff_location: dropoff_location,
+      pickup_date: pickup_date,
+      dropoff_date: dropoff_date,
+      pickup_time: pickup_time,
+      dropoff_time: dropoff_time,
+      rental_days: rental_days,
+      daily_rate: car.daily_rental_price,
+      base_amount: baseAmount,
+      tax_amount: taxAmount,
+      total_amount: totalAmount
+    };
+    
+    console.log('📝 Creating booking:', {
+      userId,
+      car_id,
+      bookingReference,
+      totalAmount
+    });
+
     const bookingResult = await pool.query(
       `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
-       VALUES (?, ?, ?, ?, ?, 'pending')`,
-      [userId, 'car', bookingReference, cars[0].daily_rental_price,
-       JSON.stringify({ car_id, rental_details, car_details: cars[0] })]
+       VALUES (?, ?, ?, ?, ?, 'confirmed')`,
+      [userId, 'car', bookingReference, totalAmount, JSON.stringify(bookingDetails)]
     );
     
+    console.log('✅ Booking created:', bookingResult);
+    
     const bookingId = bookingResult?.insertId || bookingResult?.rows?.[0]?.id;
-    const bookingRowResult = await pool.query('SELECT * FROM bookings WHERE id = ?', [bookingId]);
-    const bookingRows = bookingRowResult.rows || bookingRowResult || [];
 
     res.status(201).json({
-      message: 'Car booking created',
-      booking: bookingRows[0] || { id: bookingId, booking_reference: bookingReference }
+      success: true,
+      message: 'Car booking created successfully',
+      booking_reference: bookingReference,
+      booking_id: bookingId,
+      total_amount: totalAmount
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ Car booking error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      sqlMessage: error.sqlMessage
+    });
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 };
 

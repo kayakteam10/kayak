@@ -46,6 +46,7 @@ export const hotelsAPI = {
 export const carsAPI = {
   search: (params) => api.get('/api/cars/search', { params }),
   getDetails: (id) => api.get(`/api/cars/${id}`),
+  getById: (id) => api.get(`/api/cars/${id}`),
   book: (data) => api.post('/api/cars/book', data),
 };
 

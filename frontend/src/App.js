@@ -11,6 +11,7 @@ import HotelConfirmationPage from './pages/HotelConfirmationPage';
 import FlightDetailsPage from './pages/FlightDetailsPage';
 import BookingPage from './pages/BookingPage';
 import BookingConfirmationPage from './pages/BookingConfirmationPage';
+import CarBookingPage from './pages/CarBookingPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/booking/hotel/:id" element={<HotelBookingPage />} />
                 <Route path="/hotel-confirmation/:id" element={<HotelConfirmationPage />} />
                 <Route path="/flight-details/:id" element={<FlightDetailsPage />} />
+                <Route path="/booking/cars/:id" element={<CarBookingPage />} />
                 <Route path="/booking/:type/:id" element={<BookingPage />} />
                 <Route path="/booking/confirmation/:type/:id" element={<BookingConfirmationPage />} />
                 <Route path="/profile" element={<ProfilePage />} />

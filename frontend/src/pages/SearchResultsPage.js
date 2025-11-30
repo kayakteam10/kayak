@@ -460,9 +460,26 @@ function SearchResultsPage() {
     setSortBy(sort);
   };
 
-  const handleBook = async (flight, explicitLegs = null) => {
+  const handleBook = async (itemId, explicitLegs = null) => {
     try {
-      console.log('handleBook called with:', { flight, explicitLegs });
+      console.log('handleBook called with:', { itemId, explicitLegs, type });
+      
+      // Handle car bookings differently
+      if (type === 'cars') {
+        const pickupLocation = searchParams.get('pickupLocation') || '';
+        const dropoffLocation = searchParams.get('dropoffLocation') || '';
+        const pickupDate = searchParams.get('pickupDate') || '';
+        const dropoffDate = searchParams.get('dropoffDate') || '';
+        const pickupTime = searchParams.get('pickupTime') || '10:00';
+        const dropoffTime = searchParams.get('dropoffTime') || '10:00';
+        
+        const carParams = `pickupLocation=${pickupLocation}&dropoffLocation=${dropoffLocation}&pickupDate=${pickupDate}&dropoffDate=${dropoffDate}&pickupTime=${pickupTime}&dropoffTime=${dropoffTime}`;
+        navigate(`/booking/cars/${itemId}?${carParams}`);
+        return;
+      }
+      
+      // Handle flight bookings
+      const flight = itemId;
       // Extract passenger info from search params
       const passengers = searchParams.get('passengers') || '1';
       const adults = searchParams.get('adults') || passengers;
