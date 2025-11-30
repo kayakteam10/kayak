@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { FaPlane, FaHotel, FaCar, FaUmbrellaBeach, FaMagic, FaSearch, FaExchangeAlt, FaCalendarAlt, FaUser } from 'react-icons/fa';
 import AirportAutocomplete from '../components/AirportAutocomplete';
+import HotelLocationAutocomplete from '../components/HotelLocationAutocomplete';
 import './HomePage.css';
 
 const heroImages = [
@@ -694,12 +695,11 @@ const HomePage = () => {
         </div>
         <div className="segment-content">
           <label className="segment-label">Location</label>
-          <input
-            type="text"
-            className="segment-input"
-            placeholder="Enter a city, hotel, airport, address or landmark"
+          <HotelLocationAutocomplete
             value={hotelData.location}
-            onChange={handleHotelInputChange('location')}
+            onChange={(value) => setHotelData(prev => ({ ...prev, location: value }))}
+            placeholder="Enter a city, hotel, airport, address or landmark"
+            name="location"
             required
           />
         </div>
