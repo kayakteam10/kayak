@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS cars (
     
     status ENUM('available', 'rented', 'maintenance') DEFAULT 'available',
     average_rating DECIMAL(3, 2) DEFAULT 0.00 COMMENT 'Cached aggregate from Mongo',
-    
+    mongo_image_id VARCHAR(100) COMMENT 'Ref ID to MongoDB Images collection',
     -- Constraints & Indexes
     FOREIGN KEY (airport_code) REFERENCES airports(code),
     INDEX idx_location (location_city),
