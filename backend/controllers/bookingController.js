@@ -44,6 +44,102 @@ const cancelBooking = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
 
+    // Get booking details first to retrieve seat information
+    const bookingResult = await pool.query(
+      'SELECT * FROM bookings WHERE id = ? AND user_id = ?',
+      [id, userId]
+    );
+
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const booking = bookingResult.rows[0];
+    
+    // Parse booking_details to get seat information
+    let bookingDetails;
+    try {
+      bookingDetails = typeof booking.booking_details === 'string' 
+        ? JSON.parse(booking.booking_details) 
+        : booking.booking_details;
+    } catch (e) {
+      bookingDetails = {};
+    }
+
+    console.log('Cancelling booking:', { bookingId: id, bookingDetails });
+
+    // Get seat information from seat_info or seats field
+    const seatData = bookingDetails.seat_info?.seats || bookingDetails.seats;
+    const passengerCount = bookingDetails.passenger_count || 1;
+
+    // Release seats if they exist
+    if (seatData && Array.isArray(seatData) && seatData.length > 0) {
+      // Handle multi-leg bookings
+      const isMultiLeg = seatData.some(seat => typeof seat === 'object' && seat.flightId);
+      
+      if (isMultiLeg) {
+        // Group seats by flight ID
+        const seatsByFlight = {};
+        seatData.forEach(seat => {
+          const flightId = seat.flightId;
+          if (!seatsByFlight[flightId]) {
+            seatsByFlight[flightId] = [];
+          }
+          seatsByFlight[flightId].push(seat.seatNumber);
+        });
+
+        // Release seats for each flight
+        for (const [flightId, seatNumbers] of Object.entries(seatsByFlight)) {
+          const placeholders = seatNumbers.map(() => '?').join(', ');
+          await pool.query(
+            `UPDATE flight_seats 
+             SET is_available = TRUE 
+             WHERE flight_id = ? AND seat_number IN (${placeholders})`,
+            [flightId, ...seatNumbers]
+          );
+          
+          console.log(`Released ${seatNumbers.length} seats for flight ${flightId}:`, seatNumbers);
+        }
+      } else {
+        // Single flight - release seats
+        const flightId = bookingDetails.flight_id;
+        const seatNumbers = seatData.map(s => typeof s === 'object' ? s.seatNumber : s);
+        
+        if (flightId && seatNumbers.length > 0) {
+          const placeholders = seatNumbers.map(() => '?').join(', ');
+          await pool.query(
+            `UPDATE flight_seats 
+             SET is_available = TRUE 
+             WHERE flight_id = ? AND seat_number IN (${placeholders})`,
+            [flightId, ...seatNumbers]
+          );
+          
+          console.log(`Released ${seatNumbers.length} seats for flight ${flightId}:`, seatNumbers);
+        }
+      }
+    }
+    
+    // Always restore available_seats count by passenger count
+    if (passengerCount && bookingDetails.flight_id) {
+      await pool.query(
+        'UPDATE flights SET available_seats = available_seats + ? WHERE id = ?',
+        [passengerCount, bookingDetails.flight_id]
+      );
+      
+      console.log(`Restored ${passengerCount} seats for flight ${bookingDetails.flight_id}`);
+      
+      // For roundtrip bookings, also restore return flight seats
+      if (bookingDetails.return_flight_id) {
+        await pool.query(
+          'UPDATE flights SET available_seats = available_seats + ? WHERE id = ?',
+          [passengerCount, bookingDetails.return_flight_id]
+        );
+        
+        console.log(`Restored ${passengerCount} seats for return flight ${bookingDetails.return_flight_id}`);
+      }
+    }
+
+    // Update booking status to cancelled
     await pool.query(
       'UPDATE bookings SET status = ? WHERE id = ? AND user_id = ?',
       ['cancelled', id, userId]
@@ -51,7 +147,7 @@ const cancelBooking = async (req, res) => {
 
     res.json({ message: 'Booking cancelled successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Error cancelling booking:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

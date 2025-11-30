@@ -426,10 +426,11 @@ const bookFlight = async (req, res) => {
     }
 
     const flightData = flight.rows[0];
-    let totalAmount = flightData.price * passengerCount; // Base price × number of passengers
+    let baseAmount = flightData.price * passengerCount; // Base price × number of passengers
 
     // Handle seat selection
     let seatInfo = null;
+    let seatPrice = 0;
     if (selected_seats && selected_seats.length > 0) {
       const seatService = require('../services/seatService');
 
@@ -442,8 +443,8 @@ const bookFlight = async (req, res) => {
 
       try {
         // Calculate seat price modifier
-        const seatPrice = await seatService.calculateSeatPrice(flight_id, selected_seats);
-        totalAmount += seatPrice;
+        seatPrice = await seatService.calculateSeatPrice(flight_id, selected_seats);
+        baseAmount += seatPrice;
 
         // Reserve seats
         await seatService.reserveSeats(flight_id, selected_seats);
@@ -458,6 +459,20 @@ const bookFlight = async (req, res) => {
         });
       }
     }
+
+    // Calculate total with 10% tax (matching frontend)
+    const taxAmount = baseAmount * 0.1;
+    const totalAmount = baseAmount + taxAmount;
+
+    console.log('💳 Processing Payment:', {
+      userId,
+      flight_id,
+      baseAmount,
+      taxAmount,
+      totalAmount,
+      passengerCount,
+      seatPrice
+    });
 
     // Process Payment
     let paymentResult;
@@ -493,7 +508,13 @@ const bookFlight = async (req, res) => {
           passenger_count: passengerCount,
           flight_details: flightData,
           payment_info: paymentResult,
-          seat_info: seatInfo
+          seat_info: seatInfo,
+          pricing: {
+            base_amount: baseAmount,
+            seat_price: seatPrice,
+            tax_amount: taxAmount,
+            total_amount: totalAmount
+          }
         }),
         status
       ]

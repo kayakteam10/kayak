@@ -90,14 +90,25 @@ const bookHotel = async (req, res) => {
 
     const bookingReference = `HT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // For base schema, use a default price or calculate from booking details
-    const totalAmount = guest_info.total_price || 200.00;
+    // Calculate base amount and tax (15% for hotels)
+    const baseAmount = guest_info.total_price || 200.00;
+    const taxAmount = baseAmount * 0.15;
+    const totalAmount = baseAmount + taxAmount;
     
     const bookingResult = await pool.query(
       `INSERT INTO bookings (user_id, booking_type, booking_reference, total_amount, booking_details, status)
        VALUES (?, ?, ?, ?, ?, 'pending')`,
       [userId, 'hotel', bookingReference, totalAmount, 
-       JSON.stringify({ hotel_id, guest_info, hotel_details: hotel.rows[0] })]
+       JSON.stringify({ 
+         hotel_id, 
+         guest_info, 
+         hotel_details: hotel.rows[0],
+         pricing: {
+           base_amount: baseAmount,
+           tax_amount: taxAmount,
+           total_amount: totalAmount
+         }
+       })]
     );
     
     const bookingId = bookingResult.insertId;
