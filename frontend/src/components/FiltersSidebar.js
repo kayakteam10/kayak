@@ -56,41 +56,6 @@ function FiltersSidebar({ type, filters, onFilterChange, onSortChange, sortBy })
             </select>
           </div>
 
-          {/* Price Range */}
-          <div className="filter-section">
-            <label className="filter-label">
-              Price Range: ${filters.minPrice || 0} - ${filters.maxPrice || 10000}
-            </label>
-            <Slider
-              className="price-slider"
-              thumbClassName="slider-thumb"
-              trackClassName="slider-track"
-              min={0}
-              max={10000}
-              value={[filters.minPrice || 0, filters.maxPrice || 10000]}
-              onChange={([min, max]) => {
-                onFilterChange({ minPrice: min, maxPrice: max });
-              }}
-              renderThumb={(props, state) => <div {...props}>{state.valueNow}</div>}
-            />
-            <div className="price-inputs">
-              <input
-                type="number"
-                placeholder="Min"
-                value={filters.minPrice || 0}
-                onChange={(e) => handleFilterChange('minPrice', parseInt(e.target.value) || 0)}
-                className="price-input"
-              />
-              <input
-                type="number"
-                placeholder="Max"
-                value={filters.maxPrice || 10000}
-                onChange={(e) => handleFilterChange('maxPrice', parseInt(e.target.value) || 10000)}
-                className="price-input"
-              />
-            </div>
-          </div>
-
           {/* Type-specific filters */}
           {type === 'flights' && (
             <>
@@ -190,27 +155,39 @@ function FiltersSidebar({ type, filters, onFilterChange, onSortChange, sortBy })
             <>
               <div className="filter-section">
                 <label className="filter-label">Vehicle Type</label>
-                {['Economy', 'Compact', 'Mid-size', 'Full-size', 'SUV', 'Luxury'].map(vehicleType => (
-                  <label key={vehicleType} className="filter-checkbox">
+                {[
+                  { value: 'sedan', label: 'Sedan' },
+                  { value: 'compact', label: 'Compact' },
+                  { value: 'suv', label: 'SUV' },
+                  { value: 'luxury', label: 'Luxury' },
+                  { value: 'van', label: 'Van' },
+                  { value: 'truck', label: 'Truck' },
+                  { value: 'convertible', label: 'Convertible' }
+                ].map(vehicleType => (
+                  <label key={vehicleType.value} className="filter-checkbox">
                     <input
                       type="checkbox"
-                      checked={filters.vehicleType === vehicleType}
-                      onChange={() => handleFilterChange('vehicleType', filters.vehicleType === vehicleType ? '' : vehicleType)}
+                      checked={filters.vehicleType === vehicleType.value}
+                      onChange={() => handleFilterChange('vehicleType', filters.vehicleType === vehicleType.value ? '' : vehicleType.value)}
                     />
-                    {vehicleType}
+                    {vehicleType.label}
                   </label>
                 ))}
               </div>
               <div className="filter-section">
                 <label className="filter-label">Seats</label>
-                {['2', '4', '5', '7+'].map(seats => (
-                  <label key={seats} className="filter-checkbox">
+                {[
+                  { value: '4', label: '4 seats' },
+                  { value: '5', label: '5 seats' },
+                  { value: '7+', label: '7+ seats' }
+                ].map(seats => (
+                  <label key={seats.value} className="filter-checkbox">
                     <input
                       type="checkbox"
-                      checked={filters.seats === seats}
-                      onChange={() => handleFilterChange('seats', filters.seats === seats ? '' : seats)}
+                      checked={filters.seats === seats.value}
+                      onChange={() => handleFilterChange('seats', filters.seats === seats.value ? '' : seats.value)}
                     />
-                    {seats} seats
+                    {seats.label}
                   </label>
                 ))}
               </div>
