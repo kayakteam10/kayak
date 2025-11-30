@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaHotel, FaUser, FaCalendarAlt, FaSearch, FaStar, FaMapMarkerAlt, FaChevronDown, FaHeart, FaRegHeart, FaTh, FaList, FaFilter } from 'react-icons/fa';
+import HotelLocationAutocomplete from '../components/HotelLocationAutocomplete';
 import './HotelSearchPage.css';
 
 // Hotel image mapping
@@ -34,7 +35,7 @@ const getHotelImage = (hotelName) => {
     'Seattle Waterfront Inn': 'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=800&q=80',
     'Pike Place Hotel': 'https://images.unsplash.com/photo-1517840901100-8179e982acb7?auto=format&fit=crop&w=800&q=80'
   };
-  
+
   return imageMap[hotelName] || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
 };
 
@@ -170,9 +171,9 @@ const HotelSearchPage = () => {
     // Apply filters
     result = result.filter(hotel => {
       const pricePerNight = Number(hotel.price_per_night) || 100;
-      const hotelAmenities = Array.isArray(hotel.amenities) ? hotel.amenities : 
-                            (typeof hotel.amenities === 'string' ? JSON.parse(hotel.amenities) : []);
-      
+      const hotelAmenities = Array.isArray(hotel.amenities) ? hotel.amenities :
+        (typeof hotel.amenities === 'string' ? JSON.parse(hotel.amenities) : []);
+
       // Price filter
       if (pricePerNight < filters.priceRange[0] || pricePerNight > filters.priceRange[1]) {
         return false;
@@ -191,7 +192,7 @@ const HotelSearchPage = () => {
 
       // Amenities filter
       if (filters.amenities.length > 0) {
-        const hasAllAmenities = filters.amenities.every(amenity => 
+        const hasAllAmenities = filters.amenities.every(amenity =>
           hotelAmenities.some(ha => ha.toLowerCase().includes(amenity.toLowerCase()))
         );
         if (!hasAllAmenities) return false;
@@ -315,7 +316,7 @@ const HotelSearchPage = () => {
 
           {hotel.amenities && (
             <div className="hotel-amenities">
-              {(Array.isArray(hotel.amenities) ? hotel.amenities : 
+              {(Array.isArray(hotel.amenities) ? hotel.amenities :
                 typeof hotel.amenities === 'string' ? JSON.parse(hotel.amenities) : []
               ).slice(0, 3).map((amenity, idx) => (
                 <span key={idx} className="amenity-tag">{amenity}</span>
@@ -367,7 +368,7 @@ const HotelSearchPage = () => {
       <div className="filter-section">
         <h4>Smart Filters</h4>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             onChange={(e) => {
               if (e.target.checked) {
@@ -380,7 +381,7 @@ const HotelSearchPage = () => {
           <span>Under $57</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.freebies.includes('breakfast')}
             onChange={(e) => {
@@ -393,7 +394,7 @@ const HotelSearchPage = () => {
           <span>Free breakfast</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.starRating.includes(4) && filters.starRating.includes(5)}
             onChange={(e) => {
@@ -407,7 +408,7 @@ const HotelSearchPage = () => {
           <span>Class 4+</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             onChange={(e) => {
               // This would need user_rating >= 8 logic in the filter function
@@ -449,7 +450,7 @@ const HotelSearchPage = () => {
       <div className="filter-section">
         <h4>Freebies</h4>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.freebies.includes('breakfast')}
             onChange={(e) => {
@@ -462,7 +463,7 @@ const HotelSearchPage = () => {
           <span>Free breakfast</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.freebies.includes('cancellation')}
             onChange={(e) => {
@@ -475,7 +476,7 @@ const HotelSearchPage = () => {
           <span>Free cancellation</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.freebies.includes('wifi')}
             onChange={(e) => {
@@ -493,7 +494,7 @@ const HotelSearchPage = () => {
       <div className="filter-section">
         <h4>Amenities</h4>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.amenities.includes('pool')}
             onChange={(e) => {
@@ -506,7 +507,7 @@ const HotelSearchPage = () => {
           <span>Pool</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.amenities.includes('gym')}
             onChange={(e) => {
@@ -519,7 +520,7 @@ const HotelSearchPage = () => {
           <span>Gym</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.amenities.includes('spa')}
             onChange={(e) => {
@@ -532,7 +533,7 @@ const HotelSearchPage = () => {
           <span>Spa</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.amenities.includes('parking')}
             onChange={(e) => {
@@ -545,7 +546,7 @@ const HotelSearchPage = () => {
           <span>Parking</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.amenities.includes('pet')}
             onChange={(e) => {
@@ -583,7 +584,7 @@ const HotelSearchPage = () => {
       <div className="filter-section">
         <h4>Review score</h4>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.reviewScore.includes(9)}
             onChange={(e) => {
@@ -596,7 +597,7 @@ const HotelSearchPage = () => {
           <span>Wonderful 9+</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.reviewScore.includes(8)}
             onChange={(e) => {
@@ -609,7 +610,7 @@ const HotelSearchPage = () => {
           <span>Very good 8+</span>
         </label>
         <label className="filter-checkbox">
-          <input 
+          <input
             type="checkbox"
             checked={filters.reviewScore.includes(7)}
             onChange={(e) => {
@@ -651,12 +652,12 @@ const HotelSearchPage = () => {
         <div className="search-bar-content">
           <div className="search-input-group">
             <FaHotel className="search-icon" />
-            <input
-              type="text"
+            <HotelLocationAutocomplete
               value={searchCriteria.location}
-              onChange={(e) => setSearchCriteria(prev => ({ ...prev, location: e.target.value }))}
+              onChange={(value) => setSearchCriteria(prev => ({ ...prev, location: value }))}
               placeholder="Where to?"
-              className="search-input"
+              name="location"
+              required
             />
           </div>
 
