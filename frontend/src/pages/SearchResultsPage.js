@@ -209,8 +209,25 @@ function SearchResultsPage() {
       }
 
       // Vehicle type filter (cars)
-      if (type === 'cars' && filters.vehicleType && item.type !== filters.vehicleType) {
-        return false;
+      if (type === 'cars' && filters.vehicleType && item.car_type) {
+        const filterType = filters.vehicleType.toLowerCase();
+        const carType = item.car_type.toLowerCase();
+        if (carType !== filterType) {
+          return false;
+        }
+      }
+
+      // Seats filter (cars)
+      if (type === 'cars' && filters.seats) {
+        const filterSeats = filters.seats;
+        const carSeats = item.num_seats;
+        
+        if (filterSeats === '7+') {
+          if (carSeats < 7) return false;
+        } else {
+          const seatsNum = parseInt(filterSeats);
+          if (carSeats !== seatsNum) return false;
+        }
       }
 
       // Departure time windows (flights)
@@ -294,6 +311,10 @@ function SearchResultsPage() {
             return priceA - priceB;
           } else if (type === 'hotels') {
             return (parseFloat(a.price_per_night || 0)) - (parseFloat(b.price_per_night || 0));
+          } else if (type === 'cars') {
+            const priceA = parseFloat(a.total_price || a.daily_rental_price || 0);
+            const priceB = parseFloat(b.total_price || b.daily_rental_price || 0);
+            return priceA - priceB;
           } else {
             return (parseFloat(a.price_per_day || 0)) - (parseFloat(b.price_per_day || 0));
           }
@@ -327,11 +348,19 @@ function SearchResultsPage() {
             return priceB - priceA;
           } else if (type === 'hotels') {
             return (parseFloat(b.price_per_night || 0)) - (parseFloat(a.price_per_night || 0));
+          } else if (type === 'cars') {
+            const priceA = parseFloat(a.total_price || a.daily_rental_price || 0);
+            const priceB = parseFloat(b.total_price || b.daily_rental_price || 0);
+            return priceB - priceA;
           } else {
             return (parseFloat(b.price_per_day || 0)) - (parseFloat(a.price_per_day || 0));
           }
         case 'rating_desc':
-          return (b.rating || 0) - (a.rating || 0);
+          if (type === 'cars') {
+            return parseFloat(b.average_rating || 0) - parseFloat(a.average_rating || 0);
+          } else {
+            return (b.rating || 0) - (a.rating || 0);
+          }
         case 'duration_asc':
           if (type === 'flights') {
             // Helper function to calculate duration from times
@@ -431,9 +460,26 @@ function SearchResultsPage() {
     setSortBy(sort);
   };
 
-  const handleBook = async (flight, explicitLegs = null) => {
+  const handleBook = async (itemId, explicitLegs = null) => {
     try {
-      console.log('handleBook called with:', { flight, explicitLegs });
+      console.log('handleBook called with:', { itemId, explicitLegs, type });
+      
+      // Handle car bookings differently
+      if (type === 'cars') {
+        const pickupLocation = searchParams.get('pickupLocation') || '';
+        const dropoffLocation = searchParams.get('dropoffLocation') || '';
+        const pickupDate = searchParams.get('pickupDate') || '';
+        const dropoffDate = searchParams.get('dropoffDate') || '';
+        const pickupTime = searchParams.get('pickupTime') || '10:00';
+        const dropoffTime = searchParams.get('dropoffTime') || '10:00';
+        
+        const carParams = `pickupLocation=${pickupLocation}&dropoffLocation=${dropoffLocation}&pickupDate=${pickupDate}&dropoffDate=${dropoffDate}&pickupTime=${pickupTime}&dropoffTime=${dropoffTime}`;
+        navigate(`/booking/cars/${itemId}?${carParams}`);
+        return;
+      }
+      
+      // Handle flight bookings
+      const flight = itemId;
       // Extract passenger info from search params
       const passengers = searchParams.get('passengers') || '1';
       const adults = searchParams.get('adults') || passengers;
@@ -917,34 +963,76 @@ function SearchResultsPage() {
 
   const renderCarCard = (car) => (
     <div key={car.id} className="result-card car-card">
-      <div className="card-header">
-        <div className="card-icon"><FaCar /></div>
-        <div className="card-title-section">
-          <h3>{car.model}</h3>
-          <p className="card-subtitle">{car.provider || car.brand}</p>
+      {/* Car Image */}
+      {car.image_url && (
+        <div className="car-image-container">
+          <img 
+            src={car.image_url} 
+            alt={car.model} 
+            className="car-image"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+          {car.car_type && (
+            <span className="car-type-badge">{car.car_type}</span>
+          )}
         </div>
-      </div>
-      <div className="card-body">
-        <div className="card-info-row">
-          <div className="info-item">
-            <FaMapMarkerAlt className="info-icon" />
-            <span>{car.location}</span>
+      )}
+      
+      {/* Car Details */}
+      <div className="car-card-content">
+        <div className="card-header">
+          <div className="card-title-section">
+            <h3>{car.model}</h3>
+            <p className="card-subtitle">{car.company} • {car.year}</p>
           </div>
-          <div className="info-item">
-            <FaUsers className="info-icon" />
-            <span>{car.seats} seats</span>
+        </div>
+        
+        <div className="card-body">
+          <div className="card-info-row">
+            <div className="info-item">
+              <FaMapMarkerAlt className="info-icon" />
+              <span>{car.location_city}{car.airport_code ? ` (${car.airport_code})` : ''}</span>
+            </div>
+            <div className="info-item">
+              <FaUsers className="info-icon" />
+              <span>{car.num_seats} seats</span>
+            </div>
+          </div>
+          
+          <div className="card-info-row">
+            <div className="info-item">
+              <FaSuitcase className="info-icon" />
+              <span>{car.transmission}</span>
+            </div>
+            {car.average_rating && parseFloat(car.average_rating) > 0 && (
+              <div className="info-item rating-item">
+                <FaStar className="info-icon star-icon" />
+                <span>{parseFloat(car.average_rating).toFixed(1)}</span>
+              </div>
+            )}
           </div>
         </div>
-        {car.type && <span className="type-badge">{car.type}</span>}
-      </div>
-      <div className="card-footer">
-        <div className="price-section">
-          <span className="price">${car.price_per_day}</span>
-          <span className="price-label">/day</span>
+        
+        <div className="card-footer">
+          <div className="price-section">
+            {car.rental_days && car.rental_days > 1 ? (
+              <>
+                <span className="price">${car.total_price?.toFixed(2) || car.daily_rental_price}</span>
+                <span className="price-label">for {car.rental_days} days</span>
+              </>
+            ) : (
+              <>
+                <span className="price">${car.daily_rental_price}</span>
+                <span className="price-label">/day</span>
+              </>
+            )}
+          </div>
+          <button className="book-btn" onClick={() => handleBook(car.id)}>
+            Reserve
+          </button>
         </div>
-        <button className="book-btn" onClick={() => handleBook(car.id)}>
-          Reserve
-        </button>
       </div>
     </div>
   );
