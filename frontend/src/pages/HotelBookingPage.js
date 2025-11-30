@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaLock, FaCheckCircle, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaUtensils, FaCoffee, FaBed } from 'react-icons/fa';
+import { authAPI } from '../services/api';
 import './HotelBookingPage.css';
 
 const HotelBookingPage = () => {
@@ -12,16 +13,24 @@ const HotelBookingPage = () => {
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [useNewCard, setUseNewCard] = useState(false);
   
   const [bookingData, setBookingData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    cardType: '',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
-    billingZip: ''
+    billingZip: '',
+    billingAddress: '',
+    billingCity: '',
+    billingState: '',
+    cardholderName: ''
   });
 
   const checkIn = searchParams.get('checkIn') || '';
@@ -30,8 +39,54 @@ const HotelBookingPage = () => {
   const adults = searchParams.get('adults') || 2;
   const children = searchParams.get('children') || 0;
 
+  // Fetch user profile and auto-populate data (like BookingPage)
   useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await authAPI.me();
+          const userData = response.data;
+
+          // Get saved payment methods from localStorage
+          const savedPayments = localStorage.getItem('savedPaymentMethods');
+          let paymentMethods = [];
+          if (savedPayments) {
+            try {
+              paymentMethods = JSON.parse(savedPayments);
+              // Filter only card payments
+              paymentMethods = paymentMethods.filter(p => p.paymentType === 'card');
+              setSavedPaymentMethods(paymentMethods);
+            } catch (e) {
+              console.error('Error parsing saved payments:', e);
+            }
+          }
+
+          // If no cards, set useNewCard to true
+          if (paymentMethods.length === 0) {
+            setUseNewCard(true);
+          }
+
+          // Auto-populate booking data
+          setBookingData(prevData => ({
+            ...prevData,
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            email: userData.email || '',
+            phone: userData.phone || '',
+            billingAddress: userData.address || '',
+            city: userData.city || '',
+            state: userData.state || '',
+            zipCode: userData.zipCode || ''
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
     fetchHotelDetails();
+    fetchUserProfile();
   }, [id]);
 
   const fetchHotelDetails = async () => {
@@ -105,7 +160,16 @@ const HotelBookingPage = () => {
       newErrors.phone = 'Phone must be 10 digits';
     }
 
-    if (paymentMethod === 'card') {
+    // Only validate card details if using new card
+    if (paymentMethod === 'card' && useNewCard) {
+      if (!bookingData.cardType.trim()) {
+        newErrors.cardType = 'Card type is required';
+      }
+
+      if (!bookingData.cardholderName.trim()) {
+        newErrors.cardholderName = 'Cardholder name is required';
+      }
+
       if (!bookingData.cardNumber.trim()) {
         newErrors.cardNumber = 'Card number is required';
       } else if (!/^\d{16}$/.test(bookingData.cardNumber.replace(/\s/g, ''))) {
@@ -129,6 +193,18 @@ const HotelBookingPage = () => {
       } else if (!/^\d{5}$/.test(bookingData.billingZip)) {
         newErrors.billingZip = 'ZIP code must be 5 digits';
       }
+
+      if (!bookingData.billingAddress.trim()) {
+        newErrors.billingAddress = 'Billing address is required';
+      }
+
+      if (!bookingData.billingCity.trim()) {
+        newErrors.billingCity = 'City is required';
+      }
+
+      if (!bookingData.billingState.trim()) {
+        newErrors.billingState = 'State is required';
+      }
     }
 
     setErrors(newErrors);
@@ -150,6 +226,81 @@ const HotelBookingPage = () => {
         return;
       }
 
+      // Determine payment details based on whether using saved card or new card
+      let paymentDetails = {
+        method: paymentMethod
+      };
+
+      if (paymentMethod === 'card') {
+        if (useNewCard || savedPaymentMethods.length === 0) {
+          // Using new card - parse expiry date and save to localStorage
+          const expiryParts = bookingData.expiryDate.split('/');
+          const expiryMonth = expiryParts[0] || '';
+          const expiryYear = expiryParts[1] || '';
+          
+          paymentDetails = {
+            ...paymentDetails,
+            cardNumber: bookingData.cardNumber,
+            expiryDate: bookingData.expiryDate,
+            cvv: bookingData.cvv,
+            billingZip: bookingData.billingZip
+          };
+
+          // Save new payment method to localStorage (full card number with formatting)
+          const fullYear = '20' + expiryYear;
+          const formattedCardNumber = bookingData.cardNumber.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+          
+          const newPaymentMethod = {
+            paymentType: 'card',
+            creditCardType: bookingData.cardType,
+            creditCardNumber: formattedCardNumber, // Store full card number (formatted)
+            cardholderName: bookingData.cardholderName,
+            expiryMonth: expiryMonth,
+            expiryYear: fullYear,
+            cvv: bookingData.cvv,
+            billingAddress: bookingData.billingAddress,
+            billingCity: bookingData.billingCity,
+            billingState: bookingData.billingState,
+            billingZip: bookingData.billingZip
+          };
+
+          console.log('Saving payment method:', newPaymentMethod); // Debug log
+
+          const existingSavedMethods = JSON.parse(localStorage.getItem('savedPaymentMethods') || '[]');
+          
+          // Check if this card already exists (compare last 4 digits)
+          const last4 = bookingData.cardNumber.replace(/\s/g, '').slice(-4);
+          const existingIndex = existingSavedMethods.findIndex(p =>
+            p.paymentType === 'card' && p.creditCardNumber.replace(/\s/g, '').slice(-4) === last4
+          );
+
+          if (existingIndex >= 0) {
+            // Update existing card
+            existingSavedMethods[existingIndex] = newPaymentMethod;
+          } else {
+            // Add new card
+            existingSavedMethods.push(newPaymentMethod);
+          }
+          
+          localStorage.setItem('savedPaymentMethods', JSON.stringify(existingSavedMethods));
+          
+          console.log('Updated saved methods:', existingSavedMethods); // Debug log
+          
+          // Update state to reflect new saved card
+          setSavedPaymentMethods(existingSavedMethods);
+        } else if (selectedPaymentMethod !== null) {
+          // Using saved card
+          const selectedCard = savedPaymentMethods[selectedPaymentMethod];
+          paymentDetails = {
+            ...paymentDetails,
+            cardNumber: selectedCard.creditCardNumber,
+            cardType: selectedCard.creditCardType,
+            expiryMonth: selectedCard.expiryMonth,
+            expiryYear: selectedCard.expiryYear
+          };
+        }
+      }
+
       const response = await fetch('http://localhost:8089/api/bookings/hotel', {
         method: 'POST',
         headers: {
@@ -169,13 +320,7 @@ const HotelBookingPage = () => {
             email: bookingData.email,
             phone: bookingData.phone
           },
-          payment_details: {
-            method: paymentMethod,
-            cardNumber: bookingData.cardNumber,
-            expiryDate: bookingData.expiryDate,
-            cvv: bookingData.cvv,
-            billingZip: bookingData.billingZip
-          }
+          payment_details: paymentDetails
         })
       });
 
@@ -270,79 +415,189 @@ const HotelBookingPage = () => {
 
             {/* Payment Method */}
             <section className="form-section">
-              <h2>Pay with</h2>
-              <div className="payment-methods">
-                <label className={`payment-option ${paymentMethod === 'card' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="card"
-                    checked={paymentMethod === 'card'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  />
-                  <span>New card</span>
-                  <div className="card-icon">💳</div>
-                </label>
-                <label className={`payment-option ${paymentMethod === 'paypal' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="paypal"
-                    checked={paymentMethod === 'paypal'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  />
-                  <span>PayPal</span>
-                  <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" alt="PayPal" />
-                </label>
-                <label className={`payment-option ${paymentMethod === 'affirm' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="affirm"
-                    checked={paymentMethod === 'affirm'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  />
-                  <span>Affirm</span>
-                  <div className="affirm-logo">affirm</div>
-                </label>
-              </div>
+              <h2>Payment Information</h2>
+              
+              {/* Saved Payment Methods */}
+              {savedPaymentMethods.length > 0 && (
+                <div className="saved-cards-section">
+                  <div className="payment-method-selector">
+                    {savedPaymentMethods.map((card, index) => (
+                      <label
+                        key={index}
+                        className={`payment-radio-option ${selectedPaymentMethod === index ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          checked={selectedPaymentMethod === index}
+                          onChange={() => {
+                            setSelectedPaymentMethod(index);
+                            setUseNewCard(false);
+                            setPaymentMethod('card');
+                          }}
+                        />
+                        <div className="radio-content">
+                          <div className="card-brand-icon-box">
+                            {card.creditCardType === 'Visa' && (
+                              <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
+                                <rect width="52" height="34" rx="5" fill="#1A1F71"/>
+                                <text x="26" y="21" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="Arial">VISA</text>
+                              </svg>
+                            )}
+                            {card.creditCardType === 'MasterCard' && (
+                              <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
+                                <rect width="52" height="34" rx="5" fill="#EB001B"/>
+                                <circle cx="20" cy="17" r="10" fill="#FF5F00" opacity="0.8"/>
+                                <circle cx="32" cy="17" r="10" fill="#F79E1B" opacity="0.8"/>
+                              </svg>
+                            )}
+                            {card.creditCardType === 'American Express' && (
+                              <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
+                                <rect width="52" height="34" rx="5" fill="#006FCF"/>
+                                <text x="26" y="21" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold" fontFamily="Arial">AMEX</text>
+                              </svg>
+                            )}
+                            {card.creditCardType === 'Discover' && (
+                              <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
+                                <rect width="52" height="34" rx="5" fill="#FF6000"/>
+                                <circle cx="15" cy="17" r="8" fill="#FF9900"/>
+                                <text x="35" y="21" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="Arial">DISCOVER</text>
+                              </svg>
+                            )}
+                            {!['Visa', 'MasterCard', 'American Express', 'Discover'].includes(card.creditCardType) && (
+                              <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
+                                <rect width="52" height="34" rx="5" fill="#6B7280"/>
+                                <rect x="8" y="10" width="36" height="6" rx="2" fill="white" opacity="0.3"/>
+                                <rect x="8" y="20" width="20" height="4" rx="1" fill="white" opacity="0.5"/>
+                              </svg>
+                            )}
+                          </div>
+                          <div className="card-info">
+                            <span className="card-label">{card.creditCardType}</span>
+                            <span className="card-ending">•••• •••• •••• {card.creditCardNumber.slice(-4)}</span>
+                          </div>
+                        </div>
+                        {selectedPaymentMethod === index && <span className="radio-check">✓</span>}
+                      </label>
+                    ))}
 
-              {paymentMethod === 'card' && (
-                <div className="card-details">
-                  <h3>Card details</h3>
-                  <div className="card-logos">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa" height="20" />
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" height="20" />
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" alt="Amex" height="20" />
+                    {/* Use New Card Option */}
+                    <label className={`payment-radio-option add-new-card-option ${useNewCard ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        checked={useNewCard}
+                        onChange={() => {
+                          setUseNewCard(true);
+                          setSelectedPaymentMethod(null);
+                          setPaymentMethod('card');
+                        }}
+                      />
+                      <div className="radio-content">
+                        <div className="card-brand-icon-box new-card-box">
+                          <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
+                            <rect width="52" height="34" rx="5" fill="#FF6B35" opacity="0.1" stroke="#FF6B35" strokeWidth="2" strokeDasharray="4 4"/>
+                            <circle cx="26" cy="17" r="8" fill="#FF6B35" opacity="0.2"/>
+                            <path d="M26 13V21M22 17H30" stroke="#FF6B35" strokeWidth="2.5" strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                        <div className="card-info">
+                          <span className="card-label">Add new card</span>
+                          <span className="card-ending">Enter card details below</span>
+                        </div>
+                      </div>
+                      {useNewCard && <span className="radio-check">✓</span>}
+                    </label>
                   </div>
-                  <div className="form-group">
-                    <label>Name on card *</label>
-                    <input
-                      type="text"
-                      placeholder="John Doe"
-                    />
+                </div>
+              )}
+
+              {/* Card Details Form - Only show if using new card or no saved cards */}
+              {(useNewCard || savedPaymentMethods.length === 0) && (
+                <div className="card-details-form">
+                  <h3 className="form-section-title">Card details</h3>
+                  
+                  <div className="accepted-cards">
+                    <span className="accepted-label">We accept:</span>
+                    <div className="card-brands">
+                      <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
+                        <rect width="50" height="32" rx="4" fill="#1434CB"/>
+                        <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">VISA</text>
+                      </svg>
+                      <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
+                        <rect width="50" height="32" rx="4" fill="#EB001B"/>
+                        <circle cx="18" cy="16" r="10" fill="#FF5F00"/>
+                        <circle cx="32" cy="16" r="10" fill="#F79E1B"/>
+                      </svg>
+                      <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
+                        <rect width="50" height="32" rx="4" fill="#006FCF"/>
+                        <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">AMEX</text>
+                      </svg>
+                      <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
+                        <rect width="50" height="32" rx="4" fill="#FF6000"/>
+                        <circle cx="15" cy="16" r="8" fill="#FF9900"/>
+                        <text x="60%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">DISCOVER</text>
+                      </svg>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Card number *</label>
-                    <input
-                      type="text"
-                      value={bookingData.cardNumber}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '').slice(0, 16);
-                        const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-                        setBookingData({ ...bookingData, cardNumber: formatted });
-                      }}
-                      placeholder="0000 0000 0000 0000"
-                      maxLength="19"
-                      className={errors.cardNumber ? 'error' : ''}
-                    />
-                    {errors.cardNumber && <span className="error-text">{errors.cardNumber}</span>}
-                  </div>
+
                   <div className="form-row">
+                    <div className="form-group-full">
+                      <label>Card Type *</label>
+                      <select
+                        value={bookingData.cardType || ''}
+                        onChange={(e) => setBookingData({ ...bookingData, cardType: e.target.value })}
+                        className={errors.cardType ? 'error' : ''}
+                      >
+                        <option value="">Select card type</option>
+                        <option value="Visa">Visa</option>
+                        <option value="MasterCard">MasterCard</option>
+                        <option value="American Express">American Express</option>
+                        <option value="Discover">Discover</option>
+                      </select>
+                      {errors.cardType && <span className="error-text">{errors.cardType}</span>}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group-full">
+                      <label>Name on card *</label>
+                      <input
+                        type="text"
+                        placeholder="John Doe"
+                        value={bookingData.cardholderName || ''}
+                        onChange={(e) => setBookingData({ ...bookingData, cardholderName: e.target.value })}
+                        className={errors.cardholderName ? 'error' : ''}
+                      />
+                      {errors.cardholderName && <span className="error-text">{errors.cardholderName}</span>}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group-full">
+                      <label>Card number *</label>
+                      <input
+                        type="text"
+                        placeholder="0000 0000 0000 0000"
+                        value={bookingData.cardNumber}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '').slice(0, 16);
+                          const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                          setBookingData({ ...bookingData, cardNumber: formatted });
+                        }}
+                        maxLength="19"
+                        className={errors.cardNumber ? 'error' : ''}
+                      />
+                      {errors.cardNumber && <span className="error-text">{errors.cardNumber}</span>}
+                    </div>
+                  </div>
+
+                  <div className="form-row form-row-split">
                     <div className="form-group">
                       <label>Expiration date *</label>
                       <input
                         type="text"
+                        placeholder="MM/YY"
                         value={bookingData.expiryDate}
                         onChange={(e) => {
                           let value = e.target.value.replace(/\D/g, '');
@@ -351,7 +606,6 @@ const HotelBookingPage = () => {
                           }
                           setBookingData({ ...bookingData, expiryDate: value });
                         }}
-                        placeholder="MM/YY"
                         maxLength="5"
                         className={errors.expiryDate ? 'error' : ''}
                       />
@@ -361,26 +615,127 @@ const HotelBookingPage = () => {
                       <label>Security code *</label>
                       <input
                         type="text"
+                        placeholder="CVV"
                         value={bookingData.cvv}
                         onChange={(e) => setBookingData({ ...bookingData, cvv: e.target.value.replace(/\D/g, '').slice(0, 3) })}
-                        placeholder="CVV"
                         maxLength="3"
                         className={errors.cvv ? 'error' : ''}
                       />
                       {errors.cvv && <span className="error-text">{errors.cvv}</span>}
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label>Billing ZIP code *</label>
-                    <input
-                      type="text"
-                      value={bookingData.billingZip}
-                      onChange={(e) => setBookingData({ ...bookingData, billingZip: e.target.value.replace(/\D/g, '').slice(0, 5) })}
-                      placeholder="12345"
-                      maxLength="5"
-                      className={errors.billingZip ? 'error' : ''}
-                    />
-                    {errors.billingZip && <span className="error-text">{errors.billingZip}</span>}
+
+                  <div className="form-row">
+                    <div className="form-group-full">
+                      <label>Billing ZIP code *</label>
+                      <input
+                        type="text"
+                        placeholder="12345"
+                        value={bookingData.billingZip}
+                        onChange={(e) => setBookingData({ ...bookingData, billingZip: e.target.value.replace(/\D/g, '').slice(0, 5) })}
+                        maxLength="5"
+                        className={errors.billingZip ? 'error' : ''}
+                      />
+                      {errors.billingZip && <span className="error-text">{errors.billingZip}</span>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Billing Address Section */}
+              {(useNewCard || savedPaymentMethods.length === 0) && (
+                <div className="billing-address-section">
+                  <h3 className="form-section-title">Billing Address</h3>
+                  
+                  <div className="form-row">
+                    <div className="form-group-full">
+                      <label>Street Address *</label>
+                      <input
+                        type="text"
+                        placeholder="123 Main Street"
+                        value={bookingData.billingAddress}
+                        onChange={(e) => setBookingData({ ...bookingData, billingAddress: e.target.value })}
+                        className={errors.billingAddress ? 'error' : ''}
+                      />
+                      {errors.billingAddress && <span className="error-text">{errors.billingAddress}</span>}
+                    </div>
+                  </div>
+
+                  <div className="form-row form-row-split">
+                    <div className="form-group">
+                      <label>City *</label>
+                      <input
+                        type="text"
+                        placeholder="New York"
+                        value={bookingData.billingCity}
+                        onChange={(e) => setBookingData({ ...bookingData, billingCity: e.target.value })}
+                        className={errors.billingCity ? 'error' : ''}
+                      />
+                      {errors.billingCity && <span className="error-text">{errors.billingCity}</span>}
+                    </div>
+
+                    <div className="form-group">
+                      <label>State *</label>
+                      <select
+                        value={bookingData.billingState}
+                        onChange={(e) => setBookingData({ ...bookingData, billingState: e.target.value })}
+                        className={errors.billingState ? 'error' : ''}
+                      >
+                        <option value="">Select state</option>
+                        <option value="AL">AL - Alabama</option>
+                        <option value="AK">AK - Alaska</option>
+                        <option value="AZ">AZ - Arizona</option>
+                        <option value="AR">AR - Arkansas</option>
+                        <option value="CA">CA - California</option>
+                        <option value="CO">CO - Colorado</option>
+                        <option value="CT">CT - Connecticut</option>
+                        <option value="DE">DE - Delaware</option>
+                        <option value="FL">FL - Florida</option>
+                        <option value="GA">GA - Georgia</option>
+                        <option value="HI">HI - Hawaii</option>
+                        <option value="ID">ID - Idaho</option>
+                        <option value="IL">IL - Illinois</option>
+                        <option value="IN">IN - Indiana</option>
+                        <option value="IA">IA - Iowa</option>
+                        <option value="KS">KS - Kansas</option>
+                        <option value="KY">KY - Kentucky</option>
+                        <option value="LA">LA - Louisiana</option>
+                        <option value="ME">ME - Maine</option>
+                        <option value="MD">MD - Maryland</option>
+                        <option value="MA">MA - Massachusetts</option>
+                        <option value="MI">MI - Michigan</option>
+                        <option value="MN">MN - Minnesota</option>
+                        <option value="MS">MS - Mississippi</option>
+                        <option value="MO">MO - Missouri</option>
+                        <option value="MT">MT - Montana</option>
+                        <option value="NE">NE - Nebraska</option>
+                        <option value="NV">NV - Nevada</option>
+                        <option value="NH">NH - New Hampshire</option>
+                        <option value="NJ">NJ - New Jersey</option>
+                        <option value="NM">NM - New Mexico</option>
+                        <option value="NY">NY - New York</option>
+                        <option value="NC">NC - North Carolina</option>
+                        <option value="ND">ND - North Dakota</option>
+                        <option value="OH">OH - Ohio</option>
+                        <option value="OK">OK - Oklahoma</option>
+                        <option value="OR">OR - Oregon</option>
+                        <option value="PA">PA - Pennsylvania</option>
+                        <option value="RI">RI - Rhode Island</option>
+                        <option value="SC">SC - South Carolina</option>
+                        <option value="SD">SD - South Dakota</option>
+                        <option value="TN">TN - Tennessee</option>
+                        <option value="TX">TX - Texas</option>
+                        <option value="UT">UT - Utah</option>
+                        <option value="VT">VT - Vermont</option>
+                        <option value="VA">VA - Virginia</option>
+                        <option value="WA">WA - Washington</option>
+                        <option value="WV">WV - West Virginia</option>
+                        <option value="WI">WI - Wisconsin</option>
+                        <option value="WY">WY - Wyoming</option>
+                        <option value="DC">DC - District of Columbia</option>
+                      </select>
+                      {errors.billingState && <span className="error-text">{errors.billingState}</span>}
+                    </div>
                   </div>
                 </div>
               )}

@@ -76,6 +76,61 @@ function BookingConfirmationPage() {
               <p className="reference-number">{booking.booking_reference || booking.id}</p>
             </div>
 
+            {(() => {
+              let bookingDetails;
+              try {
+                bookingDetails = typeof booking.booking_details === 'string' 
+                  ? JSON.parse(booking.booking_details) 
+                  : booking.booking_details;
+              } catch (e) {
+                bookingDetails = null;
+              }
+
+              const passengers = bookingDetails?.passengers || [];
+              const seatInfo = bookingDetails?.seat_info;
+
+              return (
+                <>
+                  {/* Passenger Information */}
+                  {passengers.length > 0 && (
+                    <div className="detail-card">
+                      <h3>Passenger Information</h3>
+                      {passengers.map((passenger, index) => (
+                        <div key={index} style={{ marginBottom: index < passengers.length - 1 ? '16px' : '0', paddingBottom: index < passengers.length - 1 ? '16px' : '0', borderBottom: index < passengers.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                          <div className="detail-row">
+                            <span>Passenger {index + 1}:</span>
+                            <span style={{ fontWeight: 'bold' }}>{passenger.firstName} {passenger.lastName}</span>
+                          </div>
+                          <div className="detail-row">
+                            <span>Email:</span>
+                            <span>{passenger.email}</span>
+                          </div>
+                          <div className="detail-row">
+                            <span>Phone:</span>
+                            <span>{passenger.phone}</span>
+                          </div>
+                          {type === 'flights' && passenger.seatNumber && (
+                            <div className="detail-row">
+                              <span>Seat Number:</span>
+                              <span style={{ fontWeight: 'bold', color: '#0066CC' }}>{passenger.seatNumber}</span>
+                            </div>
+                          )}
+                          {type === 'flights' && passenger.seats && Object.keys(passenger.seats).length > 0 && (
+                            <div className="detail-row">
+                              <span>Seats:</span>
+                              <span style={{ fontWeight: 'bold', color: '#0066CC' }}>
+                                {Object.entries(passenger.seats).map(([leg, seat]) => `${leg}: ${seat}`).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
             <div className="detail-card">
               <div className="card-icon">{getTypeIcon()}</div>
               <div className="card-content">
@@ -84,12 +139,44 @@ function BookingConfirmationPage() {
                   <span>Type:</span>
                   <span>{booking.booking_type || type}</span>
                 </div>
-                <div className="detail-row">
-                  <span>Total Amount:</span>
-                  <span className="amount">
-                    ${Number.isFinite(parseFloat(booking?.total_amount)) ? parseFloat(booking.total_amount).toFixed(2) : '0.00'}
-                  </span>
-                </div>
+                {(() => {
+                  let bookingDetails;
+                  try {
+                    bookingDetails = typeof booking.booking_details === 'string' 
+                      ? JSON.parse(booking.booking_details) 
+                      : booking.booking_details;
+                  } catch (e) {
+                    bookingDetails = null;
+                  }
+
+                  const pricing = bookingDetails?.pricing;
+                  const baseAmount = pricing?.base_amount || (parseFloat(booking?.total_amount) / 1.1) || 0;
+                  const taxAmount = pricing?.tax_amount || (baseAmount * 0.1) || 0;
+                  const totalAmount = pricing?.total_amount || parseFloat(booking?.total_amount) || 0;
+
+                  return (
+                    <>
+                      <div className="detail-row">
+                        <span>Base Price:</span>
+                        <span className="amount">
+                          ${Number.isFinite(baseAmount) ? baseAmount.toFixed(2) : '0.00'}
+                        </span>
+                      </div>
+                      <div className="detail-row">
+                        <span>Taxes & Fees:</span>
+                        <span className="amount">
+                          ${Number.isFinite(taxAmount) ? taxAmount.toFixed(2) : '0.00'}
+                        </span>
+                      </div>
+                      <div className="detail-row" style={{ borderTop: '1px solid #e0e0e0', paddingTop: '8px', marginTop: '8px', fontWeight: 'bold' }}>
+                        <span>Total Amount:</span>
+                        <span className="amount">
+                          ${Number.isFinite(totalAmount) ? totalAmount.toFixed(2) : '0.00'}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="detail-row">
                   <span>Booking Date:</span>
                   <span>
