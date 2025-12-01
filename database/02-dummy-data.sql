@@ -6,61 +6,61 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 -- 1. USERS (50 Rows) - Updated with Single Admin Role
 -- ========================================================
 TRUNCATE TABLE users;
-INSERT INTO users (id, first_name, last_name, email, ssn, password_hash, city, state, mongo_image_id, role) VALUES
+INSERT INTO users (id, first_name, last_name, email, ssn, password_hash, city, state, mongo_image_id, role, phone_number) VALUES
 -- All users' password: abcd
 -- The Single Admin
-(1, 'John', 'Doe', 'john.doe@email.com', '123-45-0001', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', 'img_obj_001', 'admin'),
+(1, 'John', 'Doe', 'john.doe@email.com', '123-45-0001', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', 'img_obj_001', 'admin', '555-0101'),
 
 -- Regular Users
-(2, 'Jane', 'Smith', 'jane.smith@email.com', '123-45-0002', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', 'img_obj_002', 'user'),
-(3, 'Mike', 'Brown', 'mike.b@email.com', '123-45-0003', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
-(4, 'Sarah', 'Davis', 'sarah.d@email.com', '123-45-0004', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', 'img_obj_004', 'user'),
-(5, 'Chris', 'Wilson', 'chris.w@email.com', '123-45-0005', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
-(6, 'Emily', 'Moore', 'emily.m@email.com', '123-45-0006', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', 'img_obj_006', 'user'),
-(7, 'David', 'Taylor', 'david.t@email.com', '123-45-0007', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
-(8, 'Anna', 'Anderson', 'anna.a@email.com', '123-45-0008', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', 'img_obj_008', 'user'),
-(9, 'James', 'Thomas', 'james.t@email.com', '123-45-0009', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
-(10, 'Laura', 'Jackson', 'laura.j@email.com', '123-45-0010', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', 'img_obj_010', 'user'),
-(11, 'Robert', 'White', 'rob.w@email.com', '123-45-0011', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
-(12, 'Linda', 'Harris', 'linda.h@email.com', '123-45-0012', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
-(13, 'William', 'Martin', 'will.m@email.com', '123-45-0013', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
-(14, 'Elizabeth', 'Thompson', 'liz.t@email.com', '123-45-0014', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user'),
-(15, 'Michael', 'Garcia', 'mike.g@email.com', '123-45-0015', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
-(16, 'Barbara', 'Martinez', 'barb.m@email.com', '123-45-0016', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
-(17, 'Richard', 'Robinson', 'rich.r@email.com', '123-45-0017', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
-(18, 'Susan', 'Clark', 'sue.c@email.com', '123-45-0018', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user'),
-(19, 'Joseph', 'Rodriguez', 'joe.r@email.com', '123-45-0019', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
-(20, 'Jessica', 'Lewis', 'jess.l@email.com', '123-45-0020', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
-(21, 'Thomas', 'Lee', 'tom.l@email.com', '123-45-0021', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
-(22, 'Karen', 'Walker', 'karen.w@email.com', '123-45-0022', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user'),
-(23, 'Charles', 'Hall', 'charles.h@email.com', '123-45-0023', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
-(24, 'Lisa', 'Allen', 'lisa.a@email.com', '123-45-0024', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
-(25, 'Daniel', 'Young', 'dan.y@email.com', '123-45-0025', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
-(26, 'Betty', 'Hernandez', 'betty.h@email.com', '123-45-0026', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user'),
-(27, 'Matthew', 'King', 'matt.k@email.com', '123-45-0027', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
-(28, 'Margaret', 'Wright', 'marg.w@email.com', '123-45-0028', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
-(29, 'Anthony', 'Lopez', 'tony.l@email.com', '123-45-0029', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
-(30, 'Sandra', 'Hill', 'sandra.h@email.com', '123-45-0030', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user'),
-(31, 'Mark', 'Scott', 'mark.s@email.com', '123-45-0031', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
-(32, 'Ashley', 'Green', 'ash.g@email.com', '123-45-0032', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
-(33, 'Donald', 'Adams', 'don.a@email.com', '123-45-0033', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
-(34, 'Kimberly', 'Baker', 'kim.b@email.com', '123-45-0034', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user'),
-(35, 'Steven', 'Gonzalez', 'steve.g@email.com', '123-45-0035', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
-(36, 'Donna', 'Nelson', 'donna.n@email.com', '123-45-0036', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
-(37, 'Paul', 'Carter', 'paul.c@email.com', '123-45-0037', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
-(38, 'Carol', 'Mitchell', 'carol.m@email.com', '123-45-0038', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user'),
-(39, 'Andrew', 'Perez', 'andy.p@email.com', '123-45-0039', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
-(40, 'Michelle', 'Roberts', 'mich.r@email.com', '123-45-0040', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
-(41, 'Joshua', 'Turner', 'josh.t@email.com', '123-45-0041', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
-(42, 'Emily', 'Phillips', 'em.p@email.com', '123-45-0042', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user'),
-(43, 'Kevin', 'Campbell', 'kev.c@email.com', '123-45-0043', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
-(44, 'Amanda', 'Parker', 'amanda.p@email.com', '123-45-0044', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
-(45, 'Brian', 'Evans', 'brian.e@email.com', '123-45-0045', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
-(46, 'Melissa', 'Edwards', 'mel.e@email.com', '123-45-0046', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user'),
-(47, 'Edward', 'Collins', 'ed.c@email.com', '123-45-0047', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user'),
-(48, 'Stephanie', 'Stewart', 'steph.s@email.com', '123-45-0048', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user'),
-(49, 'Ronald', 'Sanchez', 'ron.s@email.com', '123-45-0049', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user'),
-(50, 'Timothy', 'Morris', 'tim.m@email.com', '123-45-0050', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user');
+(2, 'Jane', 'Smith', 'jane.smith@email.com', '123-45-0002', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', 'img_obj_002', 'user', '555-0102'),
+(3, 'Mike', 'Brown', 'mike.b@email.com', '123-45-0003', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user', '555-0103'),
+(4, 'Sarah', 'Davis', 'sarah.d@email.com', '123-45-0004', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', 'img_obj_004', 'user', '555-0104'),
+(5, 'Chris', 'Wilson', 'chris.w@email.com', '123-45-0005', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user', '555-0105'),
+(6, 'Emily', 'Moore', 'emily.m@email.com', '123-45-0006', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', 'img_obj_006', 'user', '555-0106'),
+(7, 'David', 'Taylor', 'david.t@email.com', '123-45-0007', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user', '555-0107'),
+(8, 'Anna', 'Anderson', 'anna.a@email.com', '123-45-0008', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', 'img_obj_008', 'user', '555-0108'),
+(9, 'James', 'Thomas', 'james.t@email.com', '123-45-0009', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user', '555-0109'),
+(10, 'Laura', 'Jackson', 'laura.j@email.com', '123-45-0010', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', 'img_obj_010', 'user', '555-0110'),
+(11, 'Robert', 'White', 'rob.w@email.com', '123-45-0011', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user', '555-0111'),
+(12, 'Linda', 'Harris', 'linda.h@email.com', '123-45-0012', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user', '555-0112'),
+(13, 'William', 'Martin', 'will.m@email.com', '123-45-0013', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user', '555-0113'),
+(14, 'Elizabeth', 'Thompson', 'liz.t@email.com', '123-45-0014', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'San Jose', 'CA', NULL, 'user', '555-0114'),
+(15, 'Michael', 'Garcia', 'mike.g@email.com', '123-45-0015', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user', '555-0115'),
+(16, 'Barbara', 'Martinez', 'barb.m@email.com', '123-45-0016', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user', '555-0116'),
+(17, 'Richard', 'Robinson', 'rich.r@email.com', '123-45-0017', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user', '555-0117'),
+(18, 'Susan', 'Clark', 'sue.c@email.com', '123-45-0018', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'New York', 'NY', NULL, 'user', '555-0118'),
+(19, 'Joseph', 'Rodriguez', 'joe.r@email.com', '123-45-0019', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user', '555-0119'),
+(20, 'Jessica', 'Lewis', 'jess.l@email.com', '123-45-0020', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user', '555-0120'),
+(21, 'Thomas', 'Lee', 'tom.l@email.com', '123-45-0021', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user', '555-0121'),
+(22, 'Karen', 'Walker', 'karen.w@email.com', '123-45-0022', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Chicago', 'IL', NULL, 'user', '555-0122'),
+(23, 'Charles', 'Hall', 'charles.h@email.com', '123-45-0023', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user', '555-0123'),
+(24, 'Lisa', 'Allen', 'lisa.a@email.com', '123-45-0024', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user', '555-0124'),
+(25, 'Daniel', 'Young', 'dan.y@email.com', '123-45-0025', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user', '555-0125'),
+(26, 'Betty', 'Hernandez', 'betty.h@email.com', '123-45-0026', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Austin', 'TX', NULL, 'user', '555-0126'),
+(27, 'Matthew', 'King', 'matt.k@email.com', '123-45-0027', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user', '555-0127'),
+(28, 'Margaret', 'Wright', 'marg.w@email.com', '123-45-0028', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user', '555-0128'),
+(29, 'Anthony', 'Lopez', 'tony.l@email.com', '123-45-0029', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user', '555-0129'),
+(30, 'Sandra', 'Hill', 'sandra.h@email.com', '123-45-0030', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Seattle', 'WA', NULL, 'user', '555-0130'),
+(31, 'Mark', 'Scott', 'mark.s@email.com', '123-45-0031', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user', '555-0131'),
+(32, 'Ashley', 'Green', 'ash.g@email.com', '123-45-0032', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user', '555-0132'),
+(33, 'Donald', 'Adams', 'don.a@email.com', '123-45-0033', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user', '555-0133'),
+(34, 'Kimberly', 'Baker', 'kim.b@email.com', '123-45-0034', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Miami', 'FL', NULL, 'user', '555-0134'),
+(35, 'Steven', 'Gonzalez', 'steve.g@email.com', '123-45-0035', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user', '555-0135'),
+(36, 'Donna', 'Nelson', 'donna.n@email.com', '123-45-0036', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user', '555-0136'),
+(37, 'Paul', 'Carter', 'paul.c@email.com', '123-45-0037', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user', '555-0137'),
+(38, 'Carol', 'Mitchell', 'carol.m@email.com', '123-45-0038', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Denver', 'CO', NULL, 'user', '555-0138'),
+(39, 'Andrew', 'Perez', 'andy.p@email.com', '123-45-0039', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user', '555-0139'),
+(40, 'Michelle', 'Roberts', 'mich.r@email.com', '123-45-0040', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user', '555-0140'),
+(41, 'Joshua', 'Turner', 'josh.t@email.com', '123-45-0041', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user', '555-0141'),
+(42, 'Emily', 'Phillips', 'em.p@email.com', '123-45-0042', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Boston', 'MA', NULL, 'user', '555-0142'),
+(43, 'Kevin', 'Campbell', 'kev.c@email.com', '123-45-0043', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user', '555-0143'),
+(44, 'Amanda', 'Parker', 'amanda.p@email.com', '123-45-0044', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user', '555-0144'),
+(45, 'Brian', 'Evans', 'brian.e@email.com', '123-45-0045', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user', '555-0145'),
+(46, 'Melissa', 'Edwards', 'mel.e@email.com', '123-45-0046', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Phoenix', 'AZ', NULL, 'user', '555-0146'),
+(47, 'Edward', 'Collins', 'ed.c@email.com', '123-45-0047', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user', '555-0147'),
+(48, 'Stephanie', 'Stewart', 'steph.s@email.com', '123-45-0048', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user', '555-0148'),
+(49, 'Ronald', 'Sanchez', 'ron.s@email.com', '123-45-0049', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user', '555-0149'),
+(50, 'Timothy', 'Morris', 'tim.m@email.com', '123-45-0050', '$2b$10$eWvehaNCvgT1A.Kb6fBTDeDhvq6.VmTRX3XMz5j851GxAgVqTcGpm', 'Detroit', 'MI', NULL, 'user', '555-0150');
 
 TRUNCATE TABLE airports;
 INSERT INTO airports (code, name, city, state, country) VALUES 
@@ -625,8 +625,8 @@ BEGIN
     DECLARE price DECIMAL(10,2);
     DECLARE seat_cols VARCHAR(10) DEFAULT 'ABCDEF';
     
-    -- Loop through the first 10 flights
-    WHILE flight_idx <= 10 DO
+    -- Loop through all 50 flights
+    WHILE flight_idx <= 50 DO
     
         -- Clear existing seats for this flight just in case
         DELETE FROM flight_seats WHERE flight_id = flight_idx;
