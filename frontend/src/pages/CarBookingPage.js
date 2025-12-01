@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { carsAPI } from '../services/api';
+import { carsAPI, authAPI, bookingsAPI } from '../services/api';
 import { FaCar, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaCreditCard, FaLock, FaDownload, FaPrint, FaCheckCircle } from 'react-icons/fa';
 import './CarBookingPage.css';
 
@@ -38,6 +38,11 @@ function CarBookingPage() {
     country: ''
   });
 
+  // Saved payment methods state
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [useNewCard, setUseNewCard] = useState(false);
+
   // Calculate rental days
   const calculateRentalDays = () => {
     if (!pickupDate || !dropoffDate) return 1;
@@ -55,7 +60,7 @@ function CarBookingPage() {
       try {
         setLoading(true);
         const response = await carsAPI.getById(id);
-        setCar(response.data);
+        setCar(response.data.data || response.data);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching car details:', err);
@@ -64,8 +69,54 @@ function CarBookingPage() {
       }
     };
 
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await authAPI.me();
+          const userData = response.data.data || response.data;
+
+          setPaymentForm(prev => ({
+            ...prev,
+            cardHolder: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            billingAddress: userData.address || '',
+            city: userData.city || '',
+            zipCode: userData.zipCode || '',
+            country: userData.country || 'US' // Default to US if not present
+          }));
+
+          // Get saved payment methods from localStorage
+          const savedPayments = localStorage.getItem('savedPaymentMethods');
+          if (savedPayments) {
+            try {
+              let paymentMethods = JSON.parse(savedPayments);
+              // Filter only card payments
+              paymentMethods = paymentMethods.filter(p => p.paymentType === 'card');
+              setSavedPaymentMethods(paymentMethods);
+
+              if (paymentMethods.length > 0) {
+                // Select the first card by default
+                const firstCard = paymentMethods[0];
+                handleSelectSavedCard(firstCard, 0);
+              } else {
+                setUseNewCard(true);
+              }
+            } catch (e) {
+              console.error('Error parsing saved payments:', e);
+              setUseNewCard(true);
+            }
+          } else {
+            setUseNewCard(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
     if (id) {
       fetchCarDetails();
+      fetchUserProfile();
     }
   }, [id]);
 
@@ -103,6 +154,37 @@ function CarBookingPage() {
     }
   };
 
+  // Handle selecting a saved payment method
+  const handleSelectSavedCard = (card, index) => {
+    setSelectedPaymentMethod(index);
+    setUseNewCard(false);
+    setPaymentForm(prev => ({
+      ...prev,
+      cardNumber: card.creditCardNumber || '',
+      expiryMonth: card.expiryMonth || '',
+      expiryYear: card.expiryYear ? card.expiryYear.toString() : '',
+      billingAddress: card.billingAddress || prev.billingAddress,
+      city: card.billingCity || prev.city,
+      zipCode: card.billingZip || prev.zipCode,
+      cvv: card.cvv || '',
+      // Keep existing cardholder if not in saved card (usually not saved)
+      cardHolder: prev.cardHolder
+    }));
+  };
+
+  // Handle using a new card
+  const handleUseNewCard = () => {
+    setUseNewCard(true);
+    setSelectedPaymentMethod(null);
+    setPaymentForm(prev => ({
+      ...prev,
+      cardNumber: '',
+      expiryMonth: '',
+      expiryYear: '',
+      cvv: ''
+    }));
+  };
+
   const validateForm = () => {
     if (!paymentForm.cardNumber || paymentForm.cardNumber.replace(/\s/g, '').length !== 16) {
       alert('Please enter a valid 16-digit card number');
@@ -120,8 +202,8 @@ function CarBookingPage() {
       alert('Please enter a valid CVV');
       return false;
     }
-    if (!paymentForm.billingAddress.trim() || !paymentForm.city.trim() || 
-        !paymentForm.zipCode.trim() || !paymentForm.country.trim()) {
+    if (!paymentForm.billingAddress.trim() || !paymentForm.city.trim() ||
+      !paymentForm.zipCode.trim() || !paymentForm.country.trim()) {
       alert('Please fill in all billing address fields');
       return false;
     }
@@ -130,7 +212,7 @@ function CarBookingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -138,27 +220,49 @@ function CarBookingPage() {
     setProcessing(true);
 
     try {
-      const bookingData = {
-        car_id: parseInt(id),
-        pickup_location: pickupLocation,
-        dropoff_location: dropoffLocation,
-        pickup_date: pickupDate,
-        dropoff_date: dropoffDate,
-        pickup_time: pickupTime,
-        dropoff_time: dropoffTime,
-        rental_days: rentalDays,
-        total_price: totalPrice
+      // Get user ID from local storage or auth context (assuming token has user info or we fetched it)
+      // We fetched user profile earlier, but didn't store ID. Let's rely on authAPI.me() again or store it.
+      // Better: fetch user ID if not available.
+      // For now, let's assume we can get it from the token or a stored user object.
+      // Actually, we can just call authAPI.me() again or store user in state.
+
+      // Let's use a hardcoded ID for now if we can't find it, or better, fetch it.
+      // But wait, we fetched user profile in useEffect. Let's store the full user object.
+
+      // Re-fetch user to get ID (or use the one from state if we added it)
+      const userResponse = await authAPI.me();
+      const user = userResponse.data.data || userResponse.data;
+
+      const bookingPayload = {
+        user_id: user.userId || user.id,
+        booking_type: 'car',
+        total_amount: totalPrice,
+        payment_method: 'credit_card',
+        booking_details: {
+          car_id: parseInt(id),
+          car_model: car.model,
+          car_company: car.company,
+          pickupLocation: pickupLocation,
+          returnLocation: dropoffLocation,
+          pickupDate: pickupDate,
+          returnDate: dropoffDate,
+          pickupTime: pickupTime,
+          returnTime: dropoffTime,
+          rentalDays: rentalDays,
+          pricePerDay: dailyRate
+        }
       };
 
-      console.log('Creating car booking:', bookingData);
-      
-      // Call the booking API
-      const response = await carsAPI.book(bookingData);
-      
+      console.log('Creating car booking via Booking Service:', bookingPayload);
+
+      // Call the booking API (Booking Service)
+      const response = await bookingsAPI.create(bookingPayload);
+
       console.log('Booking response:', response.data);
-      
+
       if (response.data && response.data.success) {
-        setBookingReference(response.data.booking_reference);
+        // The booking service returns { data: { bookingId, booking_reference, ... } }
+        setBookingReference(response.data.data.booking_reference);
         setShowConfirmation(true);
         setProcessing(false);
       } else {
@@ -224,7 +328,7 @@ function CarBookingPage() {
           <div className="booking-summary-section">
             <div className="summary-card">
               <h2>Booking Summary</h2>
-              
+
               {/* Car Details */}
               <div className="car-info">
                 {car.image_url && (
@@ -250,7 +354,7 @@ function CarBookingPage() {
               {/* Rental Details */}
               <div className="rental-details">
                 <h3>Rental Details</h3>
-                
+
                 <div className="detail-row">
                   <div className="detail-item">
                     <div className="detail-label">
@@ -263,11 +367,11 @@ function CarBookingPage() {
                       <FaCalendar /> Pick-up Date
                     </div>
                     <div className="detail-value">
-                      {new Date(pickupDate).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
+                      {new Date(pickupDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
                       })}
                     </div>
                   </div>
@@ -293,11 +397,11 @@ function CarBookingPage() {
                       <FaCalendar /> Drop-off Date
                     </div>
                     <div className="detail-value">
-                      {new Date(dropoffDate).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
+                      {new Date(dropoffDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
                       })}
                     </div>
                   </div>
@@ -348,157 +452,212 @@ function CarBookingPage() {
                 <FaLock /> Secure Payment
               </div>
 
+              {/* Saved Payment Methods Selection */}
+              {savedPaymentMethods.length > 0 && (
+                <div className="saved-cards-section">
+                  <div className="payment-method-selector">
+                    {savedPaymentMethods.map((card, index) => (
+                      <label
+                        key={index}
+                        className={`payment-radio-option ${selectedPaymentMethod === index ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          checked={selectedPaymentMethod === index}
+                          onChange={() => handleSelectSavedCard(card, index)}
+                        />
+                        <div className="radio-content">
+                          <div className="card-brand-icon-box">
+                            <FaCreditCard className="brand-logo-icon" />
+                          </div>
+                          <div className="card-info">
+                            <span className="card-label">{card.creditCardType || 'Card'}</span>
+                            <span className="card-ending">•••• •••• •••• {card.creditCardNumber.slice(-4)}</span>
+                          </div>
+                        </div>
+                        {selectedPaymentMethod === index && <span className="radio-check">✓</span>}
+                      </label>
+                    ))}
+
+                    {/* Use New Card Option */}
+                    <label className={`payment-radio-option add-new-card-option ${useNewCard ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        checked={useNewCard}
+                        onChange={handleUseNewCard}
+                      />
+                      <div className="radio-content">
+                        <div className="card-brand-icon-box new-card-box">
+                          <span className="plus-icon">+</span>
+                        </div>
+                        <div className="card-info">
+                          <span className="card-label">Add new card</span>
+                          <span className="card-ending">Enter card details below</span>
+                        </div>
+                      </div>
+                      {useNewCard && <span className="radio-check">✓</span>}
+                    </label>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="payment-form">
-                {/* Card Information */}
-                <div className="form-section">
-                  <h3>Card Information</h3>
-                  
-                  <div className="form-group">
-                    <label htmlFor="cardNumber">Card Number</label>
-                    <input
-                      type="text"
-                      id="cardNumber"
-                      name="cardNumber"
-                      value={paymentForm.cardNumber}
-                      onChange={handleCardNumberChange}
-                      placeholder="1234 5678 9012 3456"
-                      maxLength="19"
-                      required
-                    />
-                  </div>
+                {/* Card Information - Only show if using new card or no saved cards */}
+                {(useNewCard || savedPaymentMethods.length === 0) && (
+                  <div className="form-section">
+                    <h3>Card Information</h3>
 
-                  <div className="form-group">
-                    <label htmlFor="cardHolder">Cardholder Name</label>
-                    <input
-                      type="text"
-                      id="cardHolder"
-                      name="cardHolder"
-                      value={paymentForm.cardHolder}
-                      onChange={handleInputChange}
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-row">
                     <div className="form-group">
-                      <label htmlFor="expiryMonth">Expiry Date</label>
-                      <div className="expiry-inputs">
-                        <select
-                          id="expiryMonth"
-                          name="expiryMonth"
-                          value={paymentForm.expiryMonth}
-                          onChange={handleInputChange}
+                      <label htmlFor="cardNumber">Card Number</label>
+                      <input
+                        type="text"
+                        id="cardNumber"
+                        name="cardNumber"
+                        value={paymentForm.cardNumber}
+                        onChange={handleCardNumberChange}
+                        placeholder="1234 5678 9012 3456"
+                        maxLength="19"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="cardHolder">Cardholder Name</label>
+                      <input
+                        type="text"
+                        id="cardHolder"
+                        name="cardHolder"
+                        value={paymentForm.cardHolder}
+                        onChange={handleInputChange}
+                        placeholder="John Doe"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="expiryMonth">Expiry Date</label>
+                        <div className="expiry-inputs">
+                          <select
+                            id="expiryMonth"
+                            name="expiryMonth"
+                            value={paymentForm.expiryMonth}
+                            onChange={handleInputChange}
+                            required
+                          >
+                            <option value="">MM</option>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                              <option key={month} value={month.toString().padStart(2, '0')}>
+                                {month.toString().padStart(2, '0')}
+                              </option>
+                            ))}
+                          </select>
+                          <span>/</span>
+                          <select
+                            id="expiryYear"
+                            name="expiryYear"
+                            value={paymentForm.expiryYear}
+                            onChange={handleInputChange}
+                            required
+                          >
+                            <option value="">YYYY</option>
+                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(year => (
+                              <option key={year} value={year}>
+                                {year}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="cvv">CVV</label>
+                        <input
+                          type="text"
+                          id="cvv"
+                          name="cvv"
+                          value={paymentForm.cvv}
+                          onChange={handleCVVChange}
+                          placeholder="123"
+                          maxLength="4"
                           required
-                        >
-                          <option value="">MM</option>
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                            <option key={month} value={month.toString().padStart(2, '0')}>
-                              {month.toString().padStart(2, '0')}
-                            </option>
-                          ))}
-                        </select>
-                        <span>/</span>
-                        <select
-                          id="expiryYear"
-                          name="expiryYear"
-                          value={paymentForm.expiryYear}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Billing Address - Only show if using new card or no saved cards */}
+                {(useNewCard || savedPaymentMethods.length === 0) && (
+                  <div className="form-section">
+                    <h3>Billing Address</h3>
+
+                    <div className="form-group">
+                      <label htmlFor="billingAddress">Street Address</label>
+                      <input
+                        type="text"
+                        id="billingAddress"
+                        name="billingAddress"
+                        value={paymentForm.billingAddress}
+                        onChange={handleInputChange}
+                        placeholder="123 Main Street"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="city">City</label>
+                        <input
+                          type="text"
+                          id="city"
+                          name="city"
+                          value={paymentForm.city}
                           onChange={handleInputChange}
+                          placeholder="San Francisco"
                           required
-                        >
-                          <option value="">YYYY</option>
-                          {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(year => (
-                            <option key={year} value={year}>
-                              {year}
-                            </option>
-                          ))}
-                        </select>
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="zipCode">ZIP Code</label>
+                        <input
+                          type="text"
+                          id="zipCode"
+                          name="zipCode"
+                          value={paymentForm.zipCode}
+                          onChange={handleInputChange}
+                          placeholder="94105"
+                          required
+                        />
                       </div>
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="cvv">CVV</label>
-                      <input
-                        type="text"
-                        id="cvv"
-                        name="cvv"
-                        value={paymentForm.cvv}
-                        onChange={handleCVVChange}
-                        placeholder="123"
-                        maxLength="4"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Billing Address */}
-                <div className="form-section">
-                  <h3>Billing Address</h3>
-                  
-                  <div className="form-group">
-                    <label htmlFor="billingAddress">Street Address</label>
-                    <input
-                      type="text"
-                      id="billingAddress"
-                      name="billingAddress"
-                      value={paymentForm.billingAddress}
-                      onChange={handleInputChange}
-                      placeholder="123 Main Street"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="city">City</label>
-                      <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={paymentForm.city}
+                      <label htmlFor="country">Country</label>
+                      <select
+                        id="country"
+                        name="country"
+                        value={paymentForm.country}
                         onChange={handleInputChange}
-                        placeholder="San Francisco"
                         required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="zipCode">ZIP Code</label>
-                      <input
-                        type="text"
-                        id="zipCode"
-                        name="zipCode"
-                        value={paymentForm.zipCode}
-                        onChange={handleInputChange}
-                        placeholder="94105"
-                        required
-                      />
+                      >
+                        <option value="">Select Country</option>
+                        <option value="US">United States</option>
+                        <option value="CA">Canada</option>
+                        <option value="UK">United Kingdom</option>
+                        <option value="AU">Australia</option>
+                        <option value="other">Other</option>
+                      </select>
                     </div>
                   </div>
-
-                  <div className="form-group">
-                    <label htmlFor="country">Country</label>
-                    <select
-                      id="country"
-                      name="country"
-                      value={paymentForm.country}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select Country</option>
-                      <option value="US">United States</option>
-                      <option value="CA">Canada</option>
-                      <option value="UK">United Kingdom</option>
-                      <option value="AU">Australia</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
+                )}
 
                 {/* Submit Button */}
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="submit-btn"
                   disabled={processing}
                 >
@@ -521,132 +680,134 @@ function CarBookingPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Confirmation Modal */}
-      {showConfirmation && (
-        <>
-          <div className="modal-overlay" onClick={handleCloseConfirmation}></div>
-          <div className="confirmation-modal">
-            <div className="modal-content">
-              <div className="confirmation-header">
-                <FaCheckCircle className="success-icon" />
-                <h2>Booking Confirmed!</h2>
-                <p className="confirmation-message">Your car rental has been successfully confirmed.</p>
-                <p className="booking-ref">Booking Reference: <strong>{bookingReference}</strong></p>
-              </div>
-
-              {/* Printable Booking Summary */}
-              <div className="printable-summary" ref={printRef}>
-                <div className="print-header">
-                  <h1>KAYAK</h1>
-                  <h2>Booking Confirmation</h2>
-                  <p className="print-ref">Reference: {bookingReference}</p>
-                  <p className="print-date">Date: {new Date().toLocaleDateString()}</p>
+      {
+        showConfirmation && (
+          <>
+            <div className="modal-overlay" onClick={handleCloseConfirmation}></div>
+            <div className="confirmation-modal">
+              <div className="modal-content">
+                <div className="confirmation-header">
+                  <FaCheckCircle className="success-icon" />
+                  <h2>Booking Confirmed!</h2>
+                  <p className="confirmation-message">Your car rental has been successfully confirmed.</p>
+                  <p className="booking-ref">Booking Reference: <strong>{bookingReference}</strong></p>
                 </div>
 
-                <div className="print-section">
-                  <h3>Vehicle Details</h3>
-                  <div className="print-row">
-                    <span className="print-label">Vehicle:</span>
-                    <span className="print-value">{car.model}</span>
+                {/* Printable Booking Summary */}
+                <div className="printable-summary" ref={printRef}>
+                  <div className="print-header">
+                    <h1>KAYAK</h1>
+                    <h2>Booking Confirmation</h2>
+                    <p className="print-ref">Reference: {bookingReference}</p>
+                    <p className="print-date">Date: {new Date().toLocaleDateString()}</p>
                   </div>
-                  <div className="print-row">
-                    <span className="print-label">Company:</span>
-                    <span className="print-value">{car.company}</span>
+
+                  <div className="print-section">
+                    <h3>Vehicle Details</h3>
+                    <div className="print-row">
+                      <span className="print-label">Vehicle:</span>
+                      <span className="print-value">{car.model}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Company:</span>
+                      <span className="print-value">{car.company}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Type:</span>
+                      <span className="print-value">{car.car_type} • {car.num_seats} seats • {car.transmission}</span>
+                    </div>
                   </div>
-                  <div className="print-row">
-                    <span className="print-label">Type:</span>
-                    <span className="print-value">{car.car_type} • {car.num_seats} seats • {car.transmission}</span>
+
+                  <div className="print-section">
+                    <h3>Rental Details</h3>
+                    <div className="print-row">
+                      <span className="print-label">Pick-up Location:</span>
+                      <span className="print-value">{pickupLocation}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Pick-up Date & Time:</span>
+                      <span className="print-value">
+                        {new Date(pickupDate).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })} at {pickupTime}
+                      </span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Drop-off Location:</span>
+                      <span className="print-value">{dropoffLocation}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Drop-off Date & Time:</span>
+                      <span className="print-value">
+                        {new Date(dropoffDate).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })} at {dropoffTime}
+                      </span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Rental Duration:</span>
+                      <span className="print-value">{rentalDays} {rentalDays === 1 ? 'day' : 'days'}</span>
+                    </div>
+                  </div>
+
+                  <div className="print-section">
+                    <h3>Payment Summary</h3>
+                    <div className="print-row">
+                      <span className="print-label">Daily Rate:</span>
+                      <span className="print-value">${dailyRate.toFixed(2)}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Subtotal ({rentalDays} {rentalDays === 1 ? 'day' : 'days'}):</span>
+                      <span className="print-value">${totalPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Taxes & Fees:</span>
+                      <span className="print-value">${(totalPrice * 0.15).toFixed(2)}</span>
+                    </div>
+                    <div className="print-row total-row">
+                      <span className="print-label">Total Amount:</span>
+                      <span className="print-value">${(totalPrice * 1.15).toFixed(2)}</span>
+                    </div>
+                    <div className="print-row">
+                      <span className="print-label">Payment Status:</span>
+                      <span className="print-value status-confirmed">✓ CONFIRMED</span>
+                    </div>
+                  </div>
+
+                  <div className="print-footer">
+                    <p>Thank you for booking with KAYAK!</p>
+                    <p>Please present this confirmation at the rental counter.</p>
+                    <p className="print-note">For support, contact us at support@kayak.com</p>
                   </div>
                 </div>
 
-                <div className="print-section">
-                  <h3>Rental Details</h3>
-                  <div className="print-row">
-                    <span className="print-label">Pick-up Location:</span>
-                    <span className="print-value">{pickupLocation}</span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Pick-up Date & Time:</span>
-                    <span className="print-value">
-                      {new Date(pickupDate).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })} at {pickupTime}
-                    </span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Drop-off Location:</span>
-                    <span className="print-value">{dropoffLocation}</span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Drop-off Date & Time:</span>
-                    <span className="print-value">
-                      {new Date(dropoffDate).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })} at {dropoffTime}
-                    </span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Rental Duration:</span>
-                    <span className="print-value">{rentalDays} {rentalDays === 1 ? 'day' : 'days'}</span>
-                  </div>
+                {/* Action Buttons */}
+                <div className="modal-actions">
+                  <button className="print-btn" onClick={handlePrint}>
+                    <FaPrint /> Print
+                  </button>
+                  <button className="download-btn" onClick={handleDownloadPDF}>
+                    <FaDownload /> Download PDF
+                  </button>
+                  <button className="close-btn" onClick={handleCloseConfirmation}>
+                    Done
+                  </button>
                 </div>
-
-                <div className="print-section">
-                  <h3>Payment Summary</h3>
-                  <div className="print-row">
-                    <span className="print-label">Daily Rate:</span>
-                    <span className="print-value">${dailyRate.toFixed(2)}</span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Subtotal ({rentalDays} {rentalDays === 1 ? 'day' : 'days'}):</span>
-                    <span className="print-value">${totalPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Taxes & Fees:</span>
-                    <span className="print-value">${(totalPrice * 0.15).toFixed(2)}</span>
-                  </div>
-                  <div className="print-row total-row">
-                    <span className="print-label">Total Amount:</span>
-                    <span className="print-value">${(totalPrice * 1.15).toFixed(2)}</span>
-                  </div>
-                  <div className="print-row">
-                    <span className="print-label">Payment Status:</span>
-                    <span className="print-value status-confirmed">✓ CONFIRMED</span>
-                  </div>
-                </div>
-
-                <div className="print-footer">
-                  <p>Thank you for booking with KAYAK!</p>
-                  <p>Please present this confirmation at the rental counter.</p>
-                  <p className="print-note">For support, contact us at support@kayak.com</p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="modal-actions">
-                <button className="print-btn" onClick={handlePrint}>
-                  <FaPrint /> Print
-                </button>
-                <button className="download-btn" onClick={handleDownloadPDF}>
-                  <FaDownload /> Download PDF
-                </button>
-                <button className="close-btn" onClick={handleCloseConfirmation}>
-                  Done
-                </button>
               </div>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )
+      }
+    </div >
   );
 }
 
