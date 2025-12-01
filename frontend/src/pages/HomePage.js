@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaPlane, FaHotel, FaCar, FaUmbrellaBeach, FaMagic, FaSearch, FaExchangeAlt, FaCalendarAlt, FaUser } from 'react-icons/fa';
 import AirportAutocomplete from '../components/AirportAutocomplete';
 import HotelLocationAutocomplete from '../components/HotelLocationAutocomplete';
+import CarLocationAutocomplete from '../components/CarLocationAutocomplete';
 import './HomePage.css';
 
 const heroImages = [
@@ -816,12 +817,11 @@ const HomePage = () => {
           </div>
           <div className="segment-content">
             <label className="segment-label">Pick-up Location</label>
-            <input
-              type="text"
-              className="segment-input"
-              placeholder="From?"
+            <CarLocationAutocomplete
               value={carData.pickupLocation}
-              onChange={handleCarInputChange('pickupLocation')}
+              onChange={(value) => setCarData(prev => ({ ...prev, pickupLocation: value }))}
+              placeholder="City, airport, or address"
+              name="pickupLocation"
               required
             />
           </div>
@@ -838,12 +838,11 @@ const HomePage = () => {
               </div>
               <div className="segment-content">
                 <label className="segment-label">Drop-off Location</label>
-                <input
-                  type="text"
-                  className="segment-input"
-                  placeholder="To?"
+                <CarLocationAutocomplete
                   value={carData.dropoffLocation}
-                  onChange={handleCarInputChange('dropoffLocation')}
+                  onChange={(value) => setCarData(prev => ({ ...prev, dropoffLocation: value }))}
+                  placeholder="City, airport, or address"
+                  name="dropoffLocation"
                   required
                 />
               </div>

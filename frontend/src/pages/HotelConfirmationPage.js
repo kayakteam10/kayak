@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaHotel, FaPrint } from 'react-icons/fa';
+import { bookingsAPI } from '../services/api';
 import './HotelConfirmationPage.css';
 
 function HotelConfirmationPage() {
@@ -12,17 +13,16 @@ function HotelConfirmationPage() {
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        const response = await fetch(`http://localhost:8089/api/bookings/${id}`);
-        if (!response.ok) throw new Error('Booking not found');
-        const data = await response.json();
-        setBooking(data);
+        const response = await bookingsAPI.getDetails(id);
+        // API returns { success: true, data: { ... } }
+        setBooking(response.data.data || response.data);
       } catch (err) {
         console.error('Failed to load booking:', err);
       } finally {
         setLoading(false);
       }
     };
-    
+
     if (id) {
       fetchBooking();
     }
@@ -35,11 +35,11 @@ function HotelConfirmationPage() {
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
@@ -64,8 +64,8 @@ function HotelConfirmationPage() {
     );
   }
 
-  const bookingDetails = typeof booking.booking_details === 'string' 
-    ? JSON.parse(booking.booking_details) 
+  const bookingDetails = typeof booking.booking_details === 'string'
+    ? JSON.parse(booking.booking_details)
     : booking.booking_details;
 
   const priceBreakdown = bookingDetails?.price_breakdown || {};
@@ -99,7 +99,7 @@ function HotelConfirmationPage() {
         {/* Booking Details Section */}
         <div className="booking-details-section">
           <h3 className="section-label">Booking Details</h3>
-          
+
           {/* Hotel Information */}
           <div className="detail-row">
             <span className="detail-label">Hotel:</span>
@@ -182,8 +182,8 @@ function HotelConfirmationPage() {
           <div className="detail-row">
             <span className="detail-label">Booking Date:</span>
             <span className="detail-value">
-              {booking?.booking_date ? new Date(booking.booking_date).toLocaleDateString() : 
-               booking?.created_at ? new Date(booking.created_at).toLocaleDateString() : '-'}
+              {booking?.booking_date ? new Date(booking.booking_date).toLocaleDateString() :
+                booking?.created_at ? new Date(booking.created_at).toLocaleDateString() : '-'}
             </span>
           </div>
 

@@ -57,7 +57,8 @@ function BookingPage() {
         const token = localStorage.getItem('token');
         if (token) {
           const response = await authAPI.me();
-          const userData = response.data;
+          // Extract user data from correct response structure
+          const userData = response.data.data || response.data;
 
           // Check if SSN or phone is missing
           if (!userData.ssn || !userData.phone) {
@@ -198,7 +199,8 @@ function BookingPage() {
           response = await carsAPI.getDetails(id);
         }
 
-        const itemData = response.data;
+        // Extract item data from correct response structure
+        const itemData = response.data.data || response.data;
         setItem(itemData);
 
         // For flights, detect if it's round-trip or multi-city
@@ -556,61 +558,78 @@ function BookingPage() {
         bookingData
       });
 
-      const bookingPayload = {
-        // Use correct key names per type
-        ...(type === 'flights' ? { flight_id: parseInt(id) } : {}),
-        ...(type === 'hotels' ? { hotel_id: parseInt(id) } : {}),
-        ...(type === 'cars' ? { car_id: parseInt(id) } : {}),
-        passengers: passengers.map((p, index) => {
-          // For multi-leg flights, assign seats from each leg
-          const passengerSeats = {};
-          flightLegs.forEach((leg, legIndex) => {
-            if (legSeats[legIndex] && legSeats[legIndex][index]) {
-              passengerSeats[`leg${legIndex}`] = legSeats[legIndex][index].seatNumber;
-            }
-          });
+      // Calculate total amount
+      const totalAmount = getPrice();
+      const userIdStr = localStorage.getItem('userId') || (authAPI.getCurrentUser()?.userId);
+      const userId = userIdStr ? parseInt(userIdStr) : null;
 
-          return {
-            firstName: p.firstName,
-            lastName: p.lastName,
-            email: p.email,
-            phone: p.phone,
-            ssn: p.ssn,
-            passengerType: p.passengerType,
-            seatNumber: legSeats[0]?.[index]?.seatNumber || null, // Primary seat (for backward compatibility)
-            seats: passengerSeats // All seats across legs
-          };
-        }),
-        payment_details: {
-          cardType: bookingData.cardType,
-          cardNumber: bookingData.cardNumber,
-          expiryDate: bookingData.expiryDate,
-          cvv: bookingData.cvv,
-          billingAddress: bookingData.billingAddress,
-          city: bookingData.city,
-          state: bookingData.state,
-          zipCode: bookingData.zipCode
+      // Construct payload for Booking Service
+      // Schema: { user_id, booking_type, booking_details, total_amount, payment_method }
+      const bookingPayload = {
+        user_id: userId,
+        booking_type: type.slice(0, -1), // 'flights' -> 'flight'
+        total_amount: totalAmount,
+        payment_method: 'credit_card',
+        booking_details: {
+          // Specific details based on type
+          ...(type === 'flights' ? { flight_id: parseInt(id) } : {}),
+          ...(type === 'hotels' ? { hotel_id: parseInt(id) } : {}),
+          ...(type === 'cars' ? { car_id: parseInt(id) } : {}),
+
+          // Common details
+          passengers: passengers.map((p, index) => {
+            // For multi-leg flights, assign seats from each leg
+            const passengerSeats = {};
+            flightLegs.forEach((leg, legIndex) => {
+              if (legSeats[legIndex] && legSeats[legIndex][index]) {
+                passengerSeats[`leg${legIndex}`] = legSeats[legIndex][index].seatNumber;
+              }
+            });
+
+            return {
+              firstName: p.firstName,
+              lastName: p.lastName,
+              email: p.email,
+              phone: p.phone,
+              ssn: p.ssn,
+              passengerType: p.passengerType,
+              seatNumber: legSeats[0]?.[index]?.seatNumber || null,
+              seats: passengerSeats
+            };
+          }),
+
+          payment_details: {
+            cardType: bookingData.cardType,
+            cardNumber: bookingData.cardNumber,
+            expiryDate: bookingData.expiryDate,
+            cvv: bookingData.cvv,
+            billingAddress: bookingData.billingAddress,
+            city: bookingData.city,
+            state: bookingData.state,
+            zipCode: bookingData.zipCode
+          },
+
+          // Add selected seats for flights (all legs combined)
+          ...(type === 'flights' && allSeats.length > 0 ? {
+            selected_seats: allSeats,
+            leg_seats: legSeats
+          } : {}),
+
+          // Hotel specific
+          ...(type === 'hotels' ? { guest_info: bookingData } : {}),
+
+          // Car specific
+          ...(type === 'cars' ? { rental_details: bookingData } : {})
         }
       };
 
-      // Add selected seats for flights (all legs combined)
-      if (type === 'flights' && allSeats.length > 0) {
-        bookingPayload.selected_seats = allSeats;
-        bookingPayload.leg_seats = legSeats; // Include leg-specific seats
-      }
-
       console.log('📤 Sending booking payload:', JSON.stringify(bookingPayload, null, 2));
 
-      if (type === 'flights') {
-        response = await flightsAPI.book(bookingPayload);
-      } else if (type === 'hotels') {
-        response = await hotelsAPI.book({ hotel_id: parseInt(id), guest_info: bookingData });
-      } else {
-        response = await carsAPI.book({ car_id: parseInt(id), rental_details: bookingData });
-      }
+      // Use centralized Bookings API
+      response = await bookingsAPI.create(bookingPayload);
 
       // Extract booking ID from response (flights API returns response.data.booking.id)
-      const bookingId = response.data.booking?.id || response.data.booking_id || response.data.id;
+      const bookingId = response.data.data?.bookingId || response.data.data?.id || response.data.booking?.id || response.data.booking_id || response.data.id;
 
       // Save payment method to user's profile
       savePaymentMethod();
@@ -620,7 +639,7 @@ function BookingPage() {
       console.error('❌ Booking Error:', err);
       console.error('❌ Error Response:', err.response?.data);
       console.error('❌ Error Status:', err.response?.status);
-      
+
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
         alert('Session expired. Please login again.');
         navigate('/login');
@@ -890,35 +909,35 @@ function BookingPage() {
                             <div className="card-brand-icon-box">
                               {card.creditCardType === 'Visa' && (
                                 <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                  <rect width="52" height="34" rx="5" fill="#1A1F71"/>
+                                  <rect width="52" height="34" rx="5" fill="#1A1F71" />
                                   <text x="26" y="21" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="Arial">VISA</text>
                                 </svg>
                               )}
                               {card.creditCardType === 'MasterCard' && (
                                 <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                  <rect width="52" height="34" rx="5" fill="#EB001B"/>
-                                  <circle cx="20" cy="17" r="10" fill="#FF5F00" opacity="0.8"/>
-                                  <circle cx="32" cy="17" r="10" fill="#F79E1B" opacity="0.8"/>
+                                  <rect width="52" height="34" rx="5" fill="#EB001B" />
+                                  <circle cx="20" cy="17" r="10" fill="#FF5F00" opacity="0.8" />
+                                  <circle cx="32" cy="17" r="10" fill="#F79E1B" opacity="0.8" />
                                 </svg>
                               )}
                               {card.creditCardType === 'American Express' && (
                                 <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                  <rect width="52" height="34" rx="5" fill="#006FCF"/>
+                                  <rect width="52" height="34" rx="5" fill="#006FCF" />
                                   <text x="26" y="21" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold" fontFamily="Arial">AMEX</text>
                                 </svg>
                               )}
                               {card.creditCardType === 'Discover' && (
                                 <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                  <rect width="52" height="34" rx="5" fill="#FF6000"/>
-                                  <circle cx="15" cy="17" r="8" fill="#FF9900"/>
+                                  <rect width="52" height="34" rx="5" fill="#FF6000" />
+                                  <circle cx="15" cy="17" r="8" fill="#FF9900" />
                                   <text x="35" y="21" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="Arial">DISCOVER</text>
                                 </svg>
                               )}
                               {!['Visa', 'MasterCard', 'American Express', 'Discover'].includes(card.creditCardType) && (
                                 <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                  <rect width="52" height="34" rx="5" fill="#6B7280"/>
-                                  <rect x="8" y="10" width="36" height="6" rx="2" fill="white" opacity="0.3"/>
-                                  <rect x="8" y="20" width="20" height="4" rx="1" fill="white" opacity="0.5"/>
+                                  <rect width="52" height="34" rx="5" fill="#6B7280" />
+                                  <rect x="8" y="10" width="36" height="6" rx="2" fill="white" opacity="0.3" />
+                                  <rect x="8" y="20" width="20" height="4" rx="1" fill="white" opacity="0.5" />
                                 </svg>
                               )}
                             </div>
@@ -942,9 +961,9 @@ function BookingPage() {
                         <div className="radio-content">
                           <div className="card-brand-icon-box new-card-box">
                             <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                              <rect width="52" height="34" rx="5" fill="#FF6B35" opacity="0.1" stroke="#FF6B35" strokeWidth="2" strokeDasharray="4 4"/>
-                              <circle cx="26" cy="17" r="8" fill="#FF6B35" opacity="0.2"/>
-                              <path d="M26 13V21M22 17H30" stroke="#FF6B35" strokeWidth="2.5" strokeLinecap="round"/>
+                              <rect width="52" height="34" rx="5" fill="#FF6B35" opacity="0.1" stroke="#FF6B35" strokeWidth="2" strokeDasharray="4 4" />
+                              <circle cx="26" cy="17" r="8" fill="#FF6B35" opacity="0.2" />
+                              <path d="M26 13V21M22 17H30" stroke="#FF6B35" strokeWidth="2.5" strokeLinecap="round" />
                             </svg>
                           </div>
                           <div className="card-info">
@@ -962,62 +981,62 @@ function BookingPage() {
                 {(useNewCard || savedPaymentMethods.length === 0) && (
                   <div className="card-details-form">
                     <h3 className="form-section-title">Card details</h3>
-                    
+
                     <div className="accepted-cards">
                       <span className="accepted-label">We accept:</span>
                       <div className="card-brands">
                         <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                          <rect width="50" height="32" rx="4" fill="#1434CB"/>
+                          <rect width="50" height="32" rx="4" fill="#1434CB" />
                           <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">VISA</text>
                         </svg>
                         <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                          <rect width="50" height="32" rx="4" fill="#EB001B"/>
-                          <circle cx="18" cy="16" r="10" fill="#FF5F00"/>
-                          <circle cx="32" cy="16" r="10" fill="#F79E1B"/>
+                          <rect width="50" height="32" rx="4" fill="#EB001B" />
+                          <circle cx="18" cy="16" r="10" fill="#FF5F00" />
+                          <circle cx="32" cy="16" r="10" fill="#F79E1B" />
                         </svg>
                         <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                          <rect width="50" height="32" rx="4" fill="#006FCF"/>
+                          <rect width="50" height="32" rx="4" fill="#006FCF" />
                           <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">AMEX</text>
                         </svg>
                         <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                          <rect width="50" height="32" rx="4" fill="#FF6000"/>
-                          <circle cx="15" cy="16" r="8" fill="#FF9900"/>
+                          <rect width="50" height="32" rx="4" fill="#FF6000" />
+                          <circle cx="15" cy="16" r="8" fill="#FF9900" />
                           <text x="60%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">DISCOVER</text>
                         </svg>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="form-row">
-                    <div className="form-group-full">
-                      <label>Card Type *</label>
-                      <select
-                        value={bookingData.cardType || ''}
-                        onChange={(e) => setBookingData({ ...bookingData, cardType: e.target.value })}
-                        className={errors.cardType ? 'error' : ''}
-                      >
-                        <option value="">Select card type</option>
-                        <option value="Visa">Visa</option>
-                        <option value="MasterCard">MasterCard</option>
-                        <option value="American Express">American Express</option>
-                        <option value="Discover">Discover</option>
-                      </select>
-                      {errors.cardType && <span className="error-text">{errors.cardType}</span>}
+                    <div className="form-row">
+                      <div className="form-group-full">
+                        <label>Card Type *</label>
+                        <select
+                          value={bookingData.cardType || ''}
+                          onChange={(e) => setBookingData({ ...bookingData, cardType: e.target.value })}
+                          className={errors.cardType ? 'error' : ''}
+                        >
+                          <option value="">Select card type</option>
+                          <option value="Visa">Visa</option>
+                          <option value="MasterCard">MasterCard</option>
+                          <option value="American Express">American Express</option>
+                          <option value="Discover">Discover</option>
+                        </select>
+                        {errors.cardType && <span className="error-text">{errors.cardType}</span>}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="form-row">
-                    <div className="form-group-full">
-                      <label>Name on card *</label>
-                      <input
-                        type="text"
-                        placeholder="John Doe"
-                        value={bookingData.cardholderName || ''}
-                        onChange={(e) => setBookingData({ ...bookingData, cardholderName: e.target.value })}
-                        className={errors.cardholderName ? 'error' : ''}
-                      />
-                      {errors.cardholderName && <span className="error-text">{errors.cardholderName}</span>}
-                    </div>
-                  </div>                    <div className="form-row">
+                    <div className="form-row">
+                      <div className="form-group-full">
+                        <label>Name on card *</label>
+                        <input
+                          type="text"
+                          placeholder="John Doe"
+                          value={bookingData.cardholderName || ''}
+                          onChange={(e) => setBookingData({ ...bookingData, cardholderName: e.target.value })}
+                          className={errors.cardholderName ? 'error' : ''}
+                        />
+                        {errors.cardholderName && <span className="error-text">{errors.cardholderName}</span>}
+                      </div>
+                    </div>                    <div className="form-row">
                       <div className="form-group-full">
                         <label>Card number *</label>
                         <input
@@ -1101,7 +1120,7 @@ function BookingPage() {
                 {/* Billing Address */}
                 <div className="billing-address-section">
                   <h3 className="form-section-title">Billing Address</h3>
-                  
+
                   <div className="form-row">
                     <div className="form-group-full">
                       <label>Street Address *</label>
@@ -1137,60 +1156,60 @@ function BookingPage() {
                         className={errors.state ? 'error' : ''}
                       >
                         <option value="">Select state</option>
-                      <option value="AL">AL - Alabama</option>
-                      <option value="AK">AK - Alaska</option>
-                      <option value="AZ">AZ - Arizona</option>
-                      <option value="AR">AR - Arkansas</option>
-                      <option value="CA">CA - California</option>
-                      <option value="CO">CO - Colorado</option>
-                      <option value="CT">CT - Connecticut</option>
-                      <option value="DE">DE - Delaware</option>
-                      <option value="FL">FL - Florida</option>
-                      <option value="GA">GA - Georgia</option>
-                      <option value="HI">HI - Hawaii</option>
-                      <option value="ID">ID - Idaho</option>
-                      <option value="IL">IL - Illinois</option>
-                      <option value="IN">IN - Indiana</option>
-                      <option value="IA">IA - Iowa</option>
-                      <option value="KS">KS - Kansas</option>
-                      <option value="KY">KY - Kentucky</option>
-                      <option value="LA">LA - Louisiana</option>
-                      <option value="ME">ME - Maine</option>
-                      <option value="MD">MD - Maryland</option>
-                      <option value="MA">MA - Massachusetts</option>
-                      <option value="MI">MI - Michigan</option>
-                      <option value="MN">MN - Minnesota</option>
-                      <option value="MS">MS - Mississippi</option>
-                      <option value="MO">MO - Missouri</option>
-                      <option value="MT">MT - Montana</option>
-                      <option value="NE">NE - Nebraska</option>
-                      <option value="NV">NV - Nevada</option>
-                      <option value="NH">NH - New Hampshire</option>
-                      <option value="NJ">NJ - New Jersey</option>
-                      <option value="NM">NM - New Mexico</option>
-                      <option value="NY">NY - New York</option>
-                      <option value="NC">NC - North Carolina</option>
-                      <option value="ND">ND - North Dakota</option>
-                      <option value="OH">OH - Ohio</option>
-                      <option value="OK">OK - Oklahoma</option>
-                      <option value="OR">OR - Oregon</option>
-                      <option value="PA">PA - Pennsylvania</option>
-                      <option value="RI">RI - Rhode Island</option>
-                      <option value="SC">SC - South Carolina</option>
-                      <option value="SD">SD - South Dakota</option>
-                      <option value="TN">TN - Tennessee</option>
-                      <option value="TX">TX - Texas</option>
-                      <option value="UT">UT - Utah</option>
-                      <option value="VT">VT - Vermont</option>
-                      <option value="VA">VA - Virginia</option>
-                      <option value="WA">WA - Washington</option>
-                      <option value="WV">WV - West Virginia</option>
-                      <option value="WI">WI - Wisconsin</option>
-                      <option value="WY">WY - Wyoming</option>
-                      <option value="DC">DC - District of Columbia</option>
-                    </select>
-                    {errors.state && <span className="error-text">{errors.state}</span>}
-                  </div>
+                        <option value="AL">AL - Alabama</option>
+                        <option value="AK">AK - Alaska</option>
+                        <option value="AZ">AZ - Arizona</option>
+                        <option value="AR">AR - Arkansas</option>
+                        <option value="CA">CA - California</option>
+                        <option value="CO">CO - Colorado</option>
+                        <option value="CT">CT - Connecticut</option>
+                        <option value="DE">DE - Delaware</option>
+                        <option value="FL">FL - Florida</option>
+                        <option value="GA">GA - Georgia</option>
+                        <option value="HI">HI - Hawaii</option>
+                        <option value="ID">ID - Idaho</option>
+                        <option value="IL">IL - Illinois</option>
+                        <option value="IN">IN - Indiana</option>
+                        <option value="IA">IA - Iowa</option>
+                        <option value="KS">KS - Kansas</option>
+                        <option value="KY">KY - Kentucky</option>
+                        <option value="LA">LA - Louisiana</option>
+                        <option value="ME">ME - Maine</option>
+                        <option value="MD">MD - Maryland</option>
+                        <option value="MA">MA - Massachusetts</option>
+                        <option value="MI">MI - Michigan</option>
+                        <option value="MN">MN - Minnesota</option>
+                        <option value="MS">MS - Mississippi</option>
+                        <option value="MO">MO - Missouri</option>
+                        <option value="MT">MT - Montana</option>
+                        <option value="NE">NE - Nebraska</option>
+                        <option value="NV">NV - Nevada</option>
+                        <option value="NH">NH - New Hampshire</option>
+                        <option value="NJ">NJ - New Jersey</option>
+                        <option value="NM">NM - New Mexico</option>
+                        <option value="NY">NY - New York</option>
+                        <option value="NC">NC - North Carolina</option>
+                        <option value="ND">ND - North Dakota</option>
+                        <option value="OH">OH - Ohio</option>
+                        <option value="OK">OK - Oklahoma</option>
+                        <option value="OR">OR - Oregon</option>
+                        <option value="PA">PA - Pennsylvania</option>
+                        <option value="RI">RI - Rhode Island</option>
+                        <option value="SC">SC - South Carolina</option>
+                        <option value="SD">SD - South Dakota</option>
+                        <option value="TN">TN - Tennessee</option>
+                        <option value="TX">TX - Texas</option>
+                        <option value="UT">UT - Utah</option>
+                        <option value="VT">VT - Vermont</option>
+                        <option value="VA">VA - Virginia</option>
+                        <option value="WA">WA - Washington</option>
+                        <option value="WV">WV - West Virginia</option>
+                        <option value="WI">WI - Wisconsin</option>
+                        <option value="WY">WY - Wyoming</option>
+                        <option value="DC">DC - District of Columbia</option>
+                      </select>
+                      {errors.state && <span className="error-text">{errors.state}</span>}
+                    </div>
                   </div>
                 </div>
               </div>

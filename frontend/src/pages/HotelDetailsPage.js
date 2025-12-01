@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaStar, FaMapMarkerAlt, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaHeart, FaRegHeart, FaShare } from 'react-icons/fa';
+import { hotelsAPI } from '../services/api';
 import './HotelDetailsPage.css';
 
 const HotelDetailsPage = () => {
@@ -27,12 +28,11 @@ const HotelDetailsPage = () => {
 
   const fetchHotelDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:8089/api/hotels/${id}`);
-      if (!response.ok) throw new Error('Hotel not found');
-      const data = await response.json();
-      setHotel(data);
+      const response = await hotelsAPI.getDetails(id);
+      // API returns { success: true, data: { ... } }
+      setHotel(response.data.data || response.data);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to load hotel details');
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ const HotelDetailsPage = () => {
         'https://images.unsplash.com/photo-1517840901100-8179e982acb7?auto=format&fit=crop&w=800&q=80'
       ]
     };
-    
+
     return imageMap[hotelName] || [
       'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80',
@@ -114,8 +114,8 @@ const HotelDetailsPage = () => {
   const nights = calculateNights();
   const pricePerNight = Number(hotel.price_per_night) || 100;
   const totalPrice = pricePerNight * nights;
-  const amenities = Array.isArray(hotel.amenities) ? hotel.amenities : 
-                    (typeof hotel.amenities === 'string' ? JSON.parse(hotel.amenities) : []);
+  const amenities = Array.isArray(hotel.amenities) ? hotel.amenities :
+    (typeof hotel.amenities === 'string' ? JSON.parse(hotel.amenities) : []);
 
   return (
     <div className="hotel-details-page">
@@ -145,14 +145,14 @@ const HotelDetailsPage = () => {
       <div className="image-gallery">
         <div className="main-image">
           <img src={images[selectedImage]} alt={hotel.hotel_name} />
-          <button className="view-all-photos" onClick={() => {}}>
+          <button className="view-all-photos" onClick={() => { }}>
             All photos ({images.length})
           </button>
         </div>
         <div className="thumbnail-grid">
           {images.slice(1, 5).map((img, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="thumbnail"
               onClick={() => setSelectedImage(idx + 1)}
             >
@@ -205,7 +205,7 @@ const HotelDetailsPage = () => {
                 <div className="highlight-item">
                   <div className="highlight-icon">
                     <svg viewBox="0 0 24 24" width="24" height="24">
-                      <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                      <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
                     </svg>
                   </div>
                   <div className="highlight-content">
@@ -265,20 +265,20 @@ const HotelDetailsPage = () => {
               {hotel.free_breakfast && (
                 <div className="feature-item">
                   <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3z"/>
+                    <path fill="currentColor" d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3z" />
                   </svg>
                   <span>Buffet breakfast available</span>
                 </div>
               )}
               <div className="feature-item">
                 <svg viewBox="0 0 24 24" width="20" height="20">
-                  <path fill="currentColor" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                  <path fill="currentColor" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
                 </svg>
                 <span>24-hour airport shuttle available</span>
               </div>
               <div className="feature-item">
                 <svg viewBox="0 0 24 24" width="20" height="20">
-                  <path fill="currentColor" d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
+                  <path fill="currentColor" d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z" />
                 </svg>
                 <span>International cuisine restaurant</span>
               </div>
@@ -288,7 +288,7 @@ const HotelDetailsPage = () => {
           {/* Policies Section */}
           <section id="policies" className="policies-section">
             <h2>Policies</h2>
-            
+
             <div className="policy-group">
               <h3>Check-in</h3>
               <p><strong>Check-in start time: 3 PM</strong>; Check-in end time: midnight</p>
@@ -414,7 +414,7 @@ const HotelDetailsPage = () => {
               <span>Total for {nights} night{nights > 1 ? 's' : ''}</span>
               <span className="total-amount">${totalPrice}</span>
             </div>
-            <button 
+            <button
               className="book-now-btn"
               onClick={() => navigate(`/booking/hotel/${id}?checkIn=${checkIn}&checkOut=${checkOut}&rooms=${rooms}&adults=${adults}&children=${children}`)}
             >

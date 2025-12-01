@@ -14,7 +14,8 @@ function BookingConfirmationPage() {
     const fetchBooking = async () => {
       try {
         const response = await bookingsAPI.getDetails(id);
-        setBooking(response.data);
+        // Extract booking from correct response structure
+        setBooking(response.data.data || response.data);
       } catch (err) {
         console.error('Failed to load booking');
       } finally {
@@ -79,8 +80,8 @@ function BookingConfirmationPage() {
             {(() => {
               let bookingDetails;
               try {
-                bookingDetails = typeof booking.booking_details === 'string' 
-                  ? JSON.parse(booking.booking_details) 
+                bookingDetails = typeof booking.booking_details === 'string'
+                  ? JSON.parse(booking.booking_details)
                   : booking.booking_details;
               } catch (e) {
                 bookingDetails = null;
@@ -142,8 +143,8 @@ function BookingConfirmationPage() {
                 {(() => {
                   let bookingDetails;
                   try {
-                    bookingDetails = typeof booking.booking_details === 'string' 
-                      ? JSON.parse(booking.booking_details) 
+                    bookingDetails = typeof booking.booking_details === 'string'
+                      ? JSON.parse(booking.booking_details)
                       : booking.booking_details;
                   } catch (e) {
                     bookingDetails = null;

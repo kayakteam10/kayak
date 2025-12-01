@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import './SeatMap.css';
+import { flightsAPI } from '../services/api';
 
 const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) => {
     const [seats, setSeats] = useState([]);
@@ -15,10 +14,14 @@ const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) =>
     const fetchSeats = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`http://localhost:8089/api/flights/${flightId}/seats`);
-            setSeats(response.data.seats);
+            const response = await flightsAPI.getSeats(flightId);
+            // Backend returns { success: true, data: { allSeats: [...], ... } }
+            // Axios response structure: response.data -> { success: true, data: { ... } }
+            const seatData = response.data.data || response.data;
+            setSeats(seatData.allSeats || seatData.seats || []);
             setLoading(false);
         } catch (err) {
+            console.error('Error fetching seats:', err);
             setError('Failed to load seats');
             setLoading(false);
         }

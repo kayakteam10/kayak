@@ -16,24 +16,27 @@ function LoginPage() {
 
     try {
       const response = await authAPI.login(formData);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userName', response.data.user.firstName);
-      localStorage.setItem('userRole', response.data.user.role);
-      
+      const userData = response.data.data;
+
+      localStorage.setItem('token', userData.token);
+      localStorage.setItem('userId', userData.userId);
+      localStorage.setItem('userName', userData.firstName);
+      localStorage.setItem('userRole', userData.role);
+
       // Store profile picture if available
-      if (response.data.user.profilePicture) {
-        localStorage.setItem('profilePicture', response.data.user.profilePicture);
+      if (userData.profilePicture) {
+        localStorage.setItem('profilePicture', userData.profilePicture);
       }
 
       // Store user data including role
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('user', JSON.stringify(userData));
 
       // Dispatch custom event to notify header of login
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new Event('login'));
 
       // Redirect based on user role
-      if (response.data.user.role === 'admin') {
+      if (response.data.data.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/');

@@ -64,7 +64,22 @@ function SearchResultsPage() {
         console.log('🔍 Search type:', type);
 
         if (type === 'flights') {
-          response = await flightsAPI.search(params);
+          // Map frontend parameters to backend expected format
+          const flightParams = {
+            from: params.origin,
+            to: params.destination,
+            date: params.departure_date,
+            passengers: params.passengers || '1',
+            type: params.tripType || 'oneway'
+          };
+
+          // Add return date for roundtrip
+          if (params.tripType === 'roundtrip' && params.return_date) {
+            flightParams.return_date = params.return_date;
+          }
+
+          console.log('✈️ Mapped flight params:', flightParams);
+          response = await flightsAPI.search(flightParams);
         } else if (type === 'hotels') {
           response = await hotelsAPI.search(params);
         } else {
@@ -77,13 +92,13 @@ function SearchResultsPage() {
         // Handle different response structures
         let data = [];
         if (type === 'flights') {
-          data = response.data.flights || response.data[type] || response.data.results || [];
+          data = response.data.data || response.data.flights || response.data[type] || response.data.results || [];
           console.log('✈️ Flight data extracted:', data);
           console.log('✈️ Number of flights:', data.length);
         } else if (type === 'hotels') {
-          data = response.data.hotels || response.data[type] || response.data.results || [];
+          data = response.data.data || response.data.hotels || response.data[type] || response.data.results || [];
         } else {
-          data = response.data.cars || response.data[type] || response.data.results || [];
+          data = response.data.data || response.data.cars || response.data[type] || response.data.results || [];
         }
 
         console.log('✅ Setting results:', data.length, 'items');
@@ -221,7 +236,7 @@ function SearchResultsPage() {
       if (type === 'cars' && filters.seats) {
         const filterSeats = filters.seats;
         const carSeats = item.num_seats;
-        
+
         if (filterSeats === '7+') {
           if (carSeats < 7) return false;
         } else {
@@ -463,7 +478,7 @@ function SearchResultsPage() {
   const handleBook = async (itemId, explicitLegs = null) => {
     try {
       console.log('handleBook called with:', { itemId, explicitLegs, type });
-      
+
       // Handle car bookings differently
       if (type === 'cars') {
         const pickupLocation = searchParams.get('pickupLocation') || '';
@@ -472,12 +487,12 @@ function SearchResultsPage() {
         const dropoffDate = searchParams.get('dropoffDate') || '';
         const pickupTime = searchParams.get('pickupTime') || '10:00';
         const dropoffTime = searchParams.get('dropoffTime') || '10:00';
-        
+
         const carParams = `pickupLocation=${pickupLocation}&dropoffLocation=${dropoffLocation}&pickupDate=${pickupDate}&dropoffDate=${dropoffDate}&pickupTime=${pickupTime}&dropoffTime=${dropoffTime}`;
         navigate(`/booking/cars/${itemId}?${carParams}`);
         return;
       }
-      
+
       // Handle flight bookings
       const flight = itemId;
       // Extract passenger info from search params
@@ -966,9 +981,9 @@ function SearchResultsPage() {
       {/* Car Image */}
       {car.image_url && (
         <div className="car-image-container">
-          <img 
-            src={car.image_url} 
-            alt={car.model} 
+          <img
+            src={car.image_url}
+            alt={car.model}
             className="car-image"
             onError={(e) => {
               e.target.style.display = 'none';
@@ -979,7 +994,7 @@ function SearchResultsPage() {
           )}
         </div>
       )}
-      
+
       {/* Car Details */}
       <div className="car-card-content">
         <div className="card-header">
@@ -988,7 +1003,7 @@ function SearchResultsPage() {
             <p className="card-subtitle">{car.company} • {car.year}</p>
           </div>
         </div>
-        
+
         <div className="card-body">
           <div className="card-info-row">
             <div className="info-item">
@@ -1000,7 +1015,7 @@ function SearchResultsPage() {
               <span>{car.num_seats} seats</span>
             </div>
           </div>
-          
+
           <div className="card-info-row">
             <div className="info-item">
               <FaSuitcase className="info-icon" />
@@ -1014,12 +1029,12 @@ function SearchResultsPage() {
             )}
           </div>
         </div>
-        
+
         <div className="card-footer">
           <div className="price-section">
             {car.rental_days && car.rental_days > 1 ? (
               <>
-                <span className="price">${car.total_price?.toFixed(2) || car.daily_rental_price}</span>
+                <span className="price">${parseFloat(car.total_price).toFixed(2)}</span>
                 <span className="price-label">for {car.rental_days} days</span>
               </>
             ) : (

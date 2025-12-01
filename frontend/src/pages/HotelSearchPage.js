@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaHotel, FaUser, FaCalendarAlt, FaSearch, FaStar, FaMapMarkerAlt, FaChevronDown, FaHeart, FaRegHeart, FaTh, FaList, FaFilter } from 'react-icons/fa';
 import HotelLocationAutocomplete from '../components/HotelLocationAutocomplete';
+import { hotelsAPI } from '../services/api';
 import './HotelSearchPage.css';
 
 // Hotel image mapping
@@ -115,21 +116,16 @@ const HotelSearchPage = () => {
     const children = parseInt(searchParams.get('children')) || 0;
 
     try {
-      const response = await fetch(
-        `http://localhost:8089/api/hotels/search?` +
-        `location=${encodeURIComponent(location)}` +
-        `&check_in=${checkIn}` +
-        `&check_out=${checkOut}` +
-        `&guests=${adults + children}`
-      );
+      const response = await hotelsAPI.search({
+        location,
+        checkIn,
+        checkOut,
+        guests: adults + children
+      });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch hotels');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       console.log('Hotels fetched:', data);
-      setHotels(data.hotels || []);
+      setHotels(data.data || []);
     } catch (err) {
       console.error('Error fetching hotels:', err);
       setError(err.message);

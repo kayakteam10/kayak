@@ -38,8 +38,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .airport-suggestions {
@@ -55,7 +60,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  z-index: 1000;
+  z-index: 9999;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -126,20 +131,20 @@
   .airport-suggestions {
     max-height: 200px;
   }
-  
+
   .airport-suggestion-item {
     padding: 10px 12px;
   }
-  
+
   .airport-suggestion-content {
     gap: 8px;
   }
-  
+
   .airport-code {
     min-width: 40px;
     font-size: 13px;
   }
-  
+
   .airport-label {
     font-size: 13px;
   }

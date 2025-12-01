@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaLock, FaCheckCircle, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaUtensils, FaCoffee, FaBed } from 'react-icons/fa';
-import { authAPI } from '../services/api';
+import { authAPI, hotelsAPI, bookingsAPI } from '../services/api';
 import './HotelBookingPage.css';
 
 const HotelBookingPage = () => {
@@ -16,7 +16,7 @@ const HotelBookingPage = () => {
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [useNewCard, setUseNewCard] = useState(false);
-  
+
   const [bookingData, setBookingData] = useState({
     firstName: '',
     lastName: '',
@@ -46,7 +46,7 @@ const HotelBookingPage = () => {
         const token = localStorage.getItem('token');
         if (token) {
           const response = await authAPI.me();
-          const userData = response.data;
+          const userData = response.data.data || response.data;
 
           // Get saved payment methods from localStorage
           const savedPayments = localStorage.getItem('savedPaymentMethods');
@@ -91,10 +91,9 @@ const HotelBookingPage = () => {
 
   const fetchHotelDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:8089/api/hotels/${id}`);
-      if (!response.ok) throw new Error('Hotel not found');
-      const data = await response.json();
-      setHotel(data);
+      const response = await hotelsAPI.getDetails(id);
+      // API returns { success: true, data: { ... } }
+      setHotel(response.data.data || response.data);
     } catch (err) {
       alert('Failed to load hotel details');
     } finally {
@@ -144,16 +143,16 @@ const HotelBookingPage = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!bookingData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!bookingData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    
+
     if (!bookingData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bookingData.email)) {
       newErrors.email = 'Invalid email format';
     }
-    
+
     if (!bookingData.phone.trim()) {
       newErrors.phone = 'Phone is required';
     } else if (!/^\d{10}$/.test(bookingData.phone.replace(/\D/g, ''))) {
@@ -175,19 +174,19 @@ const HotelBookingPage = () => {
       } else if (!/^\d{16}$/.test(bookingData.cardNumber.replace(/\s/g, ''))) {
         newErrors.cardNumber = 'Card number must be 16 digits';
       }
-      
+
       if (!bookingData.expiryDate.trim()) {
         newErrors.expiryDate = 'Expiry date is required';
       } else if (!/^\d{2}\/\d{2}$/.test(bookingData.expiryDate)) {
         newErrors.expiryDate = 'Format must be MM/YY';
       }
-      
+
       if (!bookingData.cvv.trim()) {
         newErrors.cvv = 'CVV is required';
       } else if (!/^\d{3}$/.test(bookingData.cvv)) {
         newErrors.cvv = 'CVV must be 3 digits';
       }
-      
+
       if (!bookingData.billingZip.trim()) {
         newErrors.billingZip = 'ZIP code is required';
       } else if (!/^\d{5}$/.test(bookingData.billingZip)) {
@@ -213,7 +212,7 @@ const HotelBookingPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -237,7 +236,7 @@ const HotelBookingPage = () => {
           const expiryParts = bookingData.expiryDate.split('/');
           const expiryMonth = expiryParts[0] || '';
           const expiryYear = expiryParts[1] || '';
-          
+
           paymentDetails = {
             ...paymentDetails,
             cardNumber: bookingData.cardNumber,
@@ -249,7 +248,7 @@ const HotelBookingPage = () => {
           // Save new payment method to localStorage (full card number with formatting)
           const fullYear = '20' + expiryYear;
           const formattedCardNumber = bookingData.cardNumber.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-          
+
           const newPaymentMethod = {
             paymentType: 'card',
             creditCardType: bookingData.cardType,
@@ -267,7 +266,7 @@ const HotelBookingPage = () => {
           console.log('Saving payment method:', newPaymentMethod); // Debug log
 
           const existingSavedMethods = JSON.parse(localStorage.getItem('savedPaymentMethods') || '[]');
-          
+
           // Check if this card already exists (compare last 4 digits)
           const last4 = bookingData.cardNumber.replace(/\s/g, '').slice(-4);
           const existingIndex = existingSavedMethods.findIndex(p =>
@@ -281,11 +280,11 @@ const HotelBookingPage = () => {
             // Add new card
             existingSavedMethods.push(newPaymentMethod);
           }
-          
+
           localStorage.setItem('savedPaymentMethods', JSON.stringify(existingSavedMethods));
-          
+
           console.log('Updated saved methods:', existingSavedMethods); // Debug log
-          
+
           // Update state to reflect new saved card
           setSavedPaymentMethods(existingSavedMethods);
         } else if (selectedPaymentMethod !== null) {
@@ -301,13 +300,12 @@ const HotelBookingPage = () => {
         }
       }
 
-      const response = await fetch('http://localhost:8089/api/bookings/hotel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
+      const response = await bookingsAPI.create({
+        user_id: parseInt(localStorage.getItem('userId') || authAPI.getCurrentUser()?.userId),
+        booking_type: 'hotel',
+        total_amount: total,
+        payment_method: 'credit_card',
+        booking_details: {
           hotel_id: parseInt(id),
           check_in: checkIn,
           check_out: checkOut,
@@ -321,16 +319,12 @@ const HotelBookingPage = () => {
             phone: bookingData.phone
           },
           payment_details: paymentDetails
-        })
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Booking failed');
-      }
-      
-      const result = await response.json();
-      navigate(`/hotel-confirmation/${result.booking_id}`);
+      // Extract booking ID from response
+      const bookingId = response.data.data?.bookingId || response.data.data?.id || response.data.booking?.id || response.data.booking_id || response.data.id;
+      navigate(`/hotel-confirmation/${bookingId}`);
     } catch (err) {
       alert(err.message || 'Booking failed. Please try again.');
       console.error(err);
@@ -346,8 +340,8 @@ const HotelBookingPage = () => {
   const taxes = subtotal * 0.15;
   const total = subtotal + taxes;
 
-  const amenities = Array.isArray(hotel.amenities) 
-    ? hotel.amenities 
+  const amenities = Array.isArray(hotel.amenities)
+    ? hotel.amenities
     : (typeof hotel.amenities === 'string' ? JSON.parse(hotel.amenities) : []);
 
   return (
@@ -416,7 +410,7 @@ const HotelBookingPage = () => {
             {/* Payment Method */}
             <section className="form-section">
               <h2>Payment Information</h2>
-              
+
               {/* Saved Payment Methods */}
               {savedPaymentMethods.length > 0 && (
                 <div className="saved-cards-section">
@@ -440,35 +434,35 @@ const HotelBookingPage = () => {
                           <div className="card-brand-icon-box">
                             {card.creditCardType === 'Visa' && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                <rect width="52" height="34" rx="5" fill="#1A1F71"/>
+                                <rect width="52" height="34" rx="5" fill="#1A1F71" />
                                 <text x="26" y="21" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="Arial">VISA</text>
                               </svg>
                             )}
                             {card.creditCardType === 'MasterCard' && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                <rect width="52" height="34" rx="5" fill="#EB001B"/>
-                                <circle cx="20" cy="17" r="10" fill="#FF5F00" opacity="0.8"/>
-                                <circle cx="32" cy="17" r="10" fill="#F79E1B" opacity="0.8"/>
+                                <rect width="52" height="34" rx="5" fill="#EB001B" />
+                                <circle cx="20" cy="17" r="10" fill="#FF5F00" opacity="0.8" />
+                                <circle cx="32" cy="17" r="10" fill="#F79E1B" opacity="0.8" />
                               </svg>
                             )}
                             {card.creditCardType === 'American Express' && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                <rect width="52" height="34" rx="5" fill="#006FCF"/>
+                                <rect width="52" height="34" rx="5" fill="#006FCF" />
                                 <text x="26" y="21" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold" fontFamily="Arial">AMEX</text>
                               </svg>
                             )}
                             {card.creditCardType === 'Discover' && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                <rect width="52" height="34" rx="5" fill="#FF6000"/>
-                                <circle cx="15" cy="17" r="8" fill="#FF9900"/>
+                                <rect width="52" height="34" rx="5" fill="#FF6000" />
+                                <circle cx="15" cy="17" r="8" fill="#FF9900" />
                                 <text x="35" y="21" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="Arial">DISCOVER</text>
                               </svg>
                             )}
                             {!['Visa', 'MasterCard', 'American Express', 'Discover'].includes(card.creditCardType) && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                                <rect width="52" height="34" rx="5" fill="#6B7280"/>
-                                <rect x="8" y="10" width="36" height="6" rx="2" fill="white" opacity="0.3"/>
-                                <rect x="8" y="20" width="20" height="4" rx="1" fill="white" opacity="0.5"/>
+                                <rect width="52" height="34" rx="5" fill="#6B7280" />
+                                <rect x="8" y="10" width="36" height="6" rx="2" fill="white" opacity="0.3" />
+                                <rect x="8" y="20" width="20" height="4" rx="1" fill="white" opacity="0.5" />
                               </svg>
                             )}
                           </div>
@@ -496,9 +490,9 @@ const HotelBookingPage = () => {
                       <div className="radio-content">
                         <div className="card-brand-icon-box new-card-box">
                           <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
-                            <rect width="52" height="34" rx="5" fill="#FF6B35" opacity="0.1" stroke="#FF6B35" strokeWidth="2" strokeDasharray="4 4"/>
-                            <circle cx="26" cy="17" r="8" fill="#FF6B35" opacity="0.2"/>
-                            <path d="M26 13V21M22 17H30" stroke="#FF6B35" strokeWidth="2.5" strokeLinecap="round"/>
+                            <rect width="52" height="34" rx="5" fill="#FF6B35" opacity="0.1" stroke="#FF6B35" strokeWidth="2" strokeDasharray="4 4" />
+                            <circle cx="26" cy="17" r="8" fill="#FF6B35" opacity="0.2" />
+                            <path d="M26 13V21M22 17H30" stroke="#FF6B35" strokeWidth="2.5" strokeLinecap="round" />
                           </svg>
                         </div>
                         <div className="card-info">
@@ -516,26 +510,26 @@ const HotelBookingPage = () => {
               {(useNewCard || savedPaymentMethods.length === 0) && (
                 <div className="card-details-form">
                   <h3 className="form-section-title">Card details</h3>
-                  
+
                   <div className="accepted-cards">
                     <span className="accepted-label">We accept:</span>
                     <div className="card-brands">
                       <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                        <rect width="50" height="32" rx="4" fill="#1434CB"/>
+                        <rect width="50" height="32" rx="4" fill="#1434CB" />
                         <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">VISA</text>
                       </svg>
                       <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                        <rect width="50" height="32" rx="4" fill="#EB001B"/>
-                        <circle cx="18" cy="16" r="10" fill="#FF5F00"/>
-                        <circle cx="32" cy="16" r="10" fill="#F79E1B"/>
+                        <rect width="50" height="32" rx="4" fill="#EB001B" />
+                        <circle cx="18" cy="16" r="10" fill="#FF5F00" />
+                        <circle cx="32" cy="16" r="10" fill="#F79E1B" />
                       </svg>
                       <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                        <rect width="50" height="32" rx="4" fill="#006FCF"/>
+                        <rect width="50" height="32" rx="4" fill="#006FCF" />
                         <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">AMEX</text>
                       </svg>
                       <svg width="50" height="32" viewBox="0 0 50 32" className="card-brand-logo">
-                        <rect width="50" height="32" rx="4" fill="#FF6000"/>
-                        <circle cx="15" cy="16" r="8" fill="#FF9900"/>
+                        <rect width="50" height="32" rx="4" fill="#FF6000" />
+                        <circle cx="15" cy="16" r="8" fill="#FF9900" />
                         <text x="60%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">DISCOVER</text>
                       </svg>
                     </div>
@@ -646,7 +640,7 @@ const HotelBookingPage = () => {
               {(useNewCard || savedPaymentMethods.length === 0) && (
                 <div className="billing-address-section">
                   <h3 className="form-section-title">Billing Address</h3>
-                  
+
                   <div className="form-row">
                     <div className="form-group-full">
                       <label>Street Address *</label>

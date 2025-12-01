@@ -30,8 +30,9 @@ const AdminDashboard = () => {
                 adminBookingsAPI.getAll({ limit: 5 })
             ]);
 
-            setStats(analyticsRes.data);
-            setRecentBookings(bookingsRes.data.bookings.slice(0, 5));
+            setStats(analyticsRes.data.data || analyticsRes.data);
+            const bookingsData = bookingsRes.data.data || bookingsRes.data;
+            setRecentBookings(Array.isArray(bookingsData) ? bookingsData.slice(0, 5) : []);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -51,24 +52,23 @@ const AdminDashboard = () => {
                 case 'revenue':
                     response = await adminBookingsAPI.getAll({ status: 'confirmed' });
                     console.log('Revenue response:', response.data);
-                    setModalData(response.data.bookings);
+                    setModalData(response.data.data || []);
                     break;
                 case 'bookings':
                     response = await adminBookingsAPI.getAll();
                     console.log('Bookings response:', response.data);
-                    setModalData(response.data.bookings);
+                    setModalData(response.data.data || []);
                     break;
                 case 'flights':
                     response = await adminFlightsAPI.getAll();
                     console.log('Flights response:', response.data);
-                    setModalData(response.data.flights);
+                    setModalData(response.data.data || []);
                     break;
                 case 'users':
                     console.log('Fetching users...');
                     response = await adminUsersAPI.getAll();
                     console.log('Users response:', response.data);
-                    console.log('Users array:', response.data.users);
-                    setModalData(response.data.users);
+                    setModalData(response.data.data || []);
                     break;
                 default:
                     break;
@@ -192,7 +192,7 @@ const AdminDashboard = () => {
                                             {booking.status}
                                         </span>
                                     </td>
-                                    <td>{new Date(booking.created_at).toLocaleDateString()}</td>
+                                    <td>{new Date(booking.booking_date).toLocaleDateString()}</td>
                                 </tr>
                             ))
                         )}

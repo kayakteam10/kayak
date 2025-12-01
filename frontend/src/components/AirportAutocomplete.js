@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { flightsAPI } from '../services/api';
 import './AirportAutocomplete.css';
 
-const AirportAutocomplete = ({ 
-  value, 
-  onChange, 
-  placeholder = "City or airport", 
+const AirportAutocomplete = ({
+  value,
+  onChange,
+  placeholder = "City or airport",
   name,
-  required = false 
+  required = false
 }) => {
   const [inputValue, setInputValue] = useState(value || '');
   const [suggestions, setSuggestions] = useState([]);
@@ -46,8 +46,9 @@ const AirportAutocomplete = ({
     setIsLoading(true);
     try {
       const response = await flightsAPI.searchAirports(searchTerm);
-      setSuggestions(response.data || []);
-      setIsOpen(response.data && response.data.length > 0);
+      const airports = response.data.data || [];
+      setSuggestions(airports);
+      setIsOpen(airports.length > 0);
       setHighlightedIndex(-1);
     } catch (error) {
       console.error('Airport search error:', error);
@@ -76,8 +77,8 @@ const AirportAutocomplete = ({
 
   // Handle suggestion selection
   const handleSelectSuggestion = (airport) => {
-    setInputValue(airport.city);
-    onChange(airport.city, airport); // Pass both city and full airport object
+    setInputValue(airport.code);
+    onChange(airport.code, airport); // Pass airport code and full airport object
     setSuggestions([]);
     setIsOpen(false);
     setHighlightedIndex(-1);
@@ -90,7 +91,7 @@ const AirportAutocomplete = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex((prev) => 
+        setHighlightedIndex((prev) =>
           prev < suggestions.length - 1 ? prev + 1 : prev
         );
         break;
@@ -143,7 +144,7 @@ const AirportAutocomplete = ({
         autoComplete="off"
         className="airport-input"
       />
-      
+
       {isLoading && (
         <div className="airport-loading">
           <span className="spinner"></span>
@@ -155,9 +156,8 @@ const AirportAutocomplete = ({
           {suggestions.map((airport, index) => (
             <li
               key={airport.code}
-              className={`airport-suggestion-item ${
-                index === highlightedIndex ? 'highlighted' : ''
-              }`}
+              className={`airport-suggestion-item ${index === highlightedIndex ? 'highlighted' : ''
+                }`}
               onClick={() => handleSelectSuggestion(airport)}
               onMouseEnter={() => setHighlightedIndex(index)}
             >

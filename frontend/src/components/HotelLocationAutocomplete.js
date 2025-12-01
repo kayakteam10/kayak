@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { hotelsAPI } from '../services/api';
 import './AirportAutocomplete.css'; // Reuse the same CSS
 
 const HotelLocationAutocomplete = ({
@@ -45,9 +45,9 @@ const HotelLocationAutocomplete = ({
 
         setIsLoading(true);
         try {
-            const response = await axios.get(`http://localhost:8089/api/hotels/search-cities?query=${encodeURIComponent(searchTerm)}`);
-            setSuggestions(response.data || []);
-            setIsOpen(response.data && response.data.length > 0);
+            const response = await hotelsAPI.searchCities(searchTerm);
+            setSuggestions(response.data.data || []);
+            setIsOpen(response.data.data && response.data.data.length > 0);
             setHighlightedIndex(-1);
         } catch (error) {
             console.error('Location search error:', error);

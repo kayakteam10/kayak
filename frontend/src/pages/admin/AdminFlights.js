@@ -34,7 +34,7 @@ const AdminFlights = () => {
         try {
             setLoading(true);
             const response = await adminFlightsAPI.getAll();
-            setFlights(response.data.flights);
+            setFlights(response.data.data || []);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching flights:', error);
