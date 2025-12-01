@@ -22,7 +22,7 @@ const AdminBookings = () => {
         try {
             setLoading(true);
             const response = await adminBookingsAPI.getAll(filters);
-            setBookings(response.data.bookings);
+            setBookings(response.data.data || []);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching bookings:', error);
@@ -33,7 +33,7 @@ const AdminBookings = () => {
     const handleViewDetails = async (booking) => {
         try {
             const response = await adminBookingsAPI.getDetails(booking.id);
-            setSelectedBooking(response.data.booking);
+            setSelectedBooking(response.data.data || response.data.booking);
             setShowDetailsModal(true);
         } catch (error) {
             console.error('Error fetching booking details:', error);
@@ -237,74 +237,100 @@ const AdminBookings = () => {
                                 <div style={{ marginTop: '24px' }}>
                                     <strong>Booking Details:</strong>
                                     <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginTop: '8px' }}>
-                                        {selectedBooking.booking_type === 'flight' && selectedBooking.booking_details.flight_details && (
+                                        {/* Flight Info */}
+                                        {selectedBooking.booking_type === 'flight' && (
                                             <>
                                                 <h4 style={{ margin: '0 0 12px 0', color: '#475569' }}>Flight Information</h4>
+                                                <div style={{ marginBottom: '16px' }}>
+                                                    {selectedBooking.booking_details.flight_id && (
+                                                        <div><strong>Flight ID:</strong> {selectedBooking.booking_details.flight_id}</div>
+                                                    )}
+                                                    {selectedBooking.booking_details.flight_details && (
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
+                                                            <div><strong>Flight Number:</strong> {selectedBooking.booking_details.flight_details.flight_number}</div>
+                                                            <div><strong>Airline:</strong> {selectedBooking.booking_details.flight_details.airline}</div>
+                                                            <div><strong>Route:</strong> {selectedBooking.booking_details.flight_details.departure_airport} → {selectedBooking.booking_details.flight_details.arrival_airport}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Hotel Info */}
+                                        {selectedBooking.booking_type === 'hotel' && (
+                                            <>
+                                                <h4 style={{ margin: '0 0 12px 0', color: '#475569' }}>Hotel Information</h4>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                                                    {selectedBooking.booking_details.hotel_id && (
+                                                        <div><strong>Hotel ID:</strong> {selectedBooking.booking_details.hotel_id}</div>
+                                                    )}
+                                                    <div><strong>Check-in:</strong> {selectedBooking.booking_details.check_in}</div>
+                                                    <div><strong>Check-out:</strong> {selectedBooking.booking_details.check_out}</div>
+                                                    <div><strong>Guests:</strong> {selectedBooking.booking_details.adults} Adults, {selectedBooking.booking_details.children} Children</div>
+                                                    <div><strong>Rooms:</strong> {selectedBooking.booking_details.rooms}</div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Car Info */}
+                                        {selectedBooking.booking_type === 'car' && (
+                                            <>
+                                                <h4 style={{ margin: '0 0 12px 0', color: '#475569' }}>Car Rental Information</h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                                                    {selectedBooking.booking_details.car_id && (
+                                                        <div><strong>Car ID:</strong> {selectedBooking.booking_details.car_id}</div>
+                                                    )}
+                                                    {selectedBooking.booking_details.car_model && (
+                                                        <div><strong>Vehicle:</strong> {selectedBooking.booking_details.car_model}</div>
+                                                    )}
+                                                    {selectedBooking.booking_details.car_company && (
+                                                        <div><strong>Company:</strong> {selectedBooking.booking_details.car_company}</div>
+                                                    )}
+                                                    <div><strong>Pick-up:</strong> {selectedBooking.booking_details.pickupDate} {selectedBooking.booking_details.pickupTime}</div>
+                                                    <div><strong>Drop-off:</strong> {selectedBooking.booking_details.returnDate || selectedBooking.booking_details.dropoffDate} {selectedBooking.booking_details.returnTime || selectedBooking.booking_details.dropoffTime}</div>
+                                                    <div><strong>Pick-up Location:</strong> {selectedBooking.booking_details.pickupLocation}</div>
+                                                    {selectedBooking.booking_details.returnLocation && (
+                                                        <div><strong>Drop-off Location:</strong> {selectedBooking.booking_details.returnLocation}</div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Passengers / Guests */}
+                                        {(selectedBooking.booking_details.passengers || selectedBooking.booking_details.guest_details) && (
+                                            <>
+                                                <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>
+                                                    {selectedBooking.booking_type === 'hotel' ? 'Guest Information' : 'Passenger Information'}
+                                                </h4>
+                                                {selectedBooking.booking_details.passengers && Array.isArray(selectedBooking.booking_details.passengers) ? (
+                                                    selectedBooking.booking_details.passengers.map((p, idx) => (
+                                                        <div key={idx} style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                                                            <div><strong>Name:</strong> {p.firstName} {p.lastName}</div>
+                                                            <div><strong>Email:</strong> {p.email}</div>
+                                                        </div>
+                                                    ))
+                                                ) : selectedBooking.booking_details.guest_details ? (
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                                        <div><strong>Name:</strong> {selectedBooking.booking_details.guest_details.firstName} {selectedBooking.booking_details.guest_details.lastName}</div>
+                                                        <div><strong>Email:</strong> {selectedBooking.booking_details.guest_details.email}</div>
+                                                        <div><strong>Phone:</strong> {selectedBooking.booking_details.guest_details.phone}</div>
+                                                    </div>
+                                                ) : null}
+                                            </>
+                                        )}
+
+                                        {/* Payment Info */}
+                                        {selectedBooking.booking_details.payment_details && (
+                                            <>
+                                                <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Payment Information</h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                                     <div>
-                                                        <strong>Flight Number:</strong> {selectedBooking.booking_details.flight_details.flight_number}
+                                                        <strong>Card:</strong> {selectedBooking.booking_details.payment_details.cardType} ending in {selectedBooking.booking_details.payment_details.cardNumber?.slice(-4)}
                                                     </div>
                                                     <div>
-                                                        <strong>Airline:</strong> {selectedBooking.booking_details.flight_details.airline}
-                                                    </div>
-                                                    <div>
-                                                        <strong>Route:</strong> {selectedBooking.booking_details.flight_details.departure_airport} → {selectedBooking.booking_details.flight_details.arrival_airport}
-                                                    </div>
-                                                    <div>
-                                                        <strong>Departure:</strong> {new Date(selectedBooking.booking_details.flight_details.departure_time).toLocaleString()}
-                                                    </div>
-                                                    <div>
-                                                        <strong>Arrival:</strong> {new Date(selectedBooking.booking_details.flight_details.arrival_time).toLocaleString()}
-                                                    </div>
-                                                    <div>
-                                                        <strong>Price:</strong> ${selectedBooking.booking_details.flight_details.price}
+                                                        <strong>Billing:</strong> {selectedBooking.booking_details.payment_details.city}, {selectedBooking.booking_details.payment_details.state}
                                                     </div>
                                                 </div>
-
-                                                {selectedBooking.booking_details.seat_info && (
-                                                    <>
-                                                        <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Seat Information</h4>
-                                                        <div style={{ marginBottom: '16px' }}>
-                                                            <strong>Selected Seats:</strong> {selectedBooking.booking_details.seat_info.seats?.join(', ') || 'None'}
-                                                            {selectedBooking.booking_details.seat_info.seatPrice > 0 && (
-                                                                <span> (${selectedBooking.booking_details.seat_info.seatPrice})</span>
-                                                            )}
-                                                        </div>
-                                                    </>
-                                                )}
-
-                                                {selectedBooking.booking_details.passenger_details && (
-                                                    <>
-                                                        <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Passenger Information</h4>
-                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                                                            <div>
-                                                                <strong>Name:</strong> {selectedBooking.booking_details.passenger_details.firstName} {selectedBooking.booking_details.passenger_details.lastName}
-                                                            </div>
-                                                            <div>
-                                                                <strong>Email:</strong> {selectedBooking.booking_details.passenger_details.email}
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-
-                                                {selectedBooking.booking_details.payment_info && (
-                                                    <>
-                                                        <h4 style={{ margin: '16px 0 12px 0', color: '#475569' }}>Payment Information</h4>
-                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                                            <div>
-                                                                <strong>Amount:</strong> ${selectedBooking.booking_details.payment_info.amount}
-                                                            </div>
-                                                            <div>
-                                                                <strong>Status:</strong> <span className={`admin-badge ${getPaymentStatusBadge(selectedBooking.booking_details.payment_info.status)}`}>{selectedBooking.booking_details.payment_info.status}</span>
-                                                            </div>
-                                                            {selectedBooking.booking_details.payment_info.transactionId && (
-                                                                <div style={{ gridColumn: '1 / -1' }}>
-                                                                    <strong>Transaction ID:</strong> {selectedBooking.booking_details.payment_info.transactionId}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </>
-                                                )}
                                             </>
                                         )}
                                     </div>
