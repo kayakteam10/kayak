@@ -9,7 +9,10 @@ from typing import Iterable
 import pandas as pd
 from sqlmodel import Session, SQLModel, create_engine, select, delete
 
-from .models import HotelDeal, FlightDeal
+from models import HotelDeal, FlightDeal
+from logger import get_logger
+
+logger = get_logger("deals-agent")
 
 DB_URL = "sqlite:///./agentic_ai_deals.db"
 engine = create_engine(DB_URL, echo=False)
@@ -150,9 +153,9 @@ async def scheduled_refresh_loop(
     Periodic refresh. Run this in a separate process (or thread) from FastAPI.
     """
     while True:
-        print("[DealsAgent] Starting refresh cycle...")
+        logger.info("[DealsAgent] Starting refresh cycle...")
         await refresh_deals_once(hotel_csv, flight_csv)
-        print("[DealsAgent] Refresh completed.")
+        logger.info("[DealsAgent] Refresh completed.")
         await asyncio.sleep(interval_seconds)
 
 

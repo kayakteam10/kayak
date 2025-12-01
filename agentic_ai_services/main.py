@@ -9,8 +9,8 @@ from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from .models import Bundle, FlightDeal, HotelDeal, Watch
-from .schemas import (
+from models import Bundle, FlightDeal, HotelDeal, Watch
+from schemas import (
     BundleResponse,
     ChatQuery,
     ChatResponse,
@@ -18,8 +18,12 @@ from .schemas import (
     HotelSnippet,
     WatchCreate,
     WatchResponse,
+    
 )
-from .websocket_manager import ConnectionManager
+from websocket_manager import ConnectionManager
+from logger import get_logger
+
+logger = get_logger("ai-service")
 
 DB_URL = "sqlite:///./agentic_ai_deals.db"
 engine = create_engine(DB_URL, echo=False)
@@ -39,6 +43,16 @@ def get_session():
 @app.on_event("startup")
 async def on_startup() -> None:
     SQLModel.metadata.create_all(engine)
+    
+    # Initialize data if empty
+    from pathlib import Path
+    from deals_agent import refresh_deals_once
+    try:
+        await refresh_deals_once(Path("data/hotels.csv"), Path("data/flights.csv"))
+        logger.info("✅ Data initialized on startup")
+    except Exception as e:
+        logger.error(f"⚠️ Data init failed: {e}")
+
     # Kick off background watch loop
     asyncio.create_task(watch_loop())
 

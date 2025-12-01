@@ -1,0 +1,7 @@
+listing_id,date,price,availability_365,amenities,neighbourhood,city
+101,2024-12-01,150,30,"Wifi,Pool,Pet friendly",Downtown,San Francisco (SFO)
+102,2024-12-01,200,10,"Wifi,Gym,Breakfast",Union Square,San Francisco (SFO)
+103,2024-12-01,120,5,"Wifi",Mission,San Francisco (SFO)
+201,2024-12-01,180,20,"Wifi,Pool",Midtown,New York (JFK)
+202,2024-12-01,250,15,"Wifi,Gym,Pet friendly",SoHo,New York (JFK)
+301,2024-12-01,100,50,"Wifi",Downtown,Los Angeles (LAX)
