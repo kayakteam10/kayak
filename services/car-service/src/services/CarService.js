@@ -12,13 +12,16 @@ class CarService {
         this.carRepo = carRepo;
         this.cacheRepo = cacheRepo;
         this.kafka = kafkaProducer;
+        this.cacheEnabled = process.env.ENABLE_CACHE !== 'false';
+        this.kafkaEnabled = process.env.ENABLE_KAFKA !== 'false';
+        logger.info(`🎛️  Feature Flags: Cache=${this.cacheEnabled}, Kafka=${this.kafkaEnabled}`);
     }
 
     async searchCars(filters) {
         const validated = this.validateSearchFilters(filters);
         const cacheKey = this.generateCacheKey(validated);
 
-        const cached = await this.cacheRepo.get(cacheKey);
+        const cached = this.cacheEnabled ? await this.cacheRepo.get(cacheKey) : null;
         if (cached) {
             logger.info(`✅ Cache HIT: ${cacheKey}`);
             return JSON.parse(cached);
@@ -29,13 +32,17 @@ class CarService {
         const cars = await this.carRepo.searchCars(validated);
         const processed = this.processCars(cars, validated);
 
-        await this.cacheRepo.set(cacheKey, JSON.stringify(processed), 900);
+        if (this.cacheEnabled) {
+            await this.cacheRepo.set(cacheKey, JSON.stringify(processed), 900);
+        }
 
-        await this.publishEvent('car.searched', {
-            filters: validated,
-            resultsCount: cars.length,
-            timestamp: new Date().toISOString()
-        });
+        if (this.kafkaEnabled) {
+            await this.publishEvent('car.searched', {
+                filters: validated,
+                resultsCount: cars.length,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         return processed;
     }

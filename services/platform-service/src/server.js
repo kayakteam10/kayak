@@ -10,6 +10,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const logger = require('./utils/logger');
 const dbPool = require('./config/database'); // Initializes DB connection
@@ -18,6 +19,14 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 app.use(cors());
+
+// Compression middleware - if enabled
+if (process.env.ENABLE_COMPRESSION !== 'false') {
+    app.use(compression());
+    logger.info('🗜️   Compression: ENABLED');
+} else {
+    logger.info('🗜️   Compression: DISABLED');
+}
 
 // Request logging
 app.use((req, res, next) => {

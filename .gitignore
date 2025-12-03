@@ -61,3 +61,5 @@ regression_test.sh
 start_local_services.sh
 services/regression_tests.sh
 agentic_ai_services/__pycache__/
+# Allow JMeter test plans
+!tests/performance/*.jmx

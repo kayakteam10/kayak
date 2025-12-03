@@ -21,6 +21,9 @@ class FlightService {
         this.flightRepo = flightRepo;
         this.cacheRepo = cacheRepo;
         this.kafka = kafkaProducer;
+        this.cacheEnabled = process.env.ENABLE_CACHE !== 'false';
+        this.kafkaEnabled = process.env.ENABLE_KAFKA !== 'false';
+        logger.info(`🎛️  Feature Flags: Cache=${this.cacheEnabled}, Kafka=${this.kafkaEnabled}`);
     }
 
     /**
@@ -37,11 +40,13 @@ class FlightService {
         // 2. Generate cache key
         const cacheKey = this.generateCacheKey(validated);
 
-        // 3. Check cache (Read-Through Caching)
-        const cached = await this.cacheRepo.get(cacheKey);
-        if (cached) {
-            logger.info(`✅ Cache HIT: ${cacheKey}`);
-            return JSON.parse(cached);
+        // 3. Check cache (Read-Through Caching) - if enabled
+        if (this.cacheEnabled) {
+            const cached = await this.cacheRepo.get(cacheKey);
+            if (cached) {
+                logger.info(`✅ Cache HIT: ${cacheKey}`);
+                return JSON.parse(cached);
+            }
         }
 
         logger.info(`❌ Cache MISS: ${cacheKey}`);
@@ -52,19 +57,23 @@ class FlightService {
         // 5. Apply business rules & processing
         const processed = this.processFlights(flights, validated);
 
-        // 6. Cache results (Write-Through Caching)
-        await this.cacheRepo.set(
-            cacheKey,
-            JSON.stringify(processed),
-            900  // 15 min TTL
-        );
+        // 6. Cache results (Write-Through Caching) - if enabled
+        if (this.cacheEnabled) {
+            await this.cacheRepo.set(
+                cacheKey,
+                JSON.stringify(processed),
+                900  // 15 min TTL
+            );
+        }
 
-        // 7. Publish Kafka event (Fire-and-forget)
-        await this.publishEvent('flight.searched', {
-            filters: validated,
-            resultsCount: flights.length,
-            timestamp: new Date().toISOString()
-        });
+        // 7. Publish Kafka event (Fire-and-forget) - if enabled
+        if (this.kafkaEnabled) {
+            await this.publishEvent('flight.searched', {
+                filters: validated,
+                resultsCount: flights.length,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         return processed;
     }
