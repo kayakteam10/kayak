@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlane, FaClipboardList, FaUsers, FaDollarSign, FaTimes } from 'react-icons/fa';
-import { adminAnalyticsAPI, adminBookingsAPI, adminFlightsAPI, adminUsersAPI } from '../../services/adminApi';
+import { FaPlane, FaClipboardList, FaUsers, FaDollarSign, FaTimes, FaHotel, FaCar, FaEdit, FaTrash } from 'react-icons/fa';
+import { adminAnalyticsAPI, adminBookingsAPI, adminFlightsAPI, adminUsersAPI, adminHotelsAPI, adminCarsAPI } from '../../services/adminApi';
 import './AdminLayout.css';
 
 const AdminDashboard = () => {
@@ -8,31 +8,46 @@ const AdminDashboard = () => {
         totalBookings: 0,
         totalRevenue: 0,
         totalUsers: 0,
-        totalFlights: 0
+        totalFlights: 0,
+        totalHotels: 0,
+        totalCars: 0
     });
     const [recentBookings, setRecentBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // Modal state
     const [activeModal, setActiveModal] = useState(null);
     const [modalData, setModalData] = useState([]);
     const [modalLoading, setModalLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [refreshKey]);
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [analyticsRes, bookingsRes] = await Promise.all([
+            const [analyticsRes, bookingsRes, hotelsRes, carsRes] = await Promise.all([
                 adminAnalyticsAPI.getOverview(),
-                adminBookingsAPI.getAll({ limit: 5 })
+                adminBookingsAPI.getAll({ limit: 10 }),
+                adminHotelsAPI.getAll(),
+                adminCarsAPI.getAll()
             ]);
 
-            setStats(analyticsRes.data.data || analyticsRes.data);
+            const analyticsData = analyticsRes.data.data || analyticsRes.data;
+            const hotelsData = hotelsRes.data.data || [];
+            const carsData = carsRes.data.data || [];
+
+            setStats({
+                ...analyticsData,
+                totalHotels: hotelsData.length,
+                totalCars: carsData.length
+            });
             const bookingsData = bookingsRes.data.data || bookingsRes.data;
-            setRecentBookings(Array.isArray(bookingsData) ? bookingsData.slice(0, 5) : []);
+            setRecentBookings(Array.isArray(bookingsData) ? bookingsData.slice(0, 10) : []);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -45,28 +60,39 @@ const AdminDashboard = () => {
         setActiveModal(type);
         setModalLoading(true);
         setModalData([]);
+        setCurrentPage(1);
 
         try {
             let response;
             switch (type) {
                 case 'revenue':
-                    response = await adminBookingsAPI.getAll({ status: 'confirmed' });
+                    response = await adminBookingsAPI.getAll({ status: 'confirmed', limit: 10000 });
                     console.log('Revenue response:', response.data);
                     setModalData(response.data.data || []);
                     break;
                 case 'bookings':
-                    response = await adminBookingsAPI.getAll();
+                    response = await adminBookingsAPI.getAll({ limit: 10000 });
                     console.log('Bookings response:', response.data);
                     setModalData(response.data.data || []);
                     break;
                 case 'flights':
-                    response = await adminFlightsAPI.getAll();
+                    response = await adminFlightsAPI.getAll({ limit: 10000 });
                     console.log('Flights response:', response.data);
+                    setModalData(response.data.data || []);
+                    break;
+                case 'hotels':
+                    response = await adminHotelsAPI.getAll({ limit: 10000 });
+                    console.log('Hotels response:', response.data);
+                    setModalData(response.data.data || []);
+                    break;
+                case 'cars':
+                    response = await adminCarsAPI.getAll({ limit: 10000 });
+                    console.log('Cars response:', response.data);
                     setModalData(response.data.data || []);
                     break;
                 case 'users':
                     console.log('Fetching users...');
-                    response = await adminUsersAPI.getAll();
+                    response = await adminUsersAPI.getAll({ limit: 10000 });
                     console.log('Users response:', response.data);
                     setModalData(response.data.data || []);
                     break;
@@ -104,7 +130,14 @@ const AdminDashboard = () => {
         <div>
             <div className="admin-page-header">
                 <h1>Dashboard</h1>
-                <p>Overview of your flight booking system</p>
+                <p>Overview of your travel booking system</p>
+                <button 
+                    onClick={() => setRefreshKey(k => k + 1)} 
+                    className="admin-btn admin-btn-primary"
+                    style={{ marginTop: '10px' }}
+                >
+                    🔄 Refresh Data
+                </button>
             </div>
 
             <div className="admin-stats-grid">
@@ -144,6 +177,30 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
+                <div className="admin-stat-card clickable" onClick={() => handleStatClick('hotels')}>
+                    <div className="admin-stat-header">
+                        <div>
+                            <div className="admin-stat-label">Total Hotels</div>
+                            <div className="admin-stat-value">{stats.totalHotels}</div>
+                        </div>
+                        <div className="admin-stat-icon" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+                            <FaHotel />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="admin-stat-card clickable" onClick={() => handleStatClick('cars')}>
+                    <div className="admin-stat-header">
+                        <div>
+                            <div className="admin-stat-label">Total Cars</div>
+                            <div className="admin-stat-value">{stats.totalCars}</div>
+                        </div>
+                        <div className="admin-stat-icon" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+                            <FaCar />
+                        </div>
+                    </div>
+                </div>
+
                 <div className="admin-stat-card clickable" onClick={() => handleStatClick('users')}>
                     <div className="admin-stat-header">
                         <div>
@@ -176,8 +233,17 @@ const AdminDashboard = () => {
                     <tbody>
                         {recentBookings.length === 0 ? (
                             <tr>
-                                <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
-                                    No bookings yet
+                                <td colSpan="6" style={{ textAlign: 'center', padding: '60px' }}>
+                                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+                                        No Bookings Yet
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#666' }}>
+                                        Bookings made through your website will appear here automatically
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#999', marginTop: '12px' }}>
+                                        💡 Ready to handle 10,000+ bookings for performance testing
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -209,6 +275,8 @@ const AdminDashboard = () => {
                                 {activeModal === 'revenue' && 'Revenue Details (Confirmed Bookings)'}
                                 {activeModal === 'bookings' && 'All Bookings'}
                                 {activeModal === 'flights' && 'All Flights'}
+                                {activeModal === 'hotels' && 'All Hotels'}
+                                {activeModal === 'cars' && 'All Cars'}
                                 {activeModal === 'users' && 'All Users'}
                             </h2>
                             <button onClick={closeModal} className="admin-modal-close">
@@ -220,6 +288,31 @@ const AdminDashboard = () => {
                             {modalLoading ? (
                                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
                             ) : (
+                                <>
+                                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ fontSize: '14px', color: '#666' }}>
+                                        Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, modalData.length)} of {modalData.length} items
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button 
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: '4px', background: currentPage === 1 ? '#f5f5f5' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                                        >
+                                            Previous
+                                        </button>
+                                        <span style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: '4px', background: '#f5f5f5' }}>
+                                            Page {currentPage} of {Math.ceil(modalData.length / itemsPerPage)}
+                                        </span>
+                                        <button 
+                                            onClick={() => setCurrentPage(p => Math.min(Math.ceil(modalData.length / itemsPerPage), p + 1))}
+                                            disabled={currentPage >= Math.ceil(modalData.length / itemsPerPage)}
+                                            style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: '4px', background: currentPage >= Math.ceil(modalData.length / itemsPerPage) ? '#f5f5f5' : 'white', cursor: currentPage >= Math.ceil(modalData.length / itemsPerPage) ? 'not-allowed' : 'pointer' }}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
                                 <table className="admin-table">
                                     <thead>
                                         <tr>
@@ -241,6 +334,7 @@ const AdminDashboard = () => {
                                                     <th>Amount</th>
                                                     <th>Status</th>
                                                     <th>Date</th>
+                                                    <th>Actions</th>
                                                 </>
                                             )}
                                             {activeModal === 'flights' && (
@@ -251,6 +345,30 @@ const AdminDashboard = () => {
                                                     <th>Departure</th>
                                                     <th>Seats</th>
                                                     <th>Status</th>
+                                                </>
+                                            )}
+                                            {activeModal === 'hotels' && (
+                                                <>
+                                                    <th>ID</th>
+                                                    <th>Hotel Name</th>
+                                                    <th>City</th>
+                                                    <th>Stars</th>
+                                                    <th>Price/Night</th>
+                                                    <th>Available</th>
+                                                    <th>Rating</th>
+                                                    <th>Actions</th>
+                                                </>
+                                            )}
+                                            {activeModal === 'cars' && (
+                                                <>
+                                                    <th>ID</th>
+                                                    <th>Car</th>
+                                                    <th>Type</th>
+                                                    <th>Location</th>
+                                                    <th>Price/Day</th>
+                                                    <th>Status</th>
+                                                    <th>Rating</th>
+                                                    <th>Actions</th>
                                                 </>
                                             )}
                                             {activeModal === 'users' && (
@@ -268,12 +386,12 @@ const AdminDashboard = () => {
                                     <tbody>
                                         {modalData.length === 0 ? (
                                             <tr>
-                                                <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
+                                                <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
                                                     No data found
                                                 </td>
                                             </tr>
                                         ) : (
-                                            modalData.map((item, index) => (
+                                            modalData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item, index) => (
                                                 <tr key={item.id || index}>
                                                     {activeModal === 'revenue' && (
                                                         <>
@@ -297,6 +415,28 @@ const AdminDashboard = () => {
                                                                 </span>
                                                             </td>
                                                             <td>{new Date(item.booking_date).toLocaleDateString()}</td>
+                                                            <td>
+                                                                <button
+                                                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                                                    onClick={() => alert(`Edit booking #${item.id} - Feature coming soon`)}
+                                                                    style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                                                                    title="Edit Booking"
+                                                                >
+                                                                    <FaEdit />
+                                                                </button>
+                                                                <button
+                                                                    className="admin-btn admin-btn-danger admin-btn-sm"
+                                                                    onClick={() => {
+                                                                        if (window.confirm(`Are you sure you want to delete booking #${item.id}?`)) {
+                                                                            alert('Delete functionality - Coming soon');
+                                                                        }
+                                                                    }}
+                                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                                    title="Delete Booking"
+                                                                >
+                                                                    <FaTrash />
+                                                                </button>
+                                                            </td>
                                                         </>
                                                     )}
                                                     {activeModal === 'flights' && (
@@ -310,6 +450,76 @@ const AdminDashboard = () => {
                                                                 <span className={`admin-badge ${getStatusBadge(item.status)}`}>
                                                                     {item.status}
                                                                 </span>
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                    {activeModal === 'hotels' && (
+                                                        <>
+                                                            <td>#{item.id}</td>
+                                                            <td style={{ fontWeight: '600' }}>{item.hotel_name}</td>
+                                                            <td>{item.city}</td>
+                                                            <td>{'⭐'.repeat(item.star_rating || 0)}</td>
+                                                            <td>${parseFloat(item.price_per_night || 0).toFixed(2)}</td>
+                                                            <td>{item.available_rooms}/{item.total_rooms}</td>
+                                                            <td>{parseFloat(item.user_rating || 0).toFixed(1)} ⭐</td>
+                                                            <td>
+                                                                <button
+                                                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                                                    onClick={() => alert(`Edit hotel #${item.id} - Feature coming soon`)}
+                                                                    style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                                                                    title="Edit Hotel"
+                                                                >
+                                                                    <FaEdit />
+                                                                </button>
+                                                                <button
+                                                                    className="admin-btn admin-btn-danger admin-btn-sm"
+                                                                    onClick={() => {
+                                                                        if (window.confirm(`Are you sure you want to delete hotel "${item.hotel_name}"?`)) {
+                                                                            alert('Delete functionality - Coming soon');
+                                                                        }
+                                                                    }}
+                                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                                    title="Delete Hotel"
+                                                                >
+                                                                    <FaTrash />
+                                                                </button>
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                    {activeModal === 'cars' && (
+                                                        <>
+                                                            <td>#{item.id}</td>
+                                                            <td style={{ fontWeight: '600' }}>{item.company} {item.model}</td>
+                                                            <td>{item.car_type}</td>
+                                                            <td>{item.location_city}</td>
+                                                            <td>${parseFloat(item.daily_rental_price || 0).toFixed(2)}</td>
+                                                            <td>
+                                                                <span className={`admin-badge ${item.status === 'available' ? 'success' : 'warning'}`}>
+                                                                    {item.status}
+                                                                </span>
+                                                            </td>
+                                                            <td>{parseFloat(item.average_rating || 0).toFixed(1)} ⭐</td>
+                                                            <td>
+                                                                <button
+                                                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                                                    onClick={() => alert(`Edit car #${item.id} - Feature coming soon`)}
+                                                                    style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                                                                    title="Edit Car"
+                                                                >
+                                                                    <FaEdit />
+                                                                </button>
+                                                                <button
+                                                                    className="admin-btn admin-btn-danger admin-btn-sm"
+                                                                    onClick={() => {
+                                                                        if (window.confirm(`Are you sure you want to delete car "${item.company} ${item.model}"?`)) {
+                                                                            alert('Delete functionality - Coming soon');
+                                                                        }
+                                                                    }}
+                                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                                    title="Delete Car"
+                                                                >
+                                                                    <FaTrash />
+                                                                </button>
                                                             </td>
                                                         </>
                                                     )}
@@ -332,6 +542,7 @@ const AdminDashboard = () => {
                                         )}
                                     </tbody>
                                 </table>
+                                </>
                             )}
                         </div>
                     </div>
