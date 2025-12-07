@@ -226,6 +226,7 @@ def _compose_bundles(query: ChatQuery, session: Session) -> List[Bundle]:
 
 @app.post("/bundles", response_model=ChatResponse)
 async def recommend_bundles(query: ChatQuery, session: Session = Depends(get_session)) -> ChatResponse:
+    """Generate travel bundles from structured query"""
     bundles = _compose_bundles(query, session)
     session.add_all(bundles)
     session.commit()
@@ -244,6 +245,241 @@ async def recommend_bundles(query: ChatQuery, session: Session = Depends(get_ses
             pass
     
     return ChatResponse(query=query, bundles=bundle_responses)
+
+
+# --- Chat Session Endpoints --------------------------------------------------
+
+from uuid import uuid4
+from schemas import (
+    ChatSessionCreate, ChatSessionResponse, ChatMessageRequest,
+    ChatMessageResponse, ChatHistoryResponse, DealResponse, PolicyRequest, PolicyResponse
+)
+from models import ChatSession, ConversationTurn, DealEvent
+
+
+@app.post("/chat/sessions", response_model=ChatSessionResponse)
+async def create_chat_session(request: ChatSessionCreate, session: Session = Depends(get_session)):
+    """Create a new chat session for a user"""
+    chat_session = ChatSession(
+        user_id=request.user_id,
+        session_token=str(uuid4()),
+        is_active=True
+    )
+    session.add(chat_session)
+    session.commit()
+    session.refresh(chat_session)
+    
+    return ChatSessionResponse(
+        id=chat_session.id,
+        session_token=chat_session.session_token,
+        created_at=chat_session.created_at,
+        is_active=chat_session.is_active
+    )
+
+
+@app.get("/chat/sessions/{session_id}/history", response_model=ChatHistoryResponse)
+async def get_chat_history(session_id: int, session: Session = Depends(get_session)):
+    """Get conversation history for a session"""
+    turns = session.exec(
+        select(ConversationTurn)
+        .where(ConversationTurn.session_id == session_id)
+        .order_by(ConversationTurn.timestamp)
+        .limit(50)
+    ).all()
+    
+    turn_responses = [
+        ChatMessageResponse(
+            role=turn.role,
+            content=turn.content,
+            timestamp=turn.timestamp
+        )
+        for turn in turns
+    ]
+    
+    return ChatHistoryResponse(session_id=session_id, turns=turn_responses)
+
+
+@app.post("/chat", response_model=ChatMessageResponse)
+async def send_chat_message(request: ChatMessageRequest, session: Session = Depends(get_session)):
+    """Send a message and get AI response with bundles"""
+    # Store user message
+    user_turn = ConversationTurn(
+        session_id=request.session_id,
+        role="user",
+        content=request.message,
+        timestamp=datetime.utcnow()
+    )
+    session.add(user_turn)
+    session.commit()
+    
+    # Parse intent using LLM
+    bundles = []
+    if hasattr(app.state, 'ollama_client') and app.state.ollama_client:
+        try:
+            from llm import parse_intent
+            query = await parse_intent(request.message, app.state.ollama_client)
+            
+            if query:
+                # Generate bundles
+                bundle_objs = _compose_bundles(query, session)
+                session.add_all(bundle_objs)
+                session.commit()
+                
+                for b in bundle_objs:
+                    session.refresh(b)
+                    bundles.append(_bundle_to_response(b))
+        except Exception as e:
+            logger.error(f"Intent parsing failed: {e}")
+    
+    # Generate assistant response
+    if bundles:
+        assistant_content = f"I found {len(bundles)} great options for you! Check out these bundles:"
+    else:
+        assistant_content = "I'd be happy to help you find travel options! Could you provide more details like your origin city, destination, dates, and budget?"
+    
+    # Store assistant message
+    assistant_turn = ConversationTurn(
+        session_id=request.session_id,
+        role="assistant",
+        content=assistant_content,
+        timestamp=datetime.utcnow()
+    )
+    session.add(assistant_turn)
+    session.commit()
+    
+    return ChatMessageResponse(
+        role="assistant",
+        content=assistant_content,
+        timestamp=assistant_turn.timestamp,
+        bundles=bundles if bundles else None
+    )
+
+
+# --- Deal Endpoints -----------------------------------------------------------
+
+@app.get("/deals/latest", response_model=List[DealResponse])
+async def get_latest_deals(session: Session = Depends(get_session), limit: int = 20):
+    """Get latest high-scoring deals"""
+    hotels = session.exec(
+        select(HotelDeal)
+        .where(HotelDeal.is_deal == True)
+        .order_by(HotelDeal.deal_score.desc())
+        .limit(limit // 2)
+    ).all()
+    
+    flights = session.exec(
+        select(FlightDeal)
+        .order_by(FlightDeal.deal_score.desc())
+        .limit(limit // 2)
+    ).all()
+    
+    deals = []
+    for hotel in hotels:
+        deals.append(DealResponse(
+            id=hotel.id,
+            deal_type="hotel",
+            price=hotel.price,
+            deal_score=hotel.deal_score,
+            tags=hotel.tags.split(',') if hotel.tags else []
+        ))
+    
+    for flight in flights:
+        deals.append(DealResponse(
+            id=flight.id,
+            deal_type="flight",
+            price=flight.price,
+            deal_score=flight.deal_score,
+            tags=flight.tags.split(',') if flight.tags else []
+        ))
+    
+    return sorted(deals, key=lambda d: d.deal_score, reverse=True)[:limit]
+
+
+# --- Watch Endpoints (Enhanced) -----------------------------------------------
+
+@app.get("/watches/{watch_id}", response_model=WatchResponse)
+async def get_watch(watch_id: int, session: Session = Depends(get_session)):
+    """Get watch details"""
+    watch = session.get(Watch, watch_id)
+    if not watch:
+        raise HTTPException(status_code=404, detail="Watch not found")
+    
+    return WatchResponse(
+        id=watch.id,
+        bundle_id=watch.bundle_id,
+        max_price=watch.max_price,
+        min_rooms_left=watch.min_rooms_left,
+        min_seats_left=watch.min_seats_left,
+        is_active=watch.is_active,
+        created_at=watch.created_at
+    )
+
+
+@app.delete("/watches/{watch_id}", status_code=204)
+async def delete_watch(watch_id: int, session: Session = Depends(get_session)):
+    """Cancel a watch"""
+    watch = session.get(Watch, watch_id)
+    if not watch:
+        raise HTTPException(status_code=404, detail="Watch not found")
+    
+    watch.is_active = False
+    session.add(watch)
+    session.commit()
+    return None
+
+
+# --- Policy Q&A Endpoint ------------------------------------------------------
+
+@app.post("/policies/query", response_model=PolicyResponse)
+async def query_policy(request: PolicyRequest, session: Session = Depends(get_session)):
+    """Answer policy questions about flights or hotels"""
+    # Fetch entity metadata
+    metadata = {}
+    
+    if request.entity_type == "hotel":
+        hotel = session.get(HotelDeal, request.entity_id)
+        if not hotel:
+            raise HTTPException(status_code=404, detail="Hotel not found")
+        
+        metadata = {
+            "price": f"${hotel.price}/night",
+            "pet_friendly": "Yes" if hotel.is_pet_friendly else "No",
+            "breakfast": "Included" if hotel.has_breakfast else "Not included",
+            "refundable": "Yes" if hotel.is_refundable else "No",
+            "cancellation_policy": hotel.cancellation_policy or "Standard cancellation policy",
+        }
+    
+    elif request.entity_type == "flight":
+        flight = session.get(FlightDeal, request.entity_id)
+        if not flight:
+            raise HTTPException(status_code=404, detail="Flight not found")
+        
+        metadata = {
+            "price": f"${flight.price}",
+            "airline": flight.airline,
+            "stops": f"{flight.stops} stop(s)",
+            "duration": f"{flight.duration_minutes // 60}h {flight.duration_minutes % 60}m",
+            "direct": "Yes" if flight.is_direct else "No",
+        }
+    
+    # Use LLM to answer if available
+    answer = "Information not available"
+    if hasattr(app.state, 'ollama_client') and app.state.ollama_client:
+        try:
+            from llm import answer_policy_question
+            answer = await answer_policy_question(
+                request.question,
+                metadata,
+                app.state.ollama_client
+            )
+        except:
+            answer = "Unable to process question at this time."
+    
+    return PolicyResponse(
+        question=request.question,
+        answer=answer,
+        source_metadata=metadata
+    )
 
 
 @app.post("/watches", response_model=WatchResponse)
