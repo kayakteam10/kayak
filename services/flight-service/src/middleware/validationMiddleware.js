@@ -28,6 +28,11 @@ const validateFlightSearch = (req, res, next) => {
                 'date.min': 'Date cannot be in the past',
                 'any.required': 'Date is required'
             }),
+        return_date: Joi.date().iso().min(Joi.ref('date')).optional()
+            .messages({
+                'date.base': 'Return date must be a valid ISO date',
+                'date.min': 'Return date must be after departure date'
+            }),
         passengers: Joi.number().integer().min(1).max(9).optional(),
         type: Joi.string().valid('oneway', 'roundtrip', 'multicity').optional()
     });

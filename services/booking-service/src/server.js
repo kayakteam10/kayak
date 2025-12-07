@@ -140,6 +140,49 @@ app.post('/bookings', async (req, res) => {
     }
 });
 
+// HOLD Booking (temporary reservation)
+app.post('/bookings/hold', async (req, res) => {
+    try {
+        const { flight_id, return_flight_id, passengers, trip_type = 'oneway' } = req.body;
+
+        if (!flight_id || !passengers) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: flight_id, passengers'
+            });
+        }
+
+        const booking_reference = `HOLD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        const expires_at = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+
+        const booking_details = {
+            flight_id,
+            return_flight_id,
+            passengers,
+            trip_type,
+            hold_created_at: new Date().toISOString()
+        };
+
+        res.status(201).json({
+            success: true,
+            data: {
+                booking_reference,
+                expires_at: expires_at.toISOString(),
+                flight_id,
+                return_flight_id,
+                passengers,
+                trip_type
+            }
+        });
+    } catch (error) {
+        logger.error(`Error creating hold: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // GET User Bookings
 app.get('/bookings/user/:userId', async (req, res) => {
     try {

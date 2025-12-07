@@ -563,7 +563,10 @@ function SearchResultsPage() {
       const children = searchParams.get('children') || '0';
       const infants = searchParams.get('infants') || '0';
       const passengerParams = `passengers=${passengers}&adults=${adults}&children=${children}&infants=${infants}`;
-      navigate(`/booking/flights/${flight.id || flight}?${passengerParams}`);
+      const flightId = itemId?.id || itemId;
+      if (flightId) {
+        navigate(`/booking/flights/${flightId}?${passengerParams}`);
+      }
     }
   };
 
@@ -676,14 +679,14 @@ function SearchResultsPage() {
               <div className="roundtrip-actions">
                 <button
                   className="details-btn"
-                  onClick={() => handleViewDetails(flight)}
+                  onClick={() => handleViewDetails({ ...flight, legs })}
                   aria-label="View flight details"
                 >
                   View Details
                 </button>
                 <button
                   className="book-btn"
-                  onClick={() => handleBook(legs[0] || flight, legs)}
+                  onClick={() => handleBook(legs[0] || { ...flight, id: legs[0]?.id }, legs)}
                   aria-label="Book this flight now"
                 >
                   Book Now

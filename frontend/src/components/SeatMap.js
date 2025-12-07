@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { flightsAPI } from '../services/api';
+import './SeatMap.css';
 
 const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) => {
     const [seats, setSeats] = useState([]);
@@ -85,27 +86,35 @@ const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) =>
     };
 
     const renderSeat = (seat) => {
-        if (!seat) return <div className="seat-spacer" key="spacer"></div>;
+        if (!seat) return <div className="seat-spacer aisle" key={`spacer-${Math.random()}`}></div>;
 
         const isSelected = selectedSeats.includes(seat.seat_number);
         const isTaken = !seat.is_available;
         const isPremium = seat.seat_type === 'premium';
+        const isBusiness = seat.seat_type === 'business';
+        const isFirst = seat.seat_type === 'first';
 
-        let className = 'seat-button';
-        if (isSelected) className += ' selected';
-        else if (isTaken) className += ' taken';
-        else if (isPremium) className += ' premium';
+        let seatClass = 'airplane-seat';
+        if (isSelected) seatClass += ' selected';
+        if (isTaken) seatClass += ' occupied';
+        if (isFirst) seatClass += ' first-class';
+        else if (isBusiness) seatClass += ' business';
+        else if (isPremium) seatClass += ' premium';
 
+        const priceText = seat.price_modifier > 0 ? ` (+$${seat.price_modifier})` : '';
+        const typeText = isFirst ? ' First Class' : isBusiness ? ' Business' : isPremium ? ' Premium' : '';
+        
         return (
-            <button
+            <div
                 key={seat.seat_number}
-                className={className}
-                onClick={() => handleSeatClick(seat.seat_number, seat.is_available, isTaken, seat.price_modifier)}
-                disabled={isTaken}
-                title={`${seat.seat_number}${isPremium ? ' (Premium +$' + seat.price_modifier + ')' : ''}`}
+                className={seatClass}
+                onClick={() => !isTaken && handleSeatClick(seat.seat_number, seat.is_available, isTaken, seat.price_modifier)}
+                title={`Seat ${seat.seat_number}${typeText}${priceText}${isTaken ? ' - Unavailable' : ''}`}
             >
-                {seat.seat_number.match(/[A-Z]+/)[0]}
-            </button>
+                <div className="seat-inner">
+                    <span className="seat-number">{seat.seat_number}</span>
+                </div>
+            </div>
         );
     };
 
@@ -117,9 +126,12 @@ const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) =>
     return (
         <div className="seat-map-container">
             <div className="seat-map-header">
-                <h3>Select Your Seat(s)</h3>
+                <h3>✈️ Select Your Seat(s)</h3>
                 <p className="seat-map-info">
                     Please select {passengerCount} seat{passengerCount > 1 ? 's' : ''} for your flight
+                </p>
+                <p className="seat-count-info">
+                    {selectedSeats.length} of {passengerCount} seat{passengerCount > 1 ? 's' : ''} selected
                 </p>
             </div>
 
@@ -136,31 +148,56 @@ const SeatMap = ({ flightId, passengerCount, onSeatsSelected, initialSeats }) =>
                 </div>
                 <div className="legend-item">
                     <div className="legend-box taken"></div>
-                    <span>Taken</span>
+                    <span>Unavailable</span>
                 </div>
                 <div className="legend-item">
                     <div className="legend-box premium"></div>
-                    <span>Premium (+$)</span>
+                    <span>Premium</span>
+                </div>
+                <div className="legend-item">
+                    <div className="legend-box business"></div>
+                    <span>Business</span>
+                </div>
+                <div className="legend-item">
+                    <div className="legend-box first-class"></div>
+                    <span>First Class</span>
                 </div>
             </div>
 
-            <div className="seat-grid">
-                {sortedRows.map(rowNum => {
-                    const rowSeats = rowsData[rowNum].sort((a, b) =>
-                        a.seat_number.localeCompare(b.seat_number)
-                    );
-
-                    return (
-                        <div key={rowNum} className="seat-row">
-                            <div className="row-number">{rowNum}</div>
-                            <div className="seats">
-                                {rowSeats.slice(0, 3).map(seat => renderSeat(seat))}
-                                <div className="seat-spacer"></div>
-                                {rowSeats.slice(3, 6).map(seat => renderSeat(seat))}
-                            </div>
+            <div className="airplane-cabin">
+                <div className="cabin-front">
+                    <div className="cockpit-section">✈️ FRONT</div>
+                </div>
+                
+                <div className="cabin-body">
+                    <div className="seat-layout">
+                        <div className="column-labels">
+                            <span>A</span>
+                            <span>B</span>
+                            <span>C</span>
+                            <span className="aisle-gap">AISLE</span>
+                            <span>D</span>
+                            <span>E</span>
+                            <span>F</span>
                         </div>
-                    );
-                })}
+                        
+                        {sortedRows.map(rowNum => {
+                            const rowSeats = rowsData[rowNum].sort((a, b) =>
+                                a.seat_number.localeCompare(b.seat_number)
+                            );
+
+                            return (
+                                <div key={rowNum} className="seat-row">
+                                    <span className="row-label">{rowNum}</span>
+                                    {rowSeats.slice(0, 3).map(seat => renderSeat(seat))}
+                                    <div className="seat-spacer aisle"></div>
+                                    {rowSeats.slice(3, 6).map(seat => renderSeat(seat))}
+                                    <span className="row-label">{rowNum}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {selectedSeats.length > 0 && (
