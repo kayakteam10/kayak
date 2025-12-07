@@ -1,0 +1,29 @@
+# Core FastAPI dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-dotenv==1.0.0
+
+# WebSocket support
+websockets==12.0
+
+# HTTP client
+httpx==0.25.2
+
+# Data processing
+pandas==2.0.3
+numpy==1.24.3
+
+# Database
+sqlmodel==0.0.14
+pymysql==1.1.0
+
+# Kafka
+aiokafka==0.10.0
+kafka-python==2.0.2
+
+# Ollama (optional SDK)
+# ollama==0.1.0
+
+# Redis (optional, for caching)
+redis==5.0.1
