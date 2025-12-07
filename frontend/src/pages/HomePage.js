@@ -415,6 +415,9 @@ const HomePage = () => {
     params.set('type', mapTabToType(activeTab));
     params.set('tripType', tripType);
     params.set('passengers', String(formData.passengers));
+    params.set('adults', String(travelers.adults));
+    params.set('children', String(travelers.children));
+    params.set('infants', String(travelers.infants));
     params.set('cabinClass', cabinClass);
 
     if (tripType === 'multicity') {
@@ -1305,38 +1308,6 @@ const HomePage = () => {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="featured-section">
-        <h2 className="section-title">Featured Hotel Deals</h2>
-        <div className="hotel-deals-grid">
-          {featuredHotels.map((hotel) => (
-            <div
-              key={hotel.id}
-              className="hotel-tile"
-              onClick={() => navigate(`/hotels/${hotel.id}`)}
-            >
-              <img src={hotel.image} alt={hotel.name} className="hotel-tile-image" />
-              <div className="hotel-tile-overlay">
-                <div className="hotel-tile-badge">{hotel.discount}</div>
-                <div className="hotel-tile-content">
-                  <h3 className="hotel-tile-title">{hotel.name}</h3>
-                  <p className="hotel-tile-location">📍 {hotel.location}</p>
-                  <div className="hotel-tile-footer">
-                    <div className="hotel-tile-rating">
-                      <span className="rating-stars">⭐</span>
-                      <span className="rating-value">{hotel.rating.toFixed(1)}</span>
-                    </div>
-                    <div className="hotel-tile-price">
-                      <span className="price-amount">${hotel.price}</span>
-                      <span className="price-label">/night</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
     </div>
