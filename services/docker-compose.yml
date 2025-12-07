@@ -376,6 +376,28 @@ services:
       retries: 5
       start_period: 40s
 
+  ai-deals-worker:
+    build: ./ai-service
+    container_name: kayak-ai-deals-worker
+    restart: unless-stopped
+    command: python scripts/start_deals_worker.py
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root123
+      DB_NAME: kayak_db
+      KAFKA_BROKER: kafka:9092
+      LOG_LEVEL: INFO
+    volumes:
+      - ./ai-service:/app
+      - ./ai-service/data:/app/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
   # ========== FRONTEND ==========
 
   frontend:

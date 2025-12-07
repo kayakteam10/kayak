@@ -58,10 +58,14 @@ def get_session():
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    """Initialize service on startup"""
     logger.info("🚀 Starting AI service...")
-    SQLModel.metadata.create_all(engine)
     
-    # Initialize Kafka
+    # Create database tables
+    SQLModel.metadata.create_all(engine)
+    logger.info("✅ Database tables created")
+    
+    # Initialize Kafka producer
     try:
         producer = KafkaProducer(broker_url=KAFKA_BROKER)
         await producer.connect()
@@ -71,6 +75,24 @@ async def on_startup() -> None:
     except Exception as e:
         logger.error(f"⚠️  Kafka failed: {e}")
         app.state.kafka_producer = None
+    
+    # Initialize Ollama client
+    try:
+        from llm import OllamaClient
+        ollama_url = os.getenv("OLLAMA_URL", "http://ollama:11434")
+        ollama_client = OllamaClient(base_url=ollama_url)
+        
+        # Health check
+        is_healthy = await ollama_client.health_check()
+        if is_healthy:
+            app.state.ollama_client = ollama_client
+            logger.info("✅ Ollama initialized")
+        else:
+            logger.warning("⚠️  Ollama health check failed, LLM features disabled")
+            app.state.ollama_client = None
+    except Exception as e:
+        logger.error(f"⚠️  Ollama initialization failed: {e}")
+        app.state.ollama_client = None
     
     # Start watch loop
     asyncio.create_task(watch_loop())
@@ -93,7 +115,14 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    health = {"status": "healthy", "database": "connected", "kafka": "disconnected"}
+    health = {
+        "status": "healthy",
+        "database": "connected",
+        "kafka": "disconnected",
+        "ollama": "disconnected"
+    }
+    
+    # Check database
     try:
         with Session(engine) as session:
             session.exec(select(1))
@@ -101,8 +130,14 @@ async def health_check():
         health["database"] = "disconnected"
         health["status"] = "degraded"
     
+    # Check Kafka
     if hasattr(app.state, 'kafka_producer') and app.state.kafka_producer and app.state.kafka_producer.connected:
         health["kafka"] = "connected"
+    
+    # Check Ollama
+    if hasattr(app.state, 'ollama_client') and app.state.ollama_client:
+        health["ollama"] = "connected"
+    
     return health
 
 
