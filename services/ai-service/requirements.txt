@@ -27,3 +27,9 @@ kafka-python==2.0.2
 
 # Redis (optional, for caching)
 redis==5.0.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2  # Already listed above for Ollama client
