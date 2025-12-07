@@ -191,13 +191,43 @@ app.get('/bookings/user/:userId', async (req, res) => {
             [req.params.userId]
         );
 
-        res.status(200).json({
-            success: true,
-            data: rows.map(b => ({
+        // Enrich bookings with additional details
+        const enrichedBookings = await Promise.all(rows.map(async (b) => {
+            const booking = {
                 ...b,
                 booking_details: typeof b.booking_details === 'string' ? JSON.parse(b.booking_details) : b.booking_details
-            })),
-            count: rows.length
+            };
+
+            // Enrich hotel bookings with hotel details
+            if (booking.booking_type === 'hotel' && booking.booking_details.hotel_id) {
+                try {
+                    const [hotelRows] = await dbPool.execute(
+                        `SELECT hotel_name, location, city, address, room_type, price_per_night 
+                         FROM hotels WHERE id = ?`,
+                        [booking.booking_details.hotel_id]
+                    );
+
+                    if (hotelRows.length > 0) {
+                        const hotel = hotelRows[0];
+                        booking.booking_details.hotel_name = hotel.hotel_name;
+                        booking.booking_details.location = hotel.location;
+                        booking.booking_details.city = hotel.city;
+                        booking.booking_details.address = hotel.address;
+                        booking.booking_details.room_type = hotel.room_type;
+                        booking.booking_details.price_per_night = hotel.price_per_night;
+                    }
+                } catch (hotelError) {
+                    logger.error(`Error fetching hotel details: ${hotelError.message}`);
+                }
+            }
+
+            return booking;
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: enrichedBookings,
+            count: enrichedBookings.length
         });
     } catch (error) {
         logger.error(`Error fetching user bookings: ${error.message}`);
@@ -216,6 +246,30 @@ app.get('/bookings/:id', async (req, res) => {
 
         const booking = rows[0];
         booking.booking_details = typeof booking.booking_details === 'string' ? JSON.parse(booking.booking_details) : booking.booking_details;
+
+        // Enrich hotel bookings with hotel details
+        if (booking.booking_type === 'hotel' && booking.booking_details.hotel_id) {
+            try {
+                const [hotelRows] = await dbPool.execute(
+                    `SELECT hotel_name, location, city, address, room_type, price_per_night 
+                     FROM hotels WHERE id = ?`,
+                    [booking.booking_details.hotel_id]
+                );
+
+                if (hotelRows.length > 0) {
+                    const hotel = hotelRows[0];
+                    booking.booking_details.hotel_name = hotel.hotel_name;
+                    booking.booking_details.location = hotel.location;
+                    booking.booking_details.city = hotel.city;
+                    booking.booking_details.address = hotel.address;
+                    booking.booking_details.room_type = hotel.room_type;
+                    booking.booking_details.price_per_night = hotel.price_per_night;
+                }
+            } catch (hotelError) {
+                logger.error(`Error fetching hotel details: ${hotelError.message}`);
+                // Continue without hotel details
+            }
+        }
 
         res.status(200).json({ success: true, data: booking });
     } catch (error) {

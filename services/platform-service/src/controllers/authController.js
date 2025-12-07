@@ -54,6 +54,17 @@ class AuthController {
             res.status(200).json({ success: true, data: result });
         } catch (error) {
             logger.error(`Update user profile error: ${error.message}`);
+            
+            // Handle validation errors
+            if (error.message.includes('required')) {
+                return res.status(400).json({ success: false, error: error.message });
+            }
+            
+            // Handle uniqueness errors
+            if (error.message.includes('already exists')) {
+                return res.status(409).json({ success: false, error: error.message });
+            }
+            
             res.status(500).json({ success: false, error: error.message });
         }
     }

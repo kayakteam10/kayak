@@ -18,7 +18,13 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
-app.use(cors());
+
+// CORS with increased body size limit
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Compression middleware - if enabled
 if (process.env.ENABLE_COMPRESSION !== 'false') {
@@ -35,6 +41,8 @@ app.use((req, res, next) => {
 });
 
 // ========== API GATEWAY - Route to Microservices ==========
+// Note: Proxy routes MUST come BEFORE body-parser middleware
+// so they can handle the raw request stream
 
 // Flight Service
 app.use('/api/flights', createProxyMiddleware({
@@ -113,8 +121,13 @@ app.use('/api/ai', createProxyMiddleware({
     }
 }));
 
+// ========== BODY PARSER ==========
+// Must come AFTER proxy routes so they can handle raw streams
+// Increase payload limit to 50MB for profile pictures (base64 encoded images)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 // ========== USER AUTH & ADMIN ENDPOINTS ==========
-app.use(express.json()); // Applied here for Auth and Admin endpoints
 
 app.use('/auth', authRoutes);
 app.use('/api/admin', adminRoutes);

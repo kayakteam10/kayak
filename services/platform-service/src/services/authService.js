@@ -49,7 +49,7 @@ class AuthService {
 
     async getUserProfile(userId) {
         const [rows] = await dbPool.execute(
-            `SELECT id, email, first_name, last_name, role, city, state, phone_number, address, zip_code, ssn FROM users WHERE id = ?`,
+            `SELECT id, email, first_name, last_name, role, city, state, phone_number, address, zip_code, ssn, profile_picture FROM users WHERE id = ?`,
             [userId]
         );
 
@@ -69,33 +69,65 @@ class AuthService {
             city: user.city,
             state: user.state,
             zipCode: user.zip_code,
-            ssn: user.ssn
+            ssn: user.ssn,
+            profilePicture: user.profile_picture
         };
     }
 
     async updateUserProfile(userId, updateData) {
-        const { firstName, lastName, phone, address, city, state, zipCode, ssn } = updateData;
+        const { firstName, lastName, phone, address, city, state, zipCode, ssn, profilePicture } = updateData;
+
+        // Validate mandatory fields
+        if (!phone) {
+            throw new Error('Phone number is required');
+        }
+        if (!ssn) {
+            throw new Error('SSN is required');
+        }
+        if (!zipCode) {
+            throw new Error('ZIP code is required');
+        }
+
+        // Check if phone number is unique (excluding current user)
+        const [phoneCheck] = await dbPool.execute(
+            'SELECT id FROM users WHERE phone_number = ? AND id != ?',
+            [phone, userId]
+        );
+        if (phoneCheck.length > 0) {
+            throw new Error('Phone number already exists');
+        }
+
+        // Check if SSN is unique (excluding current user)
+        const [ssnCheck] = await dbPool.execute(
+            'SELECT id FROM users WHERE ssn = ? AND id != ?',
+            [ssn, userId]
+        );
+        if (ssnCheck.length > 0) {
+            throw new Error('SSN already exists');
+        }
 
         await dbPool.execute(
             `UPDATE users SET 
                 first_name = COALESCE(?, first_name),
                 last_name = COALESCE(?, last_name),
-                phone_number = COALESCE(?, phone_number),
+                phone_number = ?,
                 address = COALESCE(?, address),
                 city = COALESCE(?, city),
                 state = COALESCE(?, state),
-                zip_code = COALESCE(?, zip_code),
-                ssn = COALESCE(?, ssn)
+                zip_code = ?,
+                ssn = ?,
+                profile_picture = COALESCE(?, profile_picture)
             WHERE id = ?`,
             [
                 firstName || null,
                 lastName || null,
-                phone || null,
+                phone,
                 address || null,
                 city || null,
                 state || null,
-                zipCode || null,
-                ssn || null,
+                zipCode,
+                ssn,
+                profilePicture || null,
                 userId
             ]
         );
