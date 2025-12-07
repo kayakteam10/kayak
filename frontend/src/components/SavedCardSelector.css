@@ -1,0 +1,139 @@
+/* Saved Card Selector Styles */
+
+.saved-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.saved-card-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.saved-card-item:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+    transform: translateY(-2px);
+}
+
+.saved-card-item.selected {
+    border-color: #ff6b35;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.05) 0%, rgba(247, 147, 30, 0.05) 100%);
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.2);
+}
+
+.card-radio input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #ff6b35;
+}
+
+.card-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.card-brand-number {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.brand-icon {
+    font-size: 24px;
+}
+
+.card-brand {
+    text-transform: capitalize;
+}
+
+.card-last4 {
+    color: #666;
+    font-family: 'Courier New', monospace;
+}
+
+.card-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #666;
+}
+
+.default-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #856404;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-set-default,
+.btn-delete {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-set-default {
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.btn-set-default:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.btn-delete {
+    background: #fee;
+    color: #c33;
+    border: 1px solid #fcc;
+    font-size: 20px;
+    line-height: 1;
+    padding: 4px 12px;
+}
+
+.btn-delete:hover {
+    background: #fdd;
+    border-color: #faa;
+}
+
+.no-cards-message {
+    text-align: center;
+    padding: 32px;
+    color: #6c757d;
+    font-size: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}

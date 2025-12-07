@@ -71,8 +71,10 @@ function BookingPage() {
             return;
           }
 
-          // Get saved payment methods from localStorage (since they're not in backend yet)
-          const savedPayments = localStorage.getItem('savedPaymentMethods');
+          // Get saved payment methods from localStorage (user-specific)
+          const userId = userData.id;
+          const storageKey = `savedPaymentMethods_${userId}`;
+          const savedPayments = localStorage.getItem(storageKey);
           let paymentMethods = [];
           if (savedPayments) {
             try {
@@ -470,10 +472,13 @@ function BookingPage() {
     }));
   };
 
-  // Save payment method to localStorage
+  // Save payment method to localStorage (user-specific)
   const savePaymentMethod = () => {
     try {
-      const savedPayments = localStorage.getItem('savedPaymentMethods');
+      if (!user?.id) return; // Need user ID
+
+      const storageKey = `savedPaymentMethods_${user.id}`;
+      const savedPayments = localStorage.getItem(storageKey);
       let paymentMethods = [];
       if (savedPayments) {
         paymentMethods = JSON.parse(savedPayments);
@@ -509,7 +514,7 @@ function BookingPage() {
         paymentMethods.push(newPayment);
       }
 
-      localStorage.setItem('savedPaymentMethods', JSON.stringify(paymentMethods));
+      localStorage.setItem(storageKey, JSON.stringify(paymentMethods));
     } catch (e) {
       console.error('Error saving payment method:', e);
     }

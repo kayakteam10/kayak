@@ -85,8 +85,10 @@ function CarBookingPage() {
             country: userData.country || 'US' // Default to US if not present
           }));
 
-          // Get saved payment methods from localStorage
-          const savedPayments = localStorage.getItem('savedPaymentMethods');
+          // Get saved payment methods from localStorage (user-specific)
+          const userId = userData.id;
+          const storageKey = `savedPaymentMethods_${userId}`;
+          const savedPayments = localStorage.getItem(storageKey);
           if (savedPayments) {
             try {
               let paymentMethods = JSON.parse(savedPayments);
@@ -99,14 +101,14 @@ function CarBookingPage() {
                 const firstCard = paymentMethods[0];
                 handleSelectSavedCard(firstCard, 0);
               } else {
-                setUseNewCard(true);
+                setUseNewCard(true); // No saved cards for this user
               }
             } catch (e) {
               console.error('Error parsing saved payments:', e);
-              setUseNewCard(true);
+              setUseNewCard(true); // Error parsing, treat as no saved cards
             }
           } else {
-            setUseNewCard(true);
+            setUseNewCard(true); // No saved payments in localStorage for this user
           }
         }
       } catch (error) {
