@@ -5,11 +5,11 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  validateCardNumber, 
-  detectCardBrand, 
+import {
+  validateCardNumber,
+  detectCardBrand,
   formatCardNumber,
-  generateCardId 
+  generateCardId
 } from '../utils/encryption';
 import './SimpleCardInput.css';
 
@@ -25,26 +25,26 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
     billingState: '',
     billingZip: ''
   });
-  
+
   const [errors, setErrors] = useState({});
   const [cardBrand, setCardBrand] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCardNumberChange = (e) => {
     let value = e.target.value.replace(/\s/g, '');
-    
+
     // Only allow digits
     if (!/^\d*$/.test(value)) return;
-    
+
     // Limit to 19 digits (max card length)
     if (value.length > 19) return;
-    
+
     // Format with spaces
     const formatted = formatCardNumber(value);
-    
+
     setFormData({ ...formData, cardNumber: formatted });
     setCardBrand(detectCardBrand(value));
-    
+
     // Clear error when user types
     if (errors.cardNumber) {
       setErrors({ ...errors, cardNumber: '' });
@@ -54,7 +54,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
   const handleExpiryChange = (field, value) => {
     // Only allow digits
     if (!/^\d*$/.test(value)) return;
-    
+
     if (field === 'expiryMonth') {
       // Limit to 2 digits, max 12
       if (value.length > 2) return;
@@ -65,7 +65,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
       if (value.length > 4) return;
       setFormData({ ...formData, expiryYear: value });
     }
-    
+
     if (errors.expiry) {
       setErrors({ ...errors, expiry: '' });
     }
@@ -73,15 +73,15 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
 
   const handleCVVChange = (e) => {
     let value = e.target.value;
-    
+
     // Only allow digits
     if (!/^\d*$/.test(value)) return;
-    
-    // Limit to 4 digits (Amex has 4)
-    if (value.length > 4) return;
-    
+
+    // Limit to exactly 3 digits
+    if (value.length > 3) return;
+
     setFormData({ ...formData, cvv: value });
-    
+
     if (errors.cvv) {
       setErrors({ ...errors, cvv: '' });
     }
@@ -89,7 +89,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
 
   const validate = () => {
     const newErrors = {};
-    
+
     // Validate card number (lenient for test payments)
     const cleanedCard = formData.cardNumber.replace(/\s/g, '');
     if (!cleanedCard) {
@@ -100,7 +100,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
       newErrors.cardNumber = 'Card number must contain only digits';
     }
     // Note: Skip Luhn validation for test payments
-    
+
     // Validate expiry
     if (!formData.expiryMonth || !formData.expiryYear) {
       newErrors.expiry = 'Expiry date is required';
@@ -110,26 +110,26 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
-      
+
       if (month < 1 || month > 12) {
         newErrors.expiry = 'Invalid month';
       } else if (year < currentYear || (year === currentYear && month < currentMonth)) {
         newErrors.expiry = 'Card has expired';
       }
     }
-    
+
     // Validate CVV
     if (!formData.cvv) {
       newErrors.cvv = 'CVV is required';
-    } else if (formData.cvv.length < 3) {
-      newErrors.cvv = 'CVV must be 3-4 digits';
+    } else if (formData.cvv.length !== 3) {
+      newErrors.cvv = 'CVV must be exactly 3 digits';
     }
-    
+
     // Validate cardholder name
     if (!formData.cardholderName.trim()) {
       newErrors.cardholderName = 'Cardholder name is required';
     }
-    
+
     // Validate billing info
     if (!formData.billingAddress.trim()) {
       newErrors.billingAddress = 'Billing address is required';
@@ -145,23 +145,23 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
     } else if (!/^\d{5}(-\d{4})?$/.test(formData.billingZip)) {
       newErrors.billingZip = 'Invalid ZIP code';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validate()) {
       if (onError) {
         onError(new Error('Please fix validation errors'));
       }
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       // Create card object in the format expected by the API
       const cardData = {
@@ -178,7 +178,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
         cardBrand: cardBrand || 'Unknown',
         setAsDefault: false
       };
-      
+
       // Clear form
       setFormData({
         cardNumber: '',
@@ -192,12 +192,12 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
         billingZip: ''
       });
       setCardBrand('');
-      
+
       // Call success callback
       if (onSuccess) {
         onSuccess(cardData);
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Card input error:', error);
@@ -270,7 +270,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
             value={formData.cvv}
             onChange={handleCVVChange}
             placeholder="123"
-            maxLength="4"
+            maxLength="3"
             className={errors.cvv ? 'error' : ''}
           />
         </div>
@@ -300,7 +300,7 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
 
       <div className="billing-section">
         <h4>Billing Address</h4>
-        
+
         <div className="form-row">
           <div className="form-group full-width">
             <label>Street Address *</label>
@@ -363,16 +363,16 @@ const SimpleCardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
         </div>
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         className="btn-save-card"
         disabled={loading}
       >
         {loading ? 'Saving...' : buttonText}
       </button>
-      
+
       <p className="test-card-note">
-        💡 <strong>Test Payment System:</strong> Use test card numbers only (e.g., 4111 1111 1111 1111). 
+        💡 <strong>Test Payment System:</strong> Use test card numbers only (e.g., 4111 1111 1111 1111).
         No actual charges will be made.
       </p>
     </form>

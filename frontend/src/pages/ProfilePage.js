@@ -475,8 +475,8 @@ function ProfilePage() {
       entityCity = details.city || details.location || '';
       stayDate = details.pickupDate || details.pickup_date || null;
     } else if (entityType === 'flight') {
-      entityName = (details.airline && details.flight_number) ? `${details.airline} ${details.flight_number}` : 
-                   (details.airline && details.flightNumber) ? `${details.airline} ${details.flightNumber}` : '';
+      entityName = (details.airline && details.flight_number) ? `${details.airline} ${details.flight_number}` :
+        (details.airline && details.flightNumber) ? `${details.airline} ${details.flightNumber}` : '';
       entityAddress = details.departure_airport || details.departureAirport || '';
       entityCity = details.arrival_airport || details.arrivalAirport || '';
       stayDate = details.departure_time || details.departure_date || details.departureDate || null;
@@ -634,13 +634,13 @@ function ProfilePage() {
     try {
       const userId = localStorage.getItem('userId');
       await reviewsAPI.delete(reviewId, userId);
-      
+
       // Remove the deleted review from state
       setReviews(reviews.filter(r => {
         const id = r._id?.$oid || r._id;
         return id !== reviewId;
       }));
-      
+
       showNotification('Review deleted successfully', 'success');
     } catch (error) {
       console.error('Error deleting review:', error);
@@ -1004,10 +1004,10 @@ function ProfilePage() {
                         </div>
                         <span className="review-date">{createdDateStr}</span>
                       </div>
-                      
+
                       {displayTitle && <h4 className="review-title">{displayTitle}</h4>}
                       {displayComment && <p className="review-text">{displayComment}</p>}
-                      
+
                       {(hasPros || hasCons) && (
                         <div className="review-pros-cons">
                           {hasPros && (
@@ -1032,7 +1032,7 @@ function ProfilePage() {
                           )}
                         </div>
                       )}
-                      
+
                       <div className="review-meta">
                         <div className="review-entity-info">
                           <span className="review-entity-type">{displayType}</span>
@@ -1047,8 +1047,8 @@ function ProfilePage() {
                           )}
                         </div>
                         <div className="review-actions">
-                          <button 
-                            className="delete-review-btn" 
+                          <button
+                            className="delete-review-btn"
                             onClick={() => handleDeleteReview(reviewId)}
                             title="Delete review"
                           >
