@@ -12,13 +12,28 @@ let db;
 
 // Initialize MongoDB connection
 async function initMongo() {
-    if (!mongoClient) {
-        mongoClient = new MongoClient(MONGO_URL);
-        await mongoClient.connect();
-        db = mongoClient.db(MONGO_DB);
-        console.log('✅ MongoDB connected for analytics');
+    try {
+        if (!mongoClient) {
+            console.log(`Connecting to MongoDB at ${MONGO_URL}...`);
+            mongoClient = new MongoClient(MONGO_URL, {
+                serverSelectionTimeoutMS: 5000,
+                connectTimeoutMS: 10000,
+            });
+            await mongoClient.connect();
+            db = mongoClient.db(MONGO_DB);
+            console.log('✅ MongoDB connected for analytics');
+        }
+        if (!db) {
+            throw new Error('MongoDB database instance is null');
+        }
+        return db;
+    } catch (error) {
+        console.error('❌ MongoDB connection error:', error.message);
+        // Reset client to allow retry on next request
+        mongoClient = null;
+        db = null;
+        throw new Error(`MongoDB connection failed: ${error.message}`);
     }
-    return db;
 }
 
 // ========== 0. TRACKING ENDPOINT (RECEIVE EVENTS) ==========

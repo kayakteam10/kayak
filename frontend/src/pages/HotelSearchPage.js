@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaHotel, FaUser, FaCalendarAlt, FaSearch, FaStar, FaMapMarkerAlt, FaChevronDown, FaHeart, FaRegHeart, FaTh, FaList, FaFilter } from 'react-icons/fa';
 import HotelLocationAutocomplete from '../components/HotelLocationAutocomplete';
 import { hotelsAPI } from '../services/api';
+import { trackPageView, trackPropertyClick, trackSectionView } from '../utils/analytics';
 import './HotelSearchPage.css';
 
 // Hotel image mapping
@@ -107,6 +108,10 @@ const HotelSearchPage = () => {
   const fetchHotels = async () => {
     setLoading(true);
     setError(null);
+
+    // Track page view
+    trackPageView('hotels', 'search-results');
+    trackSectionView('hotels', 'hotel-list', 85);
 
     // Get fresh values from URL params
     const location = searchParams.get('location') || '';
@@ -335,14 +340,7 @@ const HotelSearchPage = () => {
               className="view-deal-btn"
               onClick={() => {
                 // Track Property Click
-                import('../services/analyticsApi').then(({ analyticsPageClicksAPI }) => {
-                  analyticsPageClicksAPI.track({
-                    type: 'property_click',
-                    property_id: hotel.id,
-                    property_name: hotel.hotel_name,
-                    property_type: 'hotel'
-                  });
-                });
+                trackPropertyClick(hotel.id, hotel.hotel_name, 'hotel');
 
                 navigate(`/hotel-details/${hotel.id}?checkIn=${searchCriteria.checkIn}&checkOut=${searchCriteria.checkOut}&rooms=${searchCriteria.rooms}&adults=${searchCriteria.adults}&children=${searchCriteria.children}`);
               }}

@@ -116,6 +116,19 @@ async function processAnalyticsEvent(event, database) {
             { upsert: true }
         );
     }
+    else if (event.type === 'user_cohort') {
+        // Track user cohorts for analytics
+        const { user_id, cohort_type, action, value } = event;
+        await database.collection('user_cohorts').updateOne(
+            { user_id: parseInt(user_id), cohort_type },
+            {
+                $inc: { action_count: 1 },
+                $set: { last_action: action, last_value: value, timestamp: new Date() },
+                $setOnInsert: { first_seen: new Date() }
+            },
+            { upsert: true }
+        );
+    }
     // Add more handlers as needed
 }
 
