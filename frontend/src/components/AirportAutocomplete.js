@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { FaPlane } from 'react-icons/fa';
 import { flightsAPI } from '../services/api';
 import './AirportAutocomplete.css';
@@ -15,8 +16,22 @@ const AirportAutocomplete = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
   const debounceTimer = useRef(null);
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -129,6 +144,7 @@ const AirportAutocomplete = ({
   return (
     <div className="airport-autocomplete" ref={wrapperRef}>
       <input
+        ref={inputRef}
         type="text"
         name={name}
         value={inputValue}
@@ -152,8 +168,17 @@ const AirportAutocomplete = ({
         </div>
       )}
 
-      {isOpen && suggestions.length > 0 && (
-        <ul className="airport-suggestions">
+      {isOpen && suggestions.length > 0 && createPortal(
+        <ul 
+          className="airport-suggestions airport-suggestions-portal" 
+          style={{
+            position: 'fixed',
+            top: `${dropdownPosition.top + 4}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+            zIndex: 2147483647
+          }}
+        >
           {suggestions.map((airport, index) => (
             <li
               key={airport.code}
@@ -189,15 +214,26 @@ const AirportAutocomplete = ({
               </div>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
 
-      {isOpen && !isLoading && suggestions.length === 0 && inputValue.length >= 2 && (
-        <ul className="airport-suggestions">
+      {isOpen && !isLoading && suggestions.length === 0 && inputValue.length >= 2 && createPortal(
+        <ul 
+          className="airport-suggestions airport-suggestions-portal"
+          style={{
+            position: 'fixed',
+            top: `${dropdownPosition.top + 4}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+            zIndex: 2147483647
+          }}
+        >
           <li className="airport-suggestion-item no-results">
             No airports found
           </li>
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   );
