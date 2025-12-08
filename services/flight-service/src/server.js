@@ -56,7 +56,39 @@ async function initializeKafka() {
     const producer = kafka.producer();
     await producer.connect();
     logger.info('✅ Kafka Producer connected');
-    return producer;
+    return { producer, kafka };
+}
+
+/**
+ * Initialize Kafka Consumer
+ */
+async function initializeKafkaConsumer(kafka, flightService) {
+    if (!kafka) return null;
+
+    try {
+        const consumer = kafka.consumer({ groupId: 'flight-service-group' });
+        await consumer.connect();
+
+        // Subscribe to booking events
+        await consumer.subscribe({ topic: 'booking.cancelled' });
+
+        await consumer.run({
+            eachMessage: async ({ topic, message }) => {
+                const event = JSON.parse(message.value.toString());
+                logger.info(`📨 Received ${topic}: ${event.bookingId}`);
+
+                if (topic === 'booking.cancelled') {
+                    await flightService.handleBookingCancellation(event);
+                }
+            }
+        });
+
+        logger.info('✅ Kafka Consumer connected & listening');
+        return consumer;
+    } catch (error) {
+        logger.error(`❌ Kafka Consumer error: ${error.message}`);
+        return null;
+    }
 }
 
 /**
@@ -79,12 +111,18 @@ async function initializeApp() {
 
 
     // Initialize Kafka (optional)
-    const kafka = await initializeKafka();
+    // Initialize Kafka (Producer & Consumer)
+    const kafkaData = await initializeKafka();
+    const kafka = kafkaData.kafka;
+    const kafkaProducer = kafkaData.producer;
 
     // Build dependency tree (Dependency Injection)
     const flightRepo = new FlightRepository(dbPool);
     const cacheRepo = new CacheRepository(redisClient);
-    const flightService = new FlightService(flightRepo, cacheRepo, kafka);
+    const flightService = new FlightService(flightRepo, cacheRepo, kafkaProducer);
+
+    // Initialize Consumer (depends on Service)
+    await initializeKafkaConsumer(kafka, flightService);
     const flightController = new FlightController(flightService);
 
     // Register routes
@@ -137,7 +175,7 @@ async function initializeApp() {
  */
 async function startServer() {
     try {
-        const { app, kafka } = await initializeApp();
+        const { app, kafka, consumer } = await initializeApp();
 
         const PORT = process.env.PORT || 8001;
         const server = app.listen(PORT, () => {

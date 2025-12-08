@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaHotel, FaPrint } from 'react-icons/fa';
-import { bookingsAPI } from '../services/api';
+import { bookingsAPI, hotelsAPI } from '../services/api';
 import './HotelConfirmationPage.css';
 
 function HotelConfirmationPage() {
@@ -15,7 +15,37 @@ function HotelConfirmationPage() {
       try {
         const response = await bookingsAPI.getDetails(id);
         // API returns { success: true, data: { ... } }
-        setBooking(response.data.data || response.data);
+        const bookingData = response.data.data || response.data;
+
+        let details = typeof bookingData.booking_details === 'string'
+          ? JSON.parse(bookingData.booking_details)
+          : bookingData.booking_details;
+
+        // If hotel details are missing (name, etc) but we have an ID, fetch them
+        if (details && details.hotel_id && !details.hotel_name) {
+          try {
+            const hotelResponse = await hotelsAPI.getDetails(details.hotel_id);
+            const hotelInfo = hotelResponse.data.data || hotelResponse.data;
+
+            // Merge hotel info into details
+            details = {
+              ...details,
+              hotel_name: hotelInfo.hotel_name,
+              address: hotelInfo.address,
+              city: hotelInfo.city,
+              state: hotelInfo.state,
+              zip_code: hotelInfo.zip_code,
+              location: `${hotelInfo.city}, ${hotelInfo.state}`
+            };
+
+            // Update the booking details in our local object
+            bookingData.booking_details = details;
+          } catch (hotelErr) {
+            console.error('Failed to fetch fallback hotel details:', hotelErr);
+          }
+        }
+
+        setBooking(bookingData);
       } catch (err) {
         console.error('Failed to load booking:', err);
       } finally {
@@ -29,7 +59,67 @@ function HotelConfirmationPage() {
   }, [id]);
 
   const handlePrint = () => {
-    window.print();
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) return alert('Please allow popups to print confirmation.');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Booking Confirmation - ${booking.booking_reference}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ff6b35; padding-bottom: 20px; }
+          .logo { color: #ff6b35; font-size: 24px; font-weight: bold; }
+          .title { font-size: 20px; margin-top: 10px; }
+          .subtitle { color: #666; font-size: 14px; }
+          .details-box { background: #f9f9f9; border: 1px solid #eee; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+          .row:last-child { border-bottom: none; }
+          .label { font-weight: bold; color: #555; }
+          .value { text-align: right; font-weight: 500; }
+          .total-row { font-size: 18px; font-weight: bold; color: #2c3e50; border-top: 2px solid #ddd; padding-top: 15px; margin-top: 10px; }
+          .footer { text-align: center; font-size: 12px; color: #999; margin-top: 40px; }
+          @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">KAYAK</div>
+          <div class="title">Booking Confirmed</div>
+          <div class="subtitle">Reference: ${booking.booking_reference}</div>
+        </div>
+
+        <div class="details-box">
+          <h3>Hotel Details</h3>
+          <div class="row"><span class="label">Hotel</span><span class="value">${bookingDetails?.hotel_name || 'N/A'}</span></div>
+          <div class="row"><span class="label">Address</span><span class="value">${bookingDetails?.address || ''}, ${bookingDetails?.city || ''}</span></div>
+          <div class="row"><span class="label">Check-in</span><span class="value">${formatDate(bookingDetails?.check_in)}</span></div>
+          <div class="row"><span class="label">Check-out</span><span class="value">${formatDate(bookingDetails?.check_out)}</span></div>
+          
+          <h3>Guest Details</h3>
+          <div class="row"><span class="label">Guest</span><span class="value">${guestDetails?.firstName} ${guestDetails?.lastName}</span></div>
+          <div class="row"><span class="label">Email</span><span class="value">${guestDetails?.email}</span></div>
+          
+          <div class="row total-row"><span class="label">Total Paid</span><span class="value">$${(Number(priceBreakdown?.total || booking.total_amount) || 0).toFixed(2)}</span></div>
+        </div>
+
+        <div class="footer">
+          <p>Thank you for booking with Kayak.</p>
+          <p>${new Date().toLocaleString()}</p>
+        </div>
+        <script>
+          window.onload = function() { window.print(); window.onafterprint = function(){ window.close(); } };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const formatDate = (dateStr) => {
@@ -199,7 +289,7 @@ function HotelConfirmationPage() {
           <button onClick={handlePrint} className="btn-print">
             <FaPrint /> Print Confirmation
           </button>
-          <button onClick={() => navigate('/bookings')} className="btn-bookings">
+          <button onClick={() => navigate('/profile?tab=bookings')} className="btn-bookings">
             View My Bookings
           </button>
           <button onClick={() => navigate('/')} className="btn-continue">

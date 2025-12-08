@@ -1,7 +1,7 @@
 // AI Service API Client
 import axios from 'axios';
 
-const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || 'http://localhost:8088/api/ai';
+const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || 'http://localhost:8080/api/ai';
 
 // Create axios instance
 const aiApi = axios.create({

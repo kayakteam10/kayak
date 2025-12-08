@@ -59,12 +59,20 @@ async function initKafkaConsumer() {
                 const event = JSON.parse(message.value.toString());
                 logger.info(`📨 Received booking event: ${event.bookingId}`);
 
+                let connection;
                 try {
+                    // Get dedicated connection for transaction
+                    connection = await dbPool.getConnection();
+                    await connection.beginTransaction();
+
                     // 1. Process Payment
-                    const paymentId = await processPayment(event);
+                    const paymentId = await processPayment(event, connection);
 
                     // 2. Generate Billing
-                    await generateBilling(event, paymentId);
+                    await generateBilling(event, paymentId, connection);
+
+                    // Commit Transaction
+                    await connection.commit();
 
                     // 3. Publish success event
                     await producer.send({
@@ -79,9 +87,14 @@ async function initKafkaConsumer() {
                         }]
                     });
 
-                    logger.info(`✅ Payment processed for booking: ${event.bookingId}`);
+                    logger.info(`✅ Payment & Billing committed for booking: ${event.bookingId}`);
 
                 } catch (error) {
+                    if (connection) {
+                        await connection.rollback();
+                        logger.warn(`Transaction Rolled Back for booking: ${event.bookingId}`);
+                    }
+
                     logger.error(`❌ Payment failed: ${error.message}`);
 
                     await producer.send({
@@ -94,6 +107,8 @@ async function initKafkaConsumer() {
                             })
                         }]
                     });
+                } finally {
+                    if (connection) connection.release();
                 }
             }
         });
@@ -104,12 +119,12 @@ async function initKafkaConsumer() {
 }
 
 // Process Payment (Mock)
-async function processPayment(bookingEvent) {
+async function processPayment(bookingEvent, connection) {
     const { bookingId, user_id, total_amount, payment_method } = bookingEvent;
 
     const transaction_id = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     // Insert payment record
-    const [result] = await dbPool.execute(
+    const [result] = await connection.execute(
         `INSERT INTO payments (booking_id, user_id, amount, payment_method, payment_status, payment_date, transaction_id)
      VALUES (?, ?, ?, ?, 'completed', NOW(), ?)`,
         [bookingId, user_id, total_amount, payment_method, transaction_id]
@@ -119,7 +134,7 @@ async function processPayment(bookingEvent) {
 }
 
 // Generate Billing
-async function generateBilling(bookingEvent, paymentId) {
+async function generateBilling(bookingEvent, paymentId, connection) {
     const { bookingId, user_id, total_amount } = bookingEvent;
 
     // Calculate taxes (15%)
@@ -133,7 +148,7 @@ async function generateBilling(bookingEvent, paymentId) {
     };
 
     // Insert billing record
-    await dbPool.execute(
+    await connection.execute(
         `INSERT INTO billing (booking_id, user_id, payment_id, billing_id, tax_amount, total_amount, billing_date, invoice_details)
      VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)`,
         [bookingId, user_id, paymentId, billing_id, taxAmount, totalAmount, JSON.stringify(invoice_details)]

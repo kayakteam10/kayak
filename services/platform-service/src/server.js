@@ -14,12 +14,85 @@ const compression = require('compression');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const logger = require('./utils/logger');
 const dbPool = require('./config/database'); // Initializes DB connection
-const authRouter = require('./routes/auth');
-const adminRouter = require('./routes/admin');
-const paymentMethodsRouter = require('./routes/payment-methods');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
-app.use(cors());
+
+// Notification System (Kafka)
+let kafkaProducer = null;
+let kafkaConsumer = null;
+
+async function initNotificationSystem() {
+    try {
+        const { Kafka } = require('kafkajs');
+        const kafka = new Kafka({
+            clientId: 'platform-service',
+            brokers: [process.env.KAFKA_BROKER || 'localhost:9092']
+        });
+
+        // Initialize Consumer
+        kafkaConsumer = kafka.consumer({ groupId: 'platform-notification-group' });
+        await kafkaConsumer.connect();
+        await kafkaConsumer.subscribe({ topic: 'booking.cancelled' });
+
+        await kafkaConsumer.run({
+            eachMessage: async ({ topic, message }) => {
+                try {
+                    const event = JSON.parse(message.value.toString());
+                    if (topic === 'booking.cancelled') {
+                        await sendCancellationNotification(event);
+                    }
+                } catch (e) {
+                    logger.error(`Notification Error: ${e.message}`);
+                }
+            }
+        });
+
+        logger.info('🔔 Notification System: Online');
+    } catch (error) {
+        logger.warn('⚠️ Notification System: Offline (Kafka unavailable)');
+    }
+}
+
+async function sendCancellationNotification(event) {
+    try {
+        const { user_id, bookingId, reason } = event;
+
+        // Fetch User Email
+        const [rows] = await dbPool.execute('SELECT email, first_name FROM users WHERE id = ?', [user_id]);
+
+        if (rows.length > 0) {
+            const user = rows[0];
+            const emailContent = `
+                Dear ${user.first_name},
+                Your booking (ID: ${bookingId}) has been cancelled.
+                Reason: ${reason || 'User initiated'}
+                
+                If this was a mistake, please contact support.
+            `;
+
+            // Simulate sending email
+            logger.info('');
+            logger.info('📧 =================================================');
+            logger.info(`📧 SENDING NOTIFICATION TO: ${user.email}`);
+            logger.info(`📧 SUBJECT: Booking Cancelled - ${bookingId}`);
+            logger.info(`📧 STATUS: SENT`);
+            logger.info('📧 =================================================');
+            logger.info('');
+        }
+    } catch (error) {
+        logger.error(`Failed to send notification: ${error.message}`);
+    }
+}
+
+// CORS with increased body size limit
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Compression middleware - if enabled
 if (process.env.ENABLE_COMPRESSION !== 'false') {
@@ -35,7 +108,19 @@ app.use((req, res, next) => {
     next();
 });
 
+// ========== BODY PARSER & LOCAL ROUTES ==========
+// only apply body parsing to local routes to avoid consuming streams for proxies
+const jsonParser = express.json({ limit: '50mb' });
+const urlEncodedParser = express.urlencoded({ limit: '50mb', extended: true });
+const localMiddleware = [jsonParser, urlEncodedParser];
+
+app.use('/auth', localMiddleware, authRoutes);
+app.use('/api/admin', localMiddleware, adminRoutes);
+app.use('/api/analytics', localMiddleware, analyticsRoutes);
+
 // ========== API GATEWAY - Route to Microservices ==========
+// Proxy routes come AFTER specific routes like /api/admin/*
+// so that specific routes take precedence
 
 // Flight Service
 app.use('/api/flights', createProxyMiddleware({
@@ -117,10 +202,6 @@ app.use('/api/ai', createProxyMiddleware({
 // ========== USER AUTH & ADMIN ENDPOINTS ==========
 app.use(express.json()); // Applied here for Auth and Admin endpoints
 
-// Register routes
-app.use('/auth', authRouter);
-app.use('/api/payment-methods', paymentMethodsRouter);
-app.use('/api/admin', adminRouter);
 
 // Aggregate Health Check
 app.get('/admin/health', async (req, res) => {
@@ -205,6 +286,10 @@ app.get('/', (req, res) => {
 // Start the server if run directly
 if (require.main === module) {
     const PORT = process.env.PORT || 8080;
+
+    // Initialize Notification System
+    initNotificationSystem();
+
     app.listen(PORT, () => {
         logger.info('');
         logger.info('═══════════════════════════════════════');

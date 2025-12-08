@@ -72,9 +72,8 @@ function BookingPage() {
           }
 
           // Get saved payment methods from localStorage (user-specific)
-          const userId = userData.id;
-          const storageKey = `savedPaymentMethods_${userId}`;
-          const savedPayments = localStorage.getItem(storageKey);
+          const userId = userData.id || userData.user_id;
+          const savedPayments = localStorage.getItem(`savedPaymentMethods_${userId}`);
           let paymentMethods = [];
           if (savedPayments) {
             try {
@@ -139,9 +138,19 @@ function BookingPage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const totalPassengers = parseInt(searchParams.get('passengers')) || 1;
-    const adults = parseInt(searchParams.get('adults')) || totalPassengers;
-    const children = parseInt(searchParams.get('children')) || 0;
-    const infants = parseInt(searchParams.get('infants')) || 0;
+    
+    // Get passenger breakdown from URL
+    let adults = parseInt(searchParams.get('adults')) || 0;
+    let children = parseInt(searchParams.get('children')) || 0;
+    let infants = parseInt(searchParams.get('infants')) || 0;
+    
+    // If breakdown doesn't match total, default all to adults (safest assumption)
+    const breakdownTotal = adults + children + infants;
+    if (breakdownTotal !== totalPassengers || breakdownTotal === 0) {
+      adults = totalPassengers;
+      children = 0;
+      infants = 0;
+    }
 
     setPassengerCount(totalPassengers);
 
@@ -360,11 +369,6 @@ function BookingPage() {
       } else if (passenger.phone.replace(/-/g, '') === '0000000000') {
         newErrors[`passenger${index}_phone`] = 'Phone number cannot be all zeros';
       }
-      if (!passenger.ssn) {
-        newErrors[`passenger${index}_ssn`] = 'SSN is required';
-      } else if (!/^\d{3}-\d{2}-\d{4}$/.test(passenger.ssn)) {
-        newErrors[`passenger${index}_ssn`] = 'SSN must be in format ###-##-####';
-      }
     });
 
     setErrors(newErrors);
@@ -438,6 +442,7 @@ function BookingPage() {
     // Billing Address validation
     if (!bookingData.billingAddress) newErrors.billingAddress = 'Address is required';
     if (!bookingData.city) newErrors.city = 'City is required';
+    if (!bookingData.state) newErrors.state = 'State is required';
     if (!bookingData.zipCode) {
       newErrors.zipCode = 'ZIP code is required';
     } else if (!/^\d{5}(-\d{4})?$/.test(bookingData.zipCode)) {
@@ -449,11 +454,22 @@ function BookingPage() {
     console.log('❌ Validation errors:', newErrors);
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    // Show alert with all errors if validation fails
+    if (Object.keys(newErrors).length > 0) {
+      const errorMessages = Object.values(newErrors).join('\n');
+      alert(`Please fix the following errors:\n\n${errorMessages}`);
+      return false;
+    }
+    
+    return true;
   };
 
   const handleNext = () => {
     console.log('🔵 handleNext called:', { currentStep, type });
+    
+    console.log('🔍 handleNext called:', { currentStep, type });
+    console.log('🔍 Current bookingData:', bookingData);
     
     if (currentStep === 1 && validateStep1()) {
       // For flights, go to seat selection; for bundles/hotels/cars, go to payment
@@ -530,11 +546,14 @@ function BookingPage() {
   // Save payment method to localStorage (user-specific)
   const savePaymentMethod = () => {
     try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) return; // Need user ID
+      const userIdStr = localStorage.getItem('userId');
+      const userId = userIdStr ? parseInt(userIdStr) : null;
+      if (!userId) {
+        console.error('No user ID found, cannot save payment method');
+        return;
+      }
 
-      const storageKey = `savedPaymentMethods_${userId}`;
-      const savedPayments = localStorage.getItem(storageKey);
+      const savedPayments = localStorage.getItem(`savedPaymentMethods_${userId}`);
       let paymentMethods = [];
       if (savedPayments) {
         paymentMethods = JSON.parse(savedPayments);
@@ -570,7 +589,7 @@ function BookingPage() {
         paymentMethods.push(newPayment);
       }
 
-      localStorage.setItem(storageKey, JSON.stringify(paymentMethods));
+      localStorage.setItem(`savedPaymentMethods_${userId}`, JSON.stringify(paymentMethods));
     } catch (e) {
       console.error('Error saving payment method:', e);
     }
@@ -619,8 +638,11 @@ function BookingPage() {
         bookingData
       });
 
-      // Calculate total amount
-      const totalAmount = getPrice();
+      // Calculate pricing
+      const baseAmount = getPrice(); // This already includes passengers * price + seats
+      const taxAmount = baseAmount * 0.15;
+      const totalAmount = baseAmount + taxAmount;
+
       const userIdStr = localStorage.getItem('userId') || (authAPI.getCurrentUser()?.userId);
       const userId = userIdStr ? parseInt(userIdStr) : null;
 
@@ -732,13 +754,25 @@ function BookingPage() {
       const bookingPayload = {
         user_id: userId,
         booking_type: type.slice(0, -1), // 'flights' -> 'flight'
-        total_amount: totalAmount,
+        total_amount: totalAmount.toFixed(2),
         payment_method: 'credit_card',
         booking_details: {
           // Specific details based on type
           ...(type === 'flights' ? { flight_id: parseInt(id) } : {}),
           ...(type === 'hotels' ? { hotel_id: parseInt(id) } : {}),
           ...(type === 'cars' ? { car_id: parseInt(id) } : {}),
+
+          // Pricing breakdown
+          pricing: {
+            base_amount: baseAmount.toFixed(2),
+            tax_amount: taxAmount.toFixed(2),
+            total_amount: totalAmount.toFixed(2),
+            ...(type === 'flights' ? {
+              price_per_passenger: parsePrice(item.total_price ?? item.price).toFixed(2),
+              number_of_passengers: passengers.length,
+              seat_selection_fee: seatPrice.toFixed(2)
+            } : {})
+          },
 
           // Common details
           passengers: passengers.map((p, index) => {
@@ -826,8 +860,10 @@ function BookingPage() {
       basePrice = parsePrice(item.total_price);
     } else if (type === 'flights') {
       // Prefer total price if provided (e.g., roundtrip), fall back to base price
-      basePrice = parsePrice(item.total_price ?? item.price);
-      // Add seat selection fee for flights
+      const pricePerPassenger = parsePrice(item.total_price ?? item.price);
+      // Multiply by number of passengers
+      basePrice = pricePerPassenger * passengers.length;
+      // Add seat selection fee for flights (already includes all passengers' seats)
       basePrice += seatPrice;
     } else if (type === 'hotels') {
       basePrice = parsePrice(item.price_per_night);
@@ -884,7 +920,7 @@ function BookingPage() {
 
                 {passengers.map((passenger, index) => (
                   <div key={index} className="passenger-form-section">
-                    <h3>Passenger {index + 1}</h3>
+                    <h3>Passenger {index + 1} ({passenger.passengerType.charAt(0).toUpperCase() + passenger.passengerType.slice(1)})</h3>
                     <div className="form-grid">
                       <div className="form-group">
                         <label>First Name *</label>
@@ -936,26 +972,6 @@ function BookingPage() {
                           className={errors[`passenger${index}_phone`] ? 'error' : ''}
                         />
                         {errors[`passenger${index}_phone`] && <span className="error-text">{errors[`passenger${index}_phone`]}</span>}
-                      </div>
-                      <div className="form-group">
-                        <label>SSN *</label>
-                        <input
-                          type="text"
-                          value={passenger.ssn}
-                          onChange={(e) => {
-                            let value = e.target.value.replace(/\D/g, '');
-                            if (value.length >= 5) {
-                              value = value.slice(0, 3) + '-' + value.slice(3, 5) + '-' + value.slice(5, 9);
-                            } else if (value.length >= 3) {
-                              value = value.slice(0, 3) + '-' + value.slice(3, 5);
-                            }
-                            updatePassenger(index, 'ssn', value);
-                          }}
-                          placeholder="123-45-6789"
-                          maxLength="11"
-                          className={errors[`passenger${index}_ssn`] ? 'error' : ''}
-                        />
-                        {errors[`passenger${index}_ssn`] && <span className="error-text">{errors[`passenger${index}_ssn`]}</span>}
                       </div>
                     </div>
                   </div>
@@ -1534,24 +1550,44 @@ function BookingPage() {
               </div>
             </div>
             <div className="price-breakdown">
-              <div className="price-row">
-                <span>Flight Price</span>
-                <span>${(type === 'flights' ? parsePrice(item.total_price ?? item.price) : getPrice()).toFixed(2)}</span>
-              </div>
-              {type === 'flights' && seatPrice > 0 && (
-                <div className="price-row">
-                  <span>Seat Selection</span>
-                  <span>${seatPrice.toFixed(2)}</span>
-                </div>
+              {type === 'flights' && (
+                <>
+                  <div className="price-row">
+                    <span>Base Fare ({passengers.length} Passenger{passengers.length > 1 ? 's' : ''})</span>
+                    <span>${(parsePrice(item.total_price ?? item.price) * passengers.length).toFixed(2)}</span>
+                  </div>
+                  {seatPrice > 0 && (
+                    <div className="price-row">
+                      <span>Seat Selection</span>
+                      <span>${seatPrice.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="price-row">
+                    <span>Taxes & Service Fees (15%)</span>
+                    <span>${(getPrice() * 0.15).toFixed(2)}</span>
+                  </div>
+                  <div className="price-row total">
+                    <span>Total Amount</span>
+                    <span>${(getPrice() * 1.15).toFixed(2)}</span>
+                  </div>
+                </>
               )}
-              <div className="price-row">
-                <span>Taxes & Fees</span>
-                <span>${(getPrice() * 0.1).toFixed(2)}</span>
-              </div>
-              <div className="price-row total">
-                <span>Total</span>
-                <span>${(getPrice() * 1.1).toFixed(2)}</span>
-              </div>
+              {type !== 'flights' && (
+                <>
+                  <div className="price-row">
+                    <span>{type === 'hotels' ? 'Room Price' : 'Rental Price'}</span>
+                    <span>${getPrice().toFixed(2)}</span>
+                  </div>
+                  <div className="price-row">
+                    <span>Taxes & Service Fees (15%)</span>
+                    <span>${(getPrice() * 0.15).toFixed(2)}</span>
+                  </div>
+                  <div className="price-row total">
+                    <span>Total Amount</span>
+                    <span>${(getPrice() * 1.15).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

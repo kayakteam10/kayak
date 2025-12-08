@@ -34,6 +34,7 @@ class FlightController {
                 origin: req.query.from?.toUpperCase(),
                 destination: req.query.to?.toUpperCase(),
                 date: req.query.date,
+                returnDate: req.query.return_date,
                 passengers: req.query.passengers ? parseInt(req.query.passengers) : 1,
                 tripType: req.query.type || 'oneway'
             };

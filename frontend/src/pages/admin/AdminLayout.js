@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { FaChartLine, FaPlane, FaClipboardList, FaSignOutAlt, FaHome } from 'react-icons/fa';
+import { FaChartLine, FaPlane, FaClipboardList, FaSignOutAlt, FaHome, FaHotel, FaCar, FaChartBar } from 'react-icons/fa';
 import './AdminLayout.css';
 
 const AdminLayout = () => {
@@ -37,7 +37,10 @@ const AdminLayout = () => {
 
     const navItems = [
         { path: '/admin', label: 'Dashboard', icon: <FaChartLine /> },
+        { path: '/admin/analytics', label: 'Analytics', icon: <FaChartBar /> },
         { path: '/admin/flights', label: 'Flights', icon: <FaPlane /> },
+        { path: '/admin/hotels', label: 'Hotels', icon: <FaHotel /> },
+        { path: '/admin/cars', label: 'Cars', icon: <FaCar /> },
         { path: '/admin/bookings', label: 'Bookings', icon: <FaClipboardList /> },
     ];
 

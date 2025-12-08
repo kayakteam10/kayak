@@ -133,18 +133,21 @@ class CarRepository {
         const searchPattern = `%${query}%`;
 
         const sqlQuery = `
-      SELECT DISTINCT location_city as location
+      SELECT DISTINCT location_city, airport_code
       FROM cars
-      WHERE LOWER(location_city) LIKE LOWER(?)
+      WHERE LOWER(location_city) LIKE LOWER(?) OR LOWER(airport_code) LIKE LOWER(?)
       ORDER BY location_city ASC
       LIMIT 10
     `;
 
-        const [rows] = await this.db.execute(sqlQuery, [searchPattern]);
+        const [rows] = await this.db.execute(sqlQuery, [searchPattern, searchPattern]);
 
         return rows.map(row => ({
-            label: row.location,
-            value: row.location
+            label: `${row.location_city} (${row.airport_code})`,
+            value: row.location_city,
+            name: row.location_city,
+            code: row.airport_code,
+            type: 'city'
         }));
     }
 

@@ -226,6 +226,43 @@ class HotelService {
     }
 
     /**
+     * Handle booking cancellation event (Rollback)
+     * Called by Kafka consumer
+     */
+    async handleBookingCancellation(event) {
+        try {
+            const { booking_type, booking_details } = event;
+
+            // Only handle hotel bookings
+            if (booking_type !== 'hotel' && booking_type !== 'hotels') {
+                return;
+            }
+
+            if (!booking_details || !booking_details.hotel_id) {
+                logger.warn('⚠️ No hotel details found in cancellation event');
+                return;
+            }
+
+            const hotelId = booking_details.hotel_id;
+            // Determine room count (default 1 if not specified)
+            // Schema might have 'pricing.number_of_rooms' or just 'rooms'
+            let roomCount = 1;
+            if (booking_details.pricing && booking_details.pricing.number_of_rooms) {
+                roomCount = booking_details.pricing.number_of_rooms;
+            } else if (booking_details.room_count) {
+                roomCount = booking_details.room_count;
+            }
+
+            // RELEASE ROOMS
+            await this.releaseRooms(hotelId, roomCount);
+            logger.info(`✅ Rolled back ${roomCount} room(s) for Hotel ${hotelId}`);
+
+        } catch (error) {
+            logger.error(`❌ Error handling hotel cancellation: ${error.message}`);
+        }
+    }
+
+    /**
      * Search cities/hotels (autocomplete)
      * 
      * @param {string} query

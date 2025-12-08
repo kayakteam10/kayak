@@ -21,6 +21,9 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminFlights from './pages/admin/AdminFlights';
 import AdminBookings from './pages/admin/AdminBookings';
+import AdminHotels from './pages/admin/AdminHotels';
+import AdminCars from './pages/admin/AdminCars';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AIConcierge from './components/AIConcierge';
 
 import './App.css';
@@ -32,7 +35,10 @@ function App() {
         {/* Admin Routes - No Header/Footer */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="flights" element={<AdminFlights />} />
+          <Route path="hotels" element={<AdminHotels />} />
+          <Route path="cars" element={<AdminCars />} />
           <Route path="bookings" element={<AdminBookings />} />
         </Route>
 

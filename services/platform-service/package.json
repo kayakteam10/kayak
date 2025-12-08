@@ -17,6 +17,8 @@
         "http-proxy-middleware": "^2.0.6",
         "joi": "^17.10.2",
         "jsonwebtoken": "^9.0.2",
+        "kafkajs": "^2.2.4",
+        "mongodb": "^6.3.0",
         "mysql2": "^3.6.0",
         "stripe": "^20.0.0",
         "winston": "^3.18.3"

@@ -36,7 +36,39 @@ async function initializeKafka() {
     await kafkaProducer.connect();
     logger.info('✅ Kafka producer connected');
 
-    return kafkaProducer;
+    return { producer: kafkaProducer, kafka };
+}
+
+/**
+ * Initialize Kafka Consumer
+ */
+async function initializeKafkaConsumer(kafka, carService) {
+    if (!kafka) return null;
+
+    try {
+        const consumer = kafka.consumer({ groupId: 'car-service-group' });
+        await consumer.connect();
+
+        // Subscribe to booking events
+        await consumer.subscribe({ topic: 'booking.cancelled' });
+
+        await consumer.run({
+            eachMessage: async ({ topic, message }) => {
+                const event = JSON.parse(message.value.toString());
+                logger.info(`📨 Received ${topic}: ${event.bookingId}`);
+
+                if (topic === 'booking.cancelled') {
+                    await carService.handleBookingCancellation(event);
+                }
+            }
+        });
+
+        logger.info('✅ Kafka Consumer connected & listening');
+        return consumer;
+    } catch (error) {
+        logger.error(`❌ Kafka Consumer error: ${error.message}`);
+        return null;
+    }
 }
 
 async function initializeApp() {
@@ -52,11 +84,16 @@ async function initializeApp() {
         next();
     });
 
-    const kafka = await initializeKafka();
+    const kafkaData = await initializeKafka();
+    const kafka = kafkaData.kafka;
+    const kafkaProducer = kafkaData.producer;
 
     const carRepo = new CarRepository(dbPool);
     const cacheRepo = new CacheRepository(redisClient);
-    const carService = new CarService(carRepo, cacheRepo, kafka);
+    const carService = new CarService(carRepo, cacheRepo, kafkaProducer);
+
+    // Initialize Consumer
+    await initializeKafkaConsumer(kafka, carService);
     const carController = new CarController(carService);
 
     app.use('/cars', createCarRoutes(carController, validationMiddleware));
