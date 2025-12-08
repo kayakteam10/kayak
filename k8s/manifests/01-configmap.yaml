@@ -37,6 +37,11 @@ data:
   REVIEW_SERVICE_URL: "http://review-service:8006"
   AI_SERVICE_URL: "http://ai-service:8007"
   
+  # AI Service Configuration
+  GEMINI_MODEL: "gemini-3-pro-preview"
+  ENV: "production"
+  CORS_ORIGINS: "*"
+  
   # Application Settings
   NODE_ENV: "production"
   LOG_LEVEL: "info"
