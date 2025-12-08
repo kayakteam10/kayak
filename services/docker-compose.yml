@@ -263,13 +263,15 @@ services:
       DB_PASSWORD: root123
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
+      STRIPE_SECRET_KEY: sk_test_51SatQFHZv1Ft0uoTYuZMBjoxtR28aClbS0cD0fcA1TVopm62rXWte7E2vIKtN0xjxrYjTxx0v9PxbQDrRiMpplAD00b3LsyFA0
+      STRIPE_PUBLISHABLE_KEY: pk_test_51SatQFHZv1Ft0uoTHOk12LhG0LFEYvA0VFL3BkjEXoFjPIQEz0xmeOdlr0SzDztpTzQnPG2PL6rGRoZmNffZFGpV00cWtRoc5E
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
       CAR_SERVICE_URL: http://car-service:8003
       BOOKING_SERVICE_URL: http://booking-service:8004
       PAYMENT_SERVICE_URL: http://payment-service:8005
       REVIEW_SERVICE_URL: http://review-service:8006
-      AI_SERVICE_URL: http://ai-service:8008
+      AI_SERVICE_URL: http://ai-service:8007
     depends_on:
       flight-service:
         condition: service_healthy
@@ -335,13 +337,65 @@ services:
         condition: service_healthy
 
   ai-service:
-    build: ../agentic_ai_services
+    build: ./ai-service
     container_name: kayak-ai-service
     restart: unless-stopped
     ports:
-      - "8008:8008"
+      - "8007:8007"
+    environment:
+      PORT: 8007
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root123
+      DB_NAME: kayak_db
+      KAFKA_BROKER: kafka:9092
+      GEMINI_API_KEY: AIzaSyBbJNws3UzrkoZ0wah_Tw0XxEX0GhFDN8I
+      GEMINI_MODEL: gemini-3-pro-preview
+      REDIS_URL: redis://redis:6379
+      FLIGHT_SERVICE_URL: http://flight-service:8001
+      HOTEL_SERVICE_URL: http://hotel-service:8002
+      BOOKING_SERVICE_URL: http://booking-service:8004
+      ENV: production
+      LOG_LEVEL: INFO
     volumes:
-      - ../agentic_ai_services:/app
+      - ./ai-service:/app
+      - ./ai-service/data:/app/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8007/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  ai-deals-worker:
+    build: ./ai-service
+    container_name: kayak-ai-deals-worker
+    restart: unless-stopped
+    command: python scripts/start_deals_worker.py
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root123
+      DB_NAME: kayak_db
+      KAFKA_BROKER: kafka:9092
+      LOG_LEVEL: INFO
+    volumes:
+      - ./ai-service:/app
+      - ./ai-service/data:/app/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   # ========== FRONTEND ==========
 
@@ -350,15 +404,17 @@ services:
     container_name: kayak-frontend
     restart: unless-stopped
     ports:
-      - "8088:8088"
-    environment:
-      PORT: 8088
-      REACT_APP_API_URL: http://localhost:8080
+      - "8088:3000"
     depends_on:
       platform-service:
         condition: service_healthy
-    stdin_open: true
-    tty: true
+    environment:
+      # API Gateway URL - must point to platform service
+      # In Docker, services communicate via service names
+      # From browser, it uses localhost:8080
+      REACT_APP_API_URL: http://localhost:8080
+      REACT_APP_WS_URL: ws://localhost:8080
+      PORT: 3000
 
 volumes:
   mysql_data:

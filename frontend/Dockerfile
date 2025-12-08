@@ -1,5 +1,5 @@
-# Frontend Dockerfile for Kayak Simulation
-FROM node:18-alpine
+# Multi-stage build for React frontend
+FROM node:18-alpine as build
 
 WORKDIR /app
 

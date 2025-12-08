@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import AIConcierge from './AIConcierge';
 import '../App.css';
 
 function Header() {
@@ -197,6 +198,7 @@ function Header() {
           )}
         </nav>
       </div>
+      <AIConcierge />
     </header>
   );
 }

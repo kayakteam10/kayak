@@ -18,6 +18,9 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// AI Service is accessed through the gateway at /api/ai
+// No separate axios instance needed
+
 // Auth API
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
@@ -83,6 +86,11 @@ export const reviewsAPI = {
   update: (id, data) => api.put(`/api/reviews/${id}`, data),
   delete: (id) => api.delete(`/api/reviews/${id}`),
   markHelpful: (id) => api.post(`/api/reviews/${id}/helpful`),
+};
+
+// Bundles API - AI Service endpoint through gateway
+export const bundlesAPI = {
+  getDetails: (id) => api.get(`/api/ai/bundles/${id}`),
 };
 
 export default api;

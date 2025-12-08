@@ -1,0 +1,155 @@
+/* Bundle Card Styles */
+
+.bundle-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.bundle-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.bundle-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.bundle-score {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.bundle-price {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.price-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111;
+}
+
+.price-currency {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.bundle-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.bundle-section {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.section-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    color: #667eea;
+    flex-shrink: 0;
+}
+
+.section-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.section-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.section-value {
+    font-size: 14px;
+    color: #111;
+    font-weight: 500;
+}
+
+.bundle-explanation {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 12px;
+    margin-bottom: 16px;
+}
+
+.why-this {
+    font-size: 14px;
+    color: #374151;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+}
+
+.what-to-watch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #f59e0b;
+    font-style: italic;
+    margin: 0;
+}
+
+.bundle-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.bundle-actions button {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-track {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-track:hover {
+    background: #e5e7eb;
+}
+
+.btn-book {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-book:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}

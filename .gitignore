@@ -13,10 +13,15 @@ package-lock.json
 .env.production
 .env.*.local
 
-# Database files
+# Databases
 *.db
 *.sqlite
-*.sqlite3
+
+# AI Service datasets
+services/ai-service/data/raw/
+services/ai-service/data/processed/*.csv
+
+# Local dev3
 kayak.db
 
 # Build outputs

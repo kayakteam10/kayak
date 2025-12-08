@@ -48,8 +48,10 @@ const HotelBookingPage = () => {
           const response = await authAPI.me();
           const userData = response.data.data || response.data;
 
-          // Get saved payment methods from localStorage
-          const savedPayments = localStorage.getItem('savedPaymentMethods');
+          // Get saved payment methods from localStorage (user-specific)
+          const userId = userData.id;
+          const storageKey = `savedPaymentMethods_${userId}`;
+          const savedPayments = localStorage.getItem(storageKey);
           let paymentMethods = [];
           if (savedPayments) {
             try {
@@ -265,7 +267,9 @@ const HotelBookingPage = () => {
 
           console.log('Saving payment method:', newPaymentMethod); // Debug log
 
-          const existingSavedMethods = JSON.parse(localStorage.getItem('savedPaymentMethods') || '[]');
+          const userId = user?.id || bookingData.userId;
+          const storageKey = `savedPaymentMethods_${userId}`;
+          const existingSavedMethods = JSON.parse(localStorage.getItem(storageKey) || '[]');
 
           // Check if this card already exists (compare last 4 digits)
           const last4 = bookingData.cardNumber.replace(/\s/g, '').slice(-4);

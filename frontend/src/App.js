@@ -24,6 +24,7 @@ import AdminBookings from './pages/admin/AdminBookings';
 import AdminHotels from './pages/admin/AdminHotels';
 import AdminCars from './pages/admin/AdminCars';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AIConcierge from './components/AIConcierge';
 
 import './App.css';
 
@@ -63,6 +64,7 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <AIConcierge />
           </div>
         } />
       </Routes>
