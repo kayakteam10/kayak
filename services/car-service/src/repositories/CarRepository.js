@@ -25,16 +25,24 @@ class CarRepository {
     async searchCars(filters) {
         const { location, pickupDate, returnDate, carType } = filters;
 
+        // Extract city name from "City (CODE)" format
+        // e.g., "San Francisco (SFO)" -> "San Francisco"
+        let cityName = location;
+        const match = location.match(/^(.+?)\s*\(/);
+        if (match) {
+            cityName = match[1].trim();
+        }
+
         let query = `
       SELECT 
         c.*,
         DATEDIFF(?, ?) as rental_days
       FROM cars c
-      WHERE c.location_city LIKE ?
+      WHERE (c.location_city LIKE ? OR c.airport_code LIKE ?)
         AND c.status = 'available'
     `;
 
-        const params = [returnDate, pickupDate, `%${location}%`];
+        const params = [returnDate, pickupDate, `%${cityName}%`, `%${cityName}%`];
 
         // Optional car type filter
         if (carType && carType !== 'any') {

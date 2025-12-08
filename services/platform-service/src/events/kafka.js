@@ -15,6 +15,8 @@ let db;
 
 async function initKafka() {
     try {
+        logger.info('Initializing Kafka Analytics System...');
+
         kafka = new Kafka({
             clientId: 'platform-service',
             brokers: [KAFKA_BROKER]
@@ -23,35 +25,42 @@ async function initKafka() {
         // Producer
         producer = kafka.producer();
         await producer.connect();
-        logger.info('✅ Kafka Producer Connected');
+        logger.info('Kafka Producer Connected');
 
         // Consumer
         consumer = kafka.consumer({ groupId: 'analytics-group' });
         await consumer.connect();
+        logger.info('Kafka Consumer Connected');
+
         await consumer.subscribe({ topic: 'analytics.events', fromBeginning: false });
+        logger.info('Subscribed to analytics.events topic');
 
         // MongoDB for Consumer (to save analytics)
         if (!process.env.TEST_MODE) {
             mongoClient = new MongoClient(MONGO_URL);
             await mongoClient.connect();
             db = mongoClient.db(MONGO_DB);
-            logger.info('✅ MongoDB Consumer DB Connected');
+            logger.info(`✅ MongoDB Consumer DB Connected (URL: ${MONGO_URL}, DB: ${MONGO_DB})`);
         }
 
         await consumer.run({
             eachMessage: async ({ topic, partition, message }) => {
                 try {
                     const event = JSON.parse(message.value.toString());
+                    logger.info(`Processing Kafka Event: ${event.type}`);
                     await processAnalyticsEvent(event, db);
+                    logger.info(`Event processed successfully`);
                 } catch (e) {
                     logger.error(`Error processing analytics message: ${e.message}`);
+                    logger.error(e.stack);
                 }
             },
         });
-        logger.info('✅ Kafka Consumer Running (analytics.events)');
+        logger.info('Kafka Consumer Running (analytics.events)');
 
     } catch (error) {
         logger.error(`Kafka Init Error: ${error.message}`);
+        logger.error(error.stack);
     }
 }
 
@@ -65,7 +74,7 @@ async function sendAnalyticsEvent(event) {
             topic: 'analytics.events',
             messages: [{ value: JSON.stringify(event) }],
         });
-        logger.info(`📤 Sent Kafka Event: ${event.type}`);
+        logger.info(`Sent Kafka Event: ${event.type}`);
     } catch (error) {
         logger.error(`Failed to send Kafka event: ${error.message}`);
     }
@@ -96,7 +105,18 @@ async function processAnalyticsEvent(event, database) {
             { upsert: true }
         );
     }
-    // Add more handlers...
+    else if (event.type === 'section_view') {
+        const { page, section, visibility_score } = event;
+        await database.collection('section_visibility').updateOne(
+            { page, section },
+            {
+                $inc: { views: 1 },
+                $set: { visibility_score: visibility_score || 50, timestamp: new Date() },
+            },
+            { upsert: true }
+        );
+    }
+    // Add more handlers as needed
 }
 
 module.exports = { initKafka, sendAnalyticsEvent };
