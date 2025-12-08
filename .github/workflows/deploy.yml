@@ -75,7 +75,7 @@ jobs:
         if [ "${{ matrix.service.type }}" == "frontend" ]; then
           docker build \
             --build-arg REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL || env.DEFAULT_API_URL }} \
-            --build-arg REACT_APP_AI_SERVICE_URL=${{ secrets.REACT_APP_AI_SERVICE_URL || format('{0}/ai', secrets.REACT_APP_API_URL || env.DEFAULT_API_URL) }} \
+            --build-arg REACT_APP_AI_SERVICE_URL=${{ secrets.REACT_APP_AI_SERVICE_URL || format('{0}/api/ai', secrets.REACT_APP_API_URL || env.DEFAULT_API_URL) }} \
             -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG \
             -t $ECR_REGISTRY/$REPO_NAME:latest .
         else
