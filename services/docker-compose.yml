@@ -8,7 +8,7 @@ services:
     container_name: kayak-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: kayak_db
     ports:
       - "3307:3306"
@@ -102,7 +102,7 @@ services:
       PORT: 8001
       DB_HOST: mysql
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       REDIS_URL: redis://redis:6379
       KAFKA_BROKER: kafka:9092
@@ -130,7 +130,7 @@ services:
       PORT: 8002
       DB_HOST: mysql
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       MONGO_URL: mongodb://mongodb:27017/kayak_hotels
       REDIS_URL: redis://redis:6379
@@ -161,7 +161,7 @@ services:
       PORT: 8003
       DB_HOST: mysql
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       REDIS_URL: redis://redis:6379
       KAFKA_BROKER: kafka:9092
@@ -190,7 +190,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
     depends_on:
@@ -216,7 +216,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
     depends_on:
@@ -260,11 +260,11 @@ services:
       PORT: 8080
       DB_HOST: mysql
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
-      STRIPE_SECRET_KEY: sk_test_51SatQFHZv1Ft0uoTYuZMBjoxtR28aClbS0cD0fcA1TVopm62rXWte7E2vIKtN0xjxrYjTxx0v9PxbQDrRiMpplAD00b3LsyFA0
-      STRIPE_PUBLISHABLE_KEY: pk_test_51SatQFHZv1Ft0uoTHOk12LhG0LFEYvA0VFL3BkjEXoFjPIQEz0xmeOdlr0SzDztpTzQnPG2PL6rGRoZmNffZFGpV00cWtRoc5E
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
       CAR_SERVICE_URL: http://car-service:8003
@@ -347,10 +347,10 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
-      GEMINI_API_KEY: AIzaSyBbJNws3UzrkoZ0wah_Tw0XxEX0GhFDN8I
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: gemini-3-pro-preview
       REDIS_URL: redis://redis:6379
       FLIGHT_SERVICE_URL: http://flight-service:8001
@@ -384,7 +384,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: root123
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
       LOG_LEVEL: INFO
