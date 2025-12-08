@@ -277,7 +277,8 @@ function ProfilePage() {
   const handleDeleteCard = async (cardId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/payment-methods/${cardId}`, {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_URL}/api/payment-methods/${cardId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -300,7 +301,8 @@ function ProfilePage() {
   const handleSetDefaultCard = async (cardId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/payment-methods/${cardId}/set-default`, {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_URL}/api/payment-methods/${cardId}/set-default`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -328,7 +330,8 @@ function ProfilePage() {
     // Refresh payment methods after adding new card
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/payment-methods', {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_URL}/api/payment-methods`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

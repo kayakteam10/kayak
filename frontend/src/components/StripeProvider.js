@@ -6,7 +6,7 @@ const StripeProvider = ({ children }) => {
     const [stripePromise, setStripePromise] = useState(null);
 
     useEffect(() => {
-        fetch('http://localhost:8080/api/payment-methods/config')
+        fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/payment-methods/config`)
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.publishableKey) {

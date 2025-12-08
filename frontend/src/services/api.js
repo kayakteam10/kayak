@@ -18,13 +18,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// AI Service API (running on port 8007)
-const aiService = axios.create({
-  baseURL: 'http://localhost:8007',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// AI Service is accessed through the gateway at /api/ai
+// No separate axios instance needed
 
 // Auth API
 export const authAPI = {
@@ -93,9 +88,9 @@ export const reviewsAPI = {
   markHelpful: (id) => api.post(`/api/reviews/${id}/helpful`),
 };
 
-// Bundles API (AI Service)
+// Bundles API - AI Service endpoint through gateway
 export const bundlesAPI = {
-  getDetails: (id) => aiService.get(`/bundles/${id}`),
+  getDetails: (id) => api.get(`/api/ai/bundles/${id}`),
 };
 
 export default api;

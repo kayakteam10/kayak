@@ -188,14 +188,21 @@ app.use('/api/reviews', createProxyMiddleware({
     }
 }));
 
-// AI Service
+// AI Service (with WebSocket support)
 app.use('/api/ai', createProxyMiddleware({
     target: process.env.AI_SERVICE_URL || 'http://127.0.0.1:8007',
     changeOrigin: true,
     pathRewrite: { '^/api/ai': '' },
+    ws: true, // Enable WebSocket proxying
     onError: (err, req, res) => {
         logger.error(`AI service proxy error: ${err.message}`);
         res.status(503).json({ success: false, error: 'AI service unavailable' });
+    },
+    onProxyReqWs: (proxyReq, req, socket) => {
+        // Handle WebSocket upgrade
+        socket.on('error', (err) => {
+            logger.error(`WebSocket error: ${err.message}`);
+        });
     }
 }));
 

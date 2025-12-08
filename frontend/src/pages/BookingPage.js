@@ -200,20 +200,27 @@ function BookingPage() {
 
   useEffect(() => {
     const fetchItem = async () => {
+      console.log('🔍 fetchItem called with:', { type, id });
       try {
         let response;
         if (type === 'flights') {
+          console.log('📡 Fetching flight details...');
           response = await flightsAPI.getDetails(id);
         } else if (type === 'hotels') {
+          console.log('📡 Fetching hotel details...');
           response = await hotelsAPI.getDetails(id);
         } else if (type === 'bundles') {
+          console.log('📡 Fetching bundle details for ID:', id);
+          // Fetch bundle details from AI service
           response = await bundlesAPI.getDetails(id);
-          // For bundles, set the bundle data directly
           const bundleData = response.data;
+          
+          console.log('📦 Fetched bundle data:', bundleData);
           setItem(bundleData);
           setLoading(false);
           return; // Skip flight-specific processing
         } else {
+          console.log('📡 Fetching car details...');
           response = await carsAPI.getDetails(id);
         }
 
@@ -323,7 +330,12 @@ function BookingPage() {
           setLegSeats(initialLegSeats);
         }
       } catch (err) {
-        console.error('Failed to load item');
+        console.error('❌ Failed to load item:', err);
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
       } finally {
         setLoading(false);
       }

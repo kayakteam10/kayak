@@ -39,7 +39,8 @@ const CardInput = ({ onSuccess, onError, buttonText = 'Save Card' }) => {
 
       // Send payment method to backend
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/payment-methods', {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_URL}/api/payment-methods`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
