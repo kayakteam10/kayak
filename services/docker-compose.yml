@@ -163,10 +163,14 @@ services:
       DB_USER: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DB_NAME: kayak_cars
       REDIS_URL: redis://redis:6379
       KAFKA_BROKER: kafka:9092
     depends_on:
       mysql:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
