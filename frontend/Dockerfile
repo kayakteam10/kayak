@@ -13,8 +13,7 @@ RUN npm run build
 
 # Production Stage
 FROM nginx:alpine
-# Copy built assets from local build directory
-COPY build /usr/share/nginx/html
+COPY --from=build /app/build /usr/share/nginx/html
 # Custom Nginx config
 RUN echo 'server { \
     listen 80; \
