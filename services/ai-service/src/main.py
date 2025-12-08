@@ -44,19 +44,22 @@ logger = get_logger("ai-service")
 
 # Environment configuration
 DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "3306")
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "root123")
 DB_NAME = os.getenv("DB_NAME", "kayak_db")
 PORT = int(os.getenv("PORT", "8007"))
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
 
-# Database URL
-if DB_HOST in ["mysql"] and DB_USER:
-    DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
-    logger.info(f"Using MySQL: {DB_HOST}/{DB_NAME}")
+# Database URL - Use MySQL if DB_HOST and DB_USER are provided, otherwise SQLite for local dev
+if DB_HOST and DB_USER:
+    # Local Docker or Production: Use MySQL/RDS connection
+    DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    logger.info(f"🗄️  Using MySQL: {DB_HOST}/{DB_NAME}")
 else:
+    # Pure local development without Docker: Use SQLite
     DB_URL = "sqlite:///./agentic_ai_deals.db"
-    logger.info("Using SQLite for local development")
+    logger.info("🗄️  Using SQLite for local development")
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20, pool_pre_ping=True)
 
