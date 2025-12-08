@@ -1,62 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import AIConcierge from './AIConcierge';
 import '../App.css';
 
 function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('token') !== null);
-  const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User');
-  const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || '');
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
+  const { isAuthenticated, user, logout: contextLogout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-
-  // Fetch user profile data from API if needed
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      const token = localStorage.getItem('token');
-      if (token && !localStorage.getItem('profilePicture')) {
-        try {
-          const response = await authAPI.me();
-          if (response.data.profilePicture) {
-            localStorage.setItem('profilePicture', response.data.profilePicture);
-            setProfilePicture(response.data.profilePicture);
-          }
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-        }
-      }
-    };
-
-    fetchUserProfile();
-  }, [isLoggedIn]);
-
-  // Update login state when storage changes or login/logout events
-  useEffect(() => {
-    const updateLoginState = () => {
-      setIsLoggedIn(localStorage.getItem('token') !== null);
-      setUserName(localStorage.getItem('userName') || 'User');
-      setProfilePicture(localStorage.getItem('profilePicture') || '');
-      setUserRole(localStorage.getItem('userRole') || 'user');
-    };
-
-    // Initial check
-    updateLoginState();
-
-    // Listen for storage changes (cross-tab)
-    window.addEventListener('storage', updateLoginState);
-
-    // Listen for custom login event (same-tab)
-    window.addEventListener('login', updateLoginState);
-    window.addEventListener('logout', updateLoginState);
-
-    return () => {
-      window.removeEventListener('storage', updateLoginState);
-      window.removeEventListener('login', updateLoginState);
-      window.removeEventListener('logout', updateLoginState);
-    };
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -75,15 +27,8 @@ function Header() {
   }, [showDropdown]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('profilePicture');
-    setIsLoggedIn(false);
-    setUserName('User');
-    setProfilePicture('');
+    contextLogout();
     setShowDropdown(false);
-    // Dispatch custom event to notify of logout
-    window.dispatchEvent(new Event('logout'));
     window.location.href = '/';
   };
 
@@ -99,24 +44,24 @@ function Header() {
         </Link>
         <nav className="nav">
           <Link to="/" className="nav-link">Home</Link>
-          {isLoggedIn ? (
+          {isAuthenticated ? (
             <>
               <div className="user-menu" ref={dropdownRef}>
                 <button
                   className="user-menu-button"
                   onClick={() => setShowDropdown(!showDropdown)}
                 >
-                  {profilePicture ? (
-                    <img src={profilePicture} alt="Profile" className="header-profile-pic" />
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt="Profile" className="header-profile-pic" />
                   ) : (
                     <span className="user-icon">👤</span>
                   )}
-                  <span className="user-name">{userName}</span>
+                  <span className="user-name">{user?.name || 'User'}</span>
                   <span className="dropdown-arrow">{showDropdown ? '▲' : '▼'}</span>
                 </button>
                 {showDropdown && (
                   <div className="user-dropdown">
-                    {userRole === 'admin' ? (
+                    {user?.role === 'admin' ? (
                       <>
                         <Link
                           to="/admin"

@@ -44,8 +44,9 @@ You have access to the following capabilities (intents):
 3. 'create_watch': Monitor prices for a specific trip. (e.g., "Track this price", "Alert me if it drops")
 4. 'compare': Compare specific options. (e.g., "Which is better?", "Compare the first two")
 5. 'policy_question': Answer questions about rules/fees. (e.g., "Is it refundable?", "Pet policy")
-6. 'select': User wants to choose an option that was previously shown. (e.g., "Book the first one", "I'll take the premium option", "I want the $582 option", "cheapest", "option 2")
-7. 'book': User confirms they want to proceed to payment. (e.g., "Yes", "Proceed to payment", "Let's book it")
+6. 'explain': User wants more details/explanation about a specific deal. (e.g., "Explain this deal", "Tell me more", "What makes this good?", "Why should I book this?")
+7. 'select': User wants to choose an option that was previously shown. (e.g., "Book the first one", "I'll take the premium option", "I want the $582 option", "cheapest", "option 2")
+8. 'book': User confirms they want to proceed to payment. (e.g., "Yes", "Proceed to payment", "Let's book it")
 
 INSTRUCTIONS:
 1. Analyze the Conversation History and the New User Message.
@@ -56,12 +57,13 @@ CRITICAL RULES:
 - If the user says "I need a vacation" or "I want to travel", this is a SEARCH intent, but missing destination/dates.
 - Do NOT classify "vacation" or "travel" as policy questions.
 - If information is missing (like destination), set "clarification_question" to a natural question.
-- If the user confirms a selection (e.g., "Yes", "Proceed"), use 'book' intent.
+- If user asks "explain", "tell me more", "why", "what makes this good", "details" about a SPECIFIC deal/option, use 'explain' intent.
+- If the user confirms a selection (e.g., "Yes", "Proceed"), use 'book' intent ONLY if they are NOT asking for explanation first.
 - If PREVIOUS messages showed bundle options AND user mentions "option", a price (e.g., "$1262", "1262 dollars"), or selection keyword (e.g., "premium", "cheapest", "first"), this is ALWAYS 'select' intent - NOT 'refine' or 'search'.
 
 Required fields to extract:
 - reasoning: Brief thought process about what the user wants and what is missing (REQUIRED!)
-- intent: One of "search", "refine", "create_watch", "compare", "policy_question", "select", "book" (REQUIRED!)
+- intent: One of "search", "refine", "create_watch", "compare", "policy_question", "explain", "select", "book" (REQUIRED!)
 - origin: IATA airport code (3 letters, uppercase) - departure city
 - destination: IATA airport code or city name - arrival destination  
 - start_date: Departure/check-in date (YYYY-MM-DD format)

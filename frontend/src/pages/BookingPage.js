@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { flightsAPI, hotelsAPI, carsAPI, bookingsAPI, authAPI, bundlesAPI } from '../services/api';
 import { FaPlane, FaHotel, FaCar, FaCheckCircle, FaArrowRight } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
 import SeatMap from '../components/SeatMap';
 import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
 import './BookingPage.css';
@@ -10,8 +11,22 @@ function BookingPage() {
   const { type, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Check authentication - redirect to login if not authenticated
+  // Wait for auth to finish loading before checking
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth to initialize
+    
+    if (!isAuthenticated) {
+      // Store intended destination for redirect after login
+      localStorage.setItem('redirectAfterLogin', location.pathname + location.search);
+      alert('Please login to continue with booking');
+      navigate('/login');
+    }
+  }, [isAuthenticated, authLoading, navigate, location]);
   const [currentStep, setCurrentStep] = useState(1);
   const [bookingData, setBookingData] = useState({
     firstName: '',
@@ -199,6 +214,41 @@ function BookingPage() {
   useEffect(() => {
     const fetchItem = async () => {
       console.log('🔍 fetchItem called with:', { type, id });
+      
+      // Get token from URL if present
+      const searchParams = new URLSearchParams(window.location.search);
+      const paymentToken = searchParams.get('token');
+      
+      // AI Service URL from environment
+      const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || 'http://localhost:8007';
+      
+      // If token present, check its validity
+      if (paymentToken && type === 'bundles') {
+        try {
+          const tokenCheck = await fetch(`${AI_SERVICE_URL}/payment-token/${paymentToken}`);
+          const tokenData = await tokenCheck.json();
+          
+          if (!tokenData.valid) {
+            if (tokenData.status === 'used') {
+              // Already booked - redirect to confirmation or home
+              alert('This payment link has already been used! Check My Bookings for your confirmation.');
+              navigate('/profile');
+              return;
+            } else if (tokenData.status === 'expired') {
+              alert('This payment link has expired. Please request a new one from the chat.');
+              navigate('/');
+              return;
+            }
+          }
+          
+          // Token is valid, store it for later use
+          sessionStorage.setItem('paymentToken', paymentToken);
+        } catch (err) {
+          console.error('Token validation error:', err);
+          // Continue anyway if token check fails
+        }
+      }
+      
       try {
         let response;
         if (type === 'flights') {
@@ -209,6 +259,27 @@ function BookingPage() {
           response = await hotelsAPI.getDetails(id);
         } else if (type === 'bundles') {
           console.log('📡 Fetching bundle details for ID:', id);
+          
+          // Check if user already booked this bundle
+          if (user && user.id) {
+            try {
+              const existingBookings = await bookingsAPI.getAll(user.id);
+              const alreadyBooked = existingBookings.data?.bookings?.find(
+                booking => booking.booking_type === 'bundles' && booking.bundle_id === parseInt(id) && booking.status !== 'cancelled'
+              );
+              
+              if (alreadyBooked) {
+                console.log('⚠️ User already booked this bundle:', alreadyBooked);
+                // Redirect to existing booking confirmation
+                navigate(`/booking/confirmation/bundles/${alreadyBooked.id}`);
+                return;
+              }
+            } catch (err) {
+              console.warn('Could not check existing bookings:', err);
+              // Continue with booking if check fails
+            }
+          }
+          
           // Fetch bundle details from AI service
           response = await bundlesAPI.getDetails(id);
           const bundleData = response.data;
@@ -738,6 +809,25 @@ function BookingPage() {
           return;
         }
         
+        // If payment token exists, notify AI service about BOTH bookings
+        const paymentToken = sessionStorage.getItem('paymentToken');
+        const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || 'http://localhost:8007';
+        if (paymentToken) {
+          try {
+            await fetch(`${AI_SERVICE_URL}/payment-token/${paymentToken}/complete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                booking_ids: [flightBookingId, hotelBookingId]  // Send BOTH IDs for bundles
+              })
+            });
+            sessionStorage.removeItem('paymentToken');
+            console.log('✅ AI service notified about bundle booking completion');
+          } catch (err) {
+            console.error('Failed to notify AI service:', err);
+          }
+        }
+        
         // Navigate to bundle confirmation page with booking IDs
         navigate(`/booking/confirmation/bundles/${item.bundle_id}?flight=${flightBookingId}&hotel=${hotelBookingId}`);
         return; // Exit early for bundles
@@ -840,6 +930,23 @@ function BookingPage() {
         }
       }
 
+      // If payment token exists, notify AI service about completion
+      const paymentToken = sessionStorage.getItem('paymentToken');
+      const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || 'http://localhost:8007';
+      if (paymentToken) {
+        try {
+          await fetch(`${AI_SERVICE_URL}/payment-token/${paymentToken}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ booking_id: bookingId })
+          });
+          sessionStorage.removeItem('paymentToken');
+          console.log('✅ AI service notified about booking completion');
+        } catch (err) {
+          console.error('Failed to notify AI service:', err);
+        }
+      }
+
       navigate(`/booking/confirmation/${type}/${bookingId}`);
     } catch (err) {
       console.error('❌ Booking Error:', err);
@@ -887,7 +994,8 @@ function BookingPage() {
     return <FaCar />;
   };
 
-  if (loading) return <div className="booking-loading">Loading...</div>;
+  // Show loading while auth is initializing or data is loading
+  if (authLoading || loading) return <div className="booking-loading">Loading...</div>;
   if (!item) return <div className="booking-error">Item not found</div>;
 
   return (

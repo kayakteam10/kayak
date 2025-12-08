@@ -72,7 +72,6 @@ case $env_choice in
         # External Services
         echo ""
         echo "External Services:"
-        STRIPE_SECRET=$(prompt_with_default "STRIPE_SECRET_KEY" "" "Enter Stripe Secret Key:")
         GEMINI_KEY=$(prompt_with_default "GEMINI_API_KEY" "" "Enter Google Gemini API Key:")
         
         # Write to .env
@@ -110,7 +109,6 @@ REDIS_URL=redis://$REDIS_HOST:6379
 KAFKA_BROKER=$KAFKA_BROKER
 
 # External Services
-STRIPE_SECRET_KEY=$STRIPE_SECRET
 GEMINI_API_KEY=$GEMINI_KEY
 
 # Application

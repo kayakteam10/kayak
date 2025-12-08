@@ -263,8 +263,6 @@ services:
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
       CAR_SERVICE_URL: http://car-service:8003
@@ -356,6 +354,8 @@ services:
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
       BOOKING_SERVICE_URL: http://booking-service:8004
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8088}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080,http://localhost:8088}
       ENV: production
       LOG_LEVEL: INFO
     volumes:
@@ -412,8 +412,9 @@ services:
       # API Gateway URL - must point to platform service
       # In Docker, services communicate via service names
       # From browser, it uses localhost:8080
-      REACT_APP_API_URL: http://localhost:8080
-      REACT_APP_WS_URL: ws://localhost:8080
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8080}
+      REACT_APP_AI_SERVICE_URL: ${REACT_APP_AI_SERVICE_URL:-http://localhost:8007}
+      REACT_APP_WS_URL: ${REACT_APP_WS_URL:-ws://localhost:8080}
       PORT: 3000
 
 volumes:

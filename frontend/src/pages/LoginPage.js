@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import './AuthPage.css';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,25 +20,23 @@ function LoginPage() {
       const response = await authAPI.login(formData);
       const userData = response.data.data;
 
-      localStorage.setItem('token', userData.token);
-      localStorage.setItem('userId', userData.userId);
-      localStorage.setItem('userName', userData.firstName);
-      localStorage.setItem('userRole', userData.role);
+      // Use auth context to handle login
+      login(userData);
 
-      // Store profile picture if available
+      // Store user data for backward compatibility
       if (userData.profilePicture) {
         localStorage.setItem('profilePicture', userData.profilePicture);
       }
-
-      // Store user data including role
       localStorage.setItem('user', JSON.stringify(userData));
 
-      // Dispatch custom event to notify header of login
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('login'));
+      // Check if there's a redirect URL stored
+      const redirectUrl = localStorage.getItem('redirectAfterLogin');
+      localStorage.removeItem('redirectAfterLogin'); // Clean up
 
-      // Redirect based on user role
-      if (response.data.data.role === 'admin') {
+      // Redirect based on priority: 1) stored redirect, 2) admin role, 3) home
+      if (redirectUrl) {
+        navigate(redirectUrl);
+      } else if (response.data.data.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/');

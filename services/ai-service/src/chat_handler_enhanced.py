@@ -8,6 +8,7 @@ from datetime import datetime
 import json
 import re
 import asyncio
+import os
 
 from sqlmodel import Session, select
 
@@ -241,6 +242,13 @@ class EnhancedChatHandler:
             return await self._handle_policy_question(
                 session_id,
                 user_message
+            )
+        
+        elif intent == 'explain':
+            return await self._handle_explanation_request(
+                session_id,
+                user_message,
+                context
             )
         
         elif intent == 'select':
@@ -804,7 +812,7 @@ class EnhancedChatHandler:
         user_message: str,
         context: Dict
     ) -> ChatMessageResponse:
-        """Handle selection of a specific bundle"""
+        """Handle selection of a specific bundle, flight, or hotel"""
         
         # Store user turn
         user_turn = ConversationTurn(
@@ -819,7 +827,10 @@ class EnhancedChatHandler:
         
         # Identify which bundle was selected
         selected_bundle = None
+        selected_flight = None
+        selected_hotel = None
         selection_reason = "selected"
+        selection_type = "bundle"  # bundle, flight, or hotel
         
         if context['previous_bundles']:
             # Get full bundle objects
@@ -828,6 +839,10 @@ class EnhancedChatHandler:
             
             if bundles:
                 user_lower = user_message.lower()
+                
+                # Check if user wants flight only or hotel only
+                wants_flight_only = any(word in user_lower for word in ['flight only', 'just flight', 'just the flight', 'only flight'])
+                wants_hotel_only = any(word in user_lower for word in ['hotel only', 'just hotel', 'just the hotel', 'only hotel'])
                 
                 # Check for specific price mentions (e.g., "$582", "582 dollars")
                 price_match = re.search(r'\$?(\d{3,4})', user_message)
@@ -847,14 +862,25 @@ class EnhancedChatHandler:
                     # Default to first if unspecified
                     selected_bundle = bundles[0]
                     selection_reason = "top recommendation"
+                
+                # If user wants only flight or hotel from the bundle
+                if selected_bundle and wants_flight_only:
+                    selected_flight = self.db.get(FlightDeal, selected_bundle.flight_id)
+                    selection_type = "flight"
+                    selected_bundle = None
+                elif selected_bundle and wants_hotel_only:
+                    selected_hotel = self.db.get(HotelDeal, selected_bundle.hotel_id)
+                    selection_type = "hotel"
+                    selected_bundle = None
         
+        # Handle bundle selection
         if selected_bundle:
             flight = self.db.get(FlightDeal, selected_bundle.flight_id)
             hotel = self.db.get(HotelDeal, selected_bundle.hotel_id)
             
             message = f"Excellent choice! I've locked in the {selection_reason} for you.\n\n" \
-                      f"**{flight.airline} + {hotel.neighbourhood} Hotel**\n" \
-                      f"Total: ${selected_bundle.total_price}\n\n" \
+                      f"{flight.airline} + {hotel.neighbourhood} Hotel\n" \
+                      f"Total: ${selected_bundle.total_price:.2f}\n\n" \
                       f"Would you like to proceed to payment?"
             
             response_bundle = self._bundle_to_response(selected_bundle, flight, hotel)
@@ -864,7 +890,7 @@ class EnhancedChatHandler:
                 role="assistant",
                 content=message,
                 timestamp=datetime.utcnow(),
-                turn_metadata=json.dumps({'selected_bundle': selected_bundle.id})
+                turn_metadata=json.dumps({'selected_bundle': selected_bundle.id, 'selection_type': 'bundle'})
             )
             self.db.add(assistant_turn)
             self.db.commit()
@@ -874,6 +900,54 @@ class EnhancedChatHandler:
                 content=message,
                 timestamp=assistant_turn.timestamp,
                 bundles=[response_bundle]
+            )
+        
+        # Handle flight-only selection
+        elif selected_flight:
+            message = f"Great choice! I've locked in this {selection_reason} flight for you.\n\n" \
+                      f"{selected_flight.airline} from {selected_flight.origin} to {selected_flight.destination}\n" \
+                      f"Price: ${selected_flight.price:.2f}\n\n" \
+                      f"Would you like to proceed to payment?"
+            
+            assistant_turn = ConversationTurn(
+                session_id=session_id,
+                role="assistant",
+                content=message,
+                timestamp=datetime.utcnow(),
+                turn_metadata=json.dumps({'selected_flight': selected_flight.id, 'selection_type': 'flight'})
+            )
+            self.db.add(assistant_turn)
+            self.db.commit()
+            
+            return ChatMessageResponse(
+                role="assistant",
+                content=message,
+                timestamp=assistant_turn.timestamp,
+                bundles=None
+            )
+        
+        # Handle hotel-only selection
+        elif selected_hotel:
+            message = f"Perfect! I've locked in this {selection_reason} hotel for you.\n\n" \
+                      f"{selected_hotel.neighbourhood} Hotel\n" \
+                      f"Price per night: ${selected_hotel.price_per_night:.2f}\n\n" \
+                      f"Would you like to proceed to payment?"
+            
+            assistant_turn = ConversationTurn(
+                session_id=session_id,
+                role="assistant",
+                content=message,
+                timestamp=datetime.utcnow(),
+                turn_metadata=json.dumps({'selected_hotel': selected_hotel.id, 'selection_type': 'hotel'})
+            )
+            self.db.add(assistant_turn)
+            self.db.commit()
+            
+            return ChatMessageResponse(
+                role="assistant",
+                content=message,
+                timestamp=assistant_turn.timestamp,
+                bundles=None
             )
         else:
             # Fallback if no context
@@ -937,65 +1011,446 @@ class EnhancedChatHandler:
             bundles=None
         )
     
+    async def _handle_explanation_request(
+        self,
+        session_id: int,
+        user_message: str,
+        context: Dict
+    ) -> ChatMessageResponse:
+        """Handle requests for deal explanations"""
+        
+        # Find the most recent bundle selection or presentation
+        selected_bundle_id = None
+        last_assistant_turn = None
+        
+        # Check for selected bundle in recent context
+        for turn in reversed(context['conversation_flow']):
+            if turn['role'] == 'assistant' and turn.get('turn_metadata'):
+                try:
+                    meta = json.loads(turn['turn_metadata'])
+                    if 'selected_bundle' in meta:
+                        selected_bundle_id = meta['selected_bundle']
+                        last_assistant_turn = meta
+                        break
+                except:
+                    continue
+        
+        # If no selection, check last shown bundles
+        if not selected_bundle_id:
+            for turn in reversed(context['conversation_flow']):
+                if turn['role'] == 'assistant' and turn.get('bundles'):
+                    bundles_data = json.loads(turn['bundles']) if isinstance(turn['bundles'], str) else turn['bundles']
+                    if bundles_data and len(bundles_data) > 0:
+                        selected_bundle_id = bundles_data[0]['id']  # Default to first option
+                        break
+        
+        if not selected_bundle_id:
+            message = "I don't have a specific deal to explain right now. Let me know what trip you're interested in!"
+        else:
+            bundle = self.db.get(Bundle, selected_bundle_id)
+            
+            if not bundle:
+                message = "Sorry, I can't find details for that deal anymore."
+            else:
+                # Import the explain function
+                from .timeseries_pricing import explain_deal_quality
+                from sqlalchemy import text
+                
+                flight = self.db.get(FlightDeal, bundle.flight_id)
+                hotel_deal = self.db.get(HotelDeal, bundle.hotel_id)
+                
+                # Get full hotel details from hotels table
+                try:
+                    hotel_query = text(
+                        "SELECT hotel_name, star_rating, price_per_night FROM hotels WHERE id = :listing_id"
+                    )
+                    hotel_result = self.db.execute(hotel_query, {"listing_id": int(hotel_deal.listing_id)}).fetchone()
+                    
+                    if hotel_result:
+                        hotel_name, hotel_stars, hotel_price_per_night = hotel_result
+                    else:
+                        # Fallback if not found
+                        hotel_name = f"{hotel_deal.neighbourhood} Hotel"
+                        hotel_stars = 3.0
+                        hotel_price_per_night = hotel_deal.price
+                except Exception as e:
+                    logger.warning(f"Failed to fetch hotel details: {e}")
+                    hotel_name = f"{hotel_deal.neighbourhood} Hotel"
+                    hotel_stars = 3.0
+                    hotel_price_per_night = hotel_deal.price
+                
+                # Get deal quality explanation
+                explanation = explain_deal_quality(bundle.flight_id, bundle.hotel_id, self.db)
+                
+                # Calculate number of nights from flight dates
+                nights = 1
+                if flight.return_date and flight.depart_date:
+                    nights = max((flight.return_date - flight.depart_date).days, 1)
+                
+                # Calculate prices correctly
+                flight_price = flight.price
+                total_price = bundle.total_price
+                hotel_total_price = total_price - flight_price  # Calculate from bundle total
+                hotel_per_night = hotel_total_price / nights if nights > 0 else hotel_price_per_night
+                
+                # Format dates
+                dep_date = flight.depart_date.strftime("%b %d") if hasattr(flight, 'depart_date') and flight.depart_date else 'N/A'
+                ret_date = flight.return_date.strftime("%b %d") if hasattr(flight, 'return_date') and flight.return_date else 'N/A'
+                duration_str = f"{flight.duration_minutes // 60}h {flight.duration_minutes % 60}m" if hasattr(flight, 'duration_minutes') else 'N/A'
+                
+                # Build amenity string
+                amenities_list = []
+                if hotel_deal.is_pet_friendly:
+                    amenities_list.append("pet-friendly")
+                if hotel_deal.has_breakfast:
+                    amenities_list.append("free breakfast")
+                if hotel_deal.is_refundable:
+                    amenities_list.append("free cancellation")
+                amenities_display = ", ".join(amenities_list) if amenities_list else "standard amenities"
+                
+                # Build natural, conversational explanation
+                stops_msg = "it's a direct flight! ✈️" if flight.stops == 0 else f"it has {flight.stops} stop(s)"
+                
+                message = (
+                    f"Great choice! Let me break down this deal for you:\n\n"
+                    f"✈️ FLIGHT\n"
+                    f"You'll fly {flight.airline} from {flight.origin} to {flight.destination}, departing {dep_date} and returning {ret_date}. "
+                    f"Flight time is {duration_str} and {stops_msg}\n"
+                    f"Flight cost: ${flight_price:.2f}\n\n"
+                    f"🏨 HOTEL\n"
+                    f"You'll stay at {hotel_name} in {hotel_deal.neighbourhood}. "
+                    f"It's a {hotel_stars}-star hotel with {amenities_display}. "
+                    f"That's ${hotel_per_night:.2f} per night for {nights} nights.\n"
+                    f"Hotel cost: ${hotel_total_price:.2f}\n\n"
+                    f"💰 TOTAL PRICE: ${total_price:.2f}\n\n"
+                    f"📊 Why this is a good deal:\n{explanation}\n\n"
+                    f"Ready to book? Just say 'yes'!"
+                )
+                
+                # Store selected bundle in metadata for potential booking
+                metadata = {"selected_bundle": bundle.id}
+        
+        # Store turns
+        user_turn = ConversationTurn(
+            session_id=session_id,
+            role="user",
+            content=user_message,
+            timestamp=datetime.utcnow()
+        )
+        self.db.add(user_turn)
+        
+        assistant_turn = ConversationTurn(
+            session_id=session_id,
+            role="assistant",
+            content=message,
+            timestamp=datetime.utcnow(),
+            turn_metadata=json.dumps(metadata) if selected_bundle_id else None
+        )
+        self.db.add(assistant_turn)
+        self.db.commit()
+        
+        return ChatMessageResponse(
+            role="assistant",
+            content=message,
+            timestamp=assistant_turn.timestamp,
+            bundles=None
+        )
+    
     async def _handle_booking(
         self,
         session_id: int,
         user_message: str,
         context: Dict
     ) -> ChatMessageResponse:
-        """Handle booking confirmation and payment handoff"""
+        """Handle booking confirmation and payment handoff for bundles, flights, or hotels"""
         
-        # Check if we have a selected bundle in context
-        # We look at the last assistant message to see if it had a 'selected_bundle' metadata
+        # Check if we have a selected item in context (bundle, flight, or hotel)
         last_assistant_turn = None
+        selection_type = None
+        
         for turn in reversed(context['conversation_flow']):
             if turn['role'] == 'assistant' and turn.get('turn_metadata'):
                 try:
                     meta = json.loads(turn['turn_metadata'])
                     if 'selected_bundle' in meta:
                         last_assistant_turn = meta
+                        selection_type = meta.get('selection_type', 'bundle')
+                        break
+                    elif 'selected_flight' in meta:
+                        last_assistant_turn = meta
+                        selection_type = 'flight'
+                        break
+                    elif 'selected_hotel' in meta:
+                        last_assistant_turn = meta
+                        selection_type = 'hotel'
                         break
                 except:
                     continue
         
-        if not last_assistant_turn or 'selected_bundle' not in last_assistant_turn:
-            # Fallback: Check if user just selected something in previous turn
-            # This handles the case where user says "Book the first one" (Select) -> "Yes" (Book)
-            # But we need to make sure we know WHICH one.
-            # For now, if we can't find it, ask user to select again.
-            message = "I'm not sure which trip you want to book. Could you please select one of the options first?"
-        else:
+        if not last_assistant_turn:
+            message = "I'm not sure which option you want to book. Could you please select one of the options first?"
+        elif selection_type == 'bundle':
             bundle_id = last_assistant_turn['selected_bundle']
             bundle = self.db.get(Bundle, bundle_id)
             
             if bundle:
-                # Generate a payment link or handoff message
+                # Generate unique payment token
+                import secrets
+                from .models import PaymentToken
+                
+                payment_token = secrets.token_urlsafe(32)
+                
+                # Get user_id from session
+                chat_session = self.db.get(ChatSession, session_id)
+                user_id = chat_session.user_id if chat_session else None
+                
+                # Store payment token in database
+                try:
+                    token_record = PaymentToken(
+                        token=payment_token,
+                        session_id=session_id,
+                        bundle_id=bundle.id,
+                        user_id=user_id,
+                        status="pending"
+                    )
+                    self.db.add(token_record)
+                    self.db.commit()
+                except Exception as e:
+                    logger.error(f"Failed to create payment token: {e}")
+                    self.db.rollback()
+                    # Continue anyway with regular link (fallback)
+                    payment_token = None
+                
+                # Generate a payment link with token
                 flight = self.db.get(FlightDeal, bundle.flight_id)
-                hotel = self.db.get(HotelDeal, bundle.hotel_id)
+                hotel_deal = self.db.get(HotelDeal, bundle.hotel_id)
+                
+                # Get full hotel details from hotels table
+                try:
+                    from sqlalchemy import text
+                    hotel_query = text(
+                        "SELECT hotel_name, star_rating FROM hotels WHERE id = :listing_id"
+                    )
+                    hotel_result = self.db.execute(hotel_query, {"listing_id": int(hotel_deal.listing_id)}).fetchone()
+                    
+                    if hotel_result:
+                        hotel_name, hotel_stars = hotel_result
+                    else:
+                        hotel_name = f"{hotel_deal.neighbourhood} Hotel"
+                        hotel_stars = 3.0
+                except Exception as e:
+                    logger.warning(f"Failed to fetch hotel details for booking: {e}")
+                    hotel_name = f"{hotel_deal.neighbourhood} Hotel"
+                    hotel_stars = 3.0
                 
                 # Get traveler count from context
                 travelers = context['user_constraints'].get('travelers', 1)
                 
-                payment_link = f"http://localhost:8088/booking/bundles/{bundle.id}?passengers={travelers}"
+                # Calculate number of nights
+                nights = 1
+                if flight.return_date and flight.depart_date:
+                    nights = max((flight.return_date - flight.depart_date).days, 1)
+                
+                # Calculate hotel total
+                hotel_total = bundle.total_price - flight.price
+                
+                # Build payment link
+                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:8088")
+                if payment_token:
+                    payment_link = f"{frontend_url}/booking/bundles/{bundle.id}?passengers={travelers}&token={payment_token}"
+                else:
+                    payment_link = f"{frontend_url}/booking/bundles/{bundle.id}?passengers={travelers}"
+                
+                # Format dates
+                dep_date = flight.depart_date.strftime("%b %d") if hasattr(flight, 'depart_date') and flight.depart_date else 'N/A'
+                ret_date = flight.return_date.strftime("%b %d") if hasattr(flight, 'return_date') and flight.return_date else 'N/A'
+                stops_text = 'direct flight' if flight.stops == 0 else f'{flight.stops} stop(s)'
+                
+                # Amenities
+                amenities = []
+                if hotel_deal.is_pet_friendly:
+                    amenities.append('pet-friendly')
+                if hotel_deal.has_breakfast:
+                    amenities.append('free breakfast')
+                if hotel_deal.is_refundable:
+                    amenities.append('free cancellation')
+                amenities_text = ', '.join(amenities) if amenities else 'standard amenities'
                 
                 message = (
-                    f"Perfect! Let's complete your booking.\n\n"
-                    f"**Your Bundle:**\n"
-                    f"✈️ {flight.airline} flight: {flight.origin} → {flight.destination}\n"
-                    f"🏨 Hotel: {hotel.neighbourhood}, {hotel.city}\n"
-                    f"👥 Travelers: {travelers} {'person' if travelers == 1 else 'people'}\n"
+                    f"Perfect! Here's what I've reserved for you:\n\n"
+                    f"✈️ {flight.airline} flight from {flight.origin} to {flight.destination}\n"
+                    f"   {dep_date} - {ret_date} ({stops_text})\n"
+                    f"   ${flight.price:.2f}\n\n"
+                    f"🏨 {hotel_name} in {hotel_deal.neighbourhood}\n"
+                    f"   {nights} nights with {amenities_text}\n"
+                    f"   ${hotel_total:.2f}\n\n"
+                    f"👥 For {travelers} {'person' if travelers == 1 else 'people'}\n\n"
                     f"💰 Total: ${bundle.total_price:.2f}\n\n"
-                    f"[**Proceed to Payment**]({payment_link})"
+                    f"Want more details? Just ask me to explain the deal.\n\n"
+                    f"[Proceed to Payment]({payment_link})"
                 )
                 
-                # Trigger Kafka event for booking initiation
+                # Trigger Kafka event for booking initiation (fire-and-forget, non-blocking)
                 if self.kafka:
-                    await self.kafka.send_message(
+                    asyncio.create_task(self._send_kafka_event(
                         "booking.initiated",
                         {"session_id": session_id, "bundle_id": bundle.id, "amount": bundle.total_price}
-                    )
+                    ))
             else:
                 message = "Sorry, that offer seems to have expired. Let's find you a new one."
+        
+        # Handle flight-only booking
+        elif selection_type == 'flight':
+            flight_id = last_assistant_turn['selected_flight']
+            flight = self.db.get(FlightDeal, flight_id)
+            
+            if flight:
+                # Generate unique payment token
+                import secrets
+                from .models import PaymentToken
+                
+                payment_token = secrets.token_urlsafe(32)
+                
+                # Get user_id from session
+                chat_session = self.db.get(ChatSession, session_id)
+                user_id = chat_session.user_id if chat_session else None
+                
+                # Get traveler count from context
+                travelers = context['user_constraints'].get('travelers', 1)
+                
+                # Store payment token in database for flight
+                try:
+                    token_record = PaymentToken(
+                        token=payment_token,
+                        session_id=session_id,
+                        bundle_id=flight.id,  # Store flight_id in bundle_id field
+                        user_id=user_id,
+                        booking_type="flight",
+                        status="pending"
+                    )
+                    self.db.add(token_record)
+                    self.db.commit()
+                except Exception as e:
+                    logger.error(f"Failed to create payment token: {e}")
+                    self.db.rollback()
+                    payment_token = None
+                
+                # Build payment link for flight
+                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:8088")
+                if payment_token:
+                    payment_link = f"{frontend_url}/booking/flights/{flight.id}?passengers={travelers}&token={payment_token}"
+                else:
+                    payment_link = f"{frontend_url}/booking/flights/{flight.id}?passengers={travelers}"
+                
+                # Format dates
+                dep_date = flight.depart_date.strftime("%b %d") if hasattr(flight, 'depart_date') and flight.depart_date else 'N/A'
+                ret_date = flight.return_date.strftime("%b %d") if hasattr(flight, 'return_date') and flight.return_date else 'N/A'
+                stops_text = 'direct flight' if flight.stops == 0 else f'{flight.stops} stop(s)'
+                
+                message = (
+                    f"Perfect! Here's your flight reservation:\n\n"
+                    f"✈️ {flight.airline} flight from {flight.origin} to {flight.destination}\n"
+                    f"   {dep_date} - {ret_date} ({stops_text})\n"
+                    f"   ${flight.price:.2f}\n\n"
+                    f"👥 For {travelers} {'person' if travelers == 1 else 'people'}\n\n"
+                    f"💰 Total: ${flight.price:.2f}\n\n"
+                    f"[Proceed to Payment]({payment_link})"
+                )
+                
+                # Trigger Kafka event
+                if self.kafka:
+                    asyncio.create_task(self._send_kafka_event(
+                        "booking.initiated",
+                        {"session_id": session_id, "flight_id": flight.id, "amount": flight.price}
+                    ))
+            else:
+                message = "Sorry, that flight seems to be no longer available. Let's find you another one."
+        
+        # Handle hotel-only booking
+        elif selection_type == 'hotel':
+            hotel_id = last_assistant_turn['selected_hotel']
+            hotel_deal = self.db.get(HotelDeal, hotel_id)
+            
+            if hotel_deal:
+                # Generate unique payment token
+                import secrets
+                from .models import PaymentToken
+                
+                payment_token = secrets.token_urlsafe(32)
+                
+                # Get user_id from session
+                chat_session = self.db.get(ChatSession, session_id)
+                user_id = chat_session.user_id if chat_session else None
+                
+                # Get traveler count and dates from context
+                travelers = context['user_constraints'].get('travelers', 1)
+                start_date = context['user_constraints'].get('start_date')
+                end_date = context['user_constraints'].get('end_date')
+                
+                # Calculate nights
+                nights = 1
+                if start_date and end_date:
+                    try:
+                        start = datetime.fromisoformat(start_date) if isinstance(start_date, str) else start_date
+                        end = datetime.fromisoformat(end_date) if isinstance(end_date, str) else end_date
+                        nights = max((end - start).days, 1)
+                    except:
+                        pass
+                
+                # Store payment token in database for hotel
+                try:
+                    token_record = PaymentToken(
+                        token=payment_token,
+                        session_id=session_id,
+                        bundle_id=hotel_deal.id,  # Store hotel_id in bundle_id field
+                        user_id=user_id,
+                        booking_type="hotel",
+                        status="pending"
+                    )
+                    self.db.add(token_record)
+                    self.db.commit()
+                except Exception as e:
+                    logger.error(f"Failed to create payment token: {e}")
+                    self.db.rollback()
+                    payment_token = None
+                
+                # Build payment link for hotel
+                frontend_url = os.getenv("FRONTEND_URL", "http://localhost:8088")
+                if payment_token:
+                    payment_link = f"{frontend_url}/booking/hotels/{hotel_deal.id}?guests={travelers}&token={payment_token}"
+                else:
+                    payment_link = f"{frontend_url}/booking/hotels/{hotel_deal.id}?guests={travelers}"
+                
+                # Amenities
+                amenities = []
+                if hotel_deal.is_pet_friendly:
+                    amenities.append('pet-friendly')
+                if hotel_deal.has_breakfast:
+                    amenities.append('free breakfast')
+                if hotel_deal.is_refundable:
+                    amenities.append('free cancellation')
+                amenities_text = ', '.join(amenities) if amenities else 'standard amenities'
+                
+                total_price = hotel_deal.price_per_night * nights
+                
+                message = (
+                    f"Perfect! Here's your hotel reservation:\n\n"
+                    f"🏨 {hotel_deal.neighbourhood} Hotel\n"
+                    f"   {nights} nights with {amenities_text}\n"
+                    f"   ${hotel_deal.price_per_night:.2f} per night\n\n"
+                    f"👥 For {travelers} {'person' if travelers == 1 else 'people'}\n\n"
+                    f"💰 Total: ${total_price:.2f}\n\n"
+                    f"[Proceed to Payment]({payment_link})"
+                )
+                
+                # Trigger Kafka event
+                if self.kafka:
+                    asyncio.create_task(self._send_kafka_event(
+                        "booking.initiated",
+                        {"session_id": session_id, "hotel_id": hotel_deal.id, "amount": total_price}
+                    ))
+            else:
+                message = "Sorry, that hotel seems to be no longer available. Let's find you another one."
 
         # Store turns
         user_turn = ConversationTurn(
@@ -1062,3 +1517,10 @@ class EnhancedChatHandler:
         """Get list of available destination airports"""
         result = self.db.exec(select(FlightDeal.destination).distinct()).all()
         return [r for r in result if r]
+    
+    async def _send_kafka_event(self, topic: str, message: dict):
+        """Send Kafka event in background (fire-and-forget for analytics)"""
+        try:
+            await self.kafka.send_message(topic, message)
+        except Exception as e:
+            logger.warning(f"Failed to send Kafka event to {topic}: {e}")

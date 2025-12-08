@@ -10,11 +10,11 @@ import os
 from datetime import datetime
 from typing import List
 
-from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from .models import Bundle, FlightDeal, HotelDeal, Watch, ChatSession, ConversationTurn
+from .models import Bundle, FlightDeal, HotelDeal, Watch, ChatSession, ConversationTurn, PaymentToken
 from .schemas import (
     BundleResponse,
     ChatQuery,
@@ -133,7 +133,7 @@ async def on_shutdown() -> None:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080", "http://localhost:8088"],
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080,http://localhost:8088").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -360,8 +360,18 @@ async def create_chat_session(request: ChatSessionCreate, session: Session = Dep
 
 
 @app.get("/chat/sessions/{session_id}/history", response_model=ChatHistoryResponse)
-async def get_chat_history(session_id: int, session: Session = Depends(get_session)):
-    """Get conversation history for a session"""
+async def get_chat_history(session_id: int, user_id: int, session: Session = Depends(get_session)):
+    """Get conversation history for a session - validates user ownership"""
+    
+    # First verify the session belongs to this user
+    chat_session = session.get(ChatSession, session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if chat_session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied: Session does not belong to this user")
+    
+    # Get conversation history
     turns = session.exec(
         select(ConversationTurn)
         .where(ConversationTurn.session_id == session_id)
@@ -382,8 +392,17 @@ async def get_chat_history(session_id: int, session: Session = Depends(get_sessi
 
 
 @app.post("/chat", response_model=ChatMessageResponse)
-async def send_chat_message(request: ChatMessageRequest, session: Session = Depends(get_session)):
+async def send_chat_message(request: ChatMessageRequest, user_id: int, session: Session = Depends(get_session)):
     """Send a message and get AI response with bundles - ENHANCED VERSION"""
+    
+    # Validate session belongs to user
+    chat_session = session.get(ChatSession, request.session_id)
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if chat_session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied: Session does not belong to this user")
+    
     # Import Enhanced Chat Handler
     from .chat_handler_enhanced import EnhancedChatHandler
     
@@ -428,6 +447,147 @@ async def send_chat_message(request: ChatMessageRequest, session: Session = Depe
             timestamp=assistant_turn.timestamp,
             bundles=None
         )
+
+
+# --- Payment Token Endpoints --------------------------------------------------
+
+@app.get("/payment-token/{token}")
+async def check_payment_token(token: str, session: Session = Depends(get_session)):
+    """Check if payment token is valid and get bundle info"""
+    from .models import PaymentToken
+    
+    token_record = session.exec(
+        select(PaymentToken).where(PaymentToken.token == token)
+    ).first()
+    
+    if not token_record:
+        raise HTTPException(status_code=404, detail="Invalid payment token")
+    
+    if token_record.status == "used":
+        return {
+            "valid": False,
+            "status": "used",
+            "message": "This payment link has already been used",
+            "booking_id": token_record.booking_id,
+            "bundle_id": token_record.bundle_id,
+            "booking_type": token_record.booking_type if hasattr(token_record, 'booking_type') else 'bundle'
+        }
+    
+    if token_record.status == "expired":
+        return {
+            "valid": False,
+            "status": "expired",
+            "message": "This payment link has expired"
+        }
+    
+    return {
+        "valid": True,
+        "status": "pending",
+        "bundle_id": token_record.bundle_id,
+        "session_id": token_record.session_id,
+        "user_id": token_record.user_id,
+        "booking_type": token_record.booking_type if hasattr(token_record, 'booking_type') else 'bundle'
+    }
+
+
+@app.post("/payment-token/{token}/complete")
+async def complete_payment_token(
+    token: str,
+    request: Request,
+    session: Session = Depends(get_session)
+):
+    """Mark payment token as used and send confirmation to chat"""
+    from .models import PaymentToken
+    import json
+    
+    # Parse request body
+    try:
+        body = await request.json()
+        booking_id = body.get('booking_id')  # Single booking (backwards compat)
+        booking_ids = body.get('booking_ids')  # Multiple bookings (bundles)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid request body")
+    
+    # Validate at least one is provided
+    if not booking_id and not booking_ids:
+        raise HTTPException(status_code=400, detail="booking_id or booking_ids is required")
+    
+    token_record = session.exec(
+        select(PaymentToken).where(PaymentToken.token == token)
+    ).first()
+    
+    if not token_record:
+        raise HTTPException(status_code=404, detail="Invalid payment token")
+    
+    # Mark as used and store booking ID(s)
+    token_record.status = "used"
+    token_record.used_at = datetime.utcnow()
+    
+    # Determine booking type and generate appropriate confirmation message
+    booking_type = token_record.booking_type if hasattr(token_record, 'booking_type') else 'bundle'
+    
+    if booking_ids:
+        # Bundle booking with multiple IDs
+        token_record.booking_ids = json.dumps(booking_ids)
+        booking_display = f"Flight Booking: {booking_ids[0]}\nHotel Booking: {booking_ids[1]}"
+        confirmation_message = (
+            f"🎉 Bundle Booking Confirmed!\n\n"
+            f"Your flight and hotel have been successfully booked!\n\n"
+            f"{booking_display}\n\n"
+            f"View all your bookings in My Bookings. Have a great trip!"
+        )
+    else:
+        # Single booking (flight or hotel)
+        token_record.booking_id = booking_id
+        
+        if booking_type == 'flight':
+            confirmation_message = (
+                f"✈️ Flight Booking Confirmed!\n\n"
+                f"Your flight has been successfully booked!\n"
+                f"Booking ID: {booking_id}\n\n"
+                f"View your booking details in My Bookings. Have a safe trip!"
+            )
+        elif booking_type == 'hotel':
+            confirmation_message = (
+                f"🏨 Hotel Booking Confirmed!\n\n"
+                f"Your hotel reservation has been successfully completed!\n"
+                f"Booking ID: {booking_id}\n\n"
+                f"View your booking details in My Bookings. Enjoy your stay!"
+            )
+        else:
+            # Generic fallback
+            confirmation_message = (
+                f"🎉 Booking Confirmed!\n\n"
+                f"Your booking has been successfully completed!\n"
+                f"Booking ID: {booking_id}\n\n"
+                f"View your booking details in My Bookings. How else can I help you today?"
+            )
+    
+    session.add(token_record)
+    
+    # Add confirmation message to chat
+    assistant_turn = ConversationTurn(
+        session_id=token_record.session_id,
+        role="assistant",
+        content=confirmation_message,
+        timestamp=datetime.utcnow()
+    )
+    session.add(assistant_turn)
+    session.commit()
+    
+    # Send WebSocket notification if connected
+    try:
+        manager = app.state.ws_manager
+        await manager.send_to_session(token_record.session_id, {
+            "type": "booking.confirmed",
+            "booking_id": booking_id or booking_ids,
+            "booking_type": booking_type,
+            "message": confirmation_message
+        })
+    except:
+        logger.info(f"WebSocket notification not sent for session {token_record.session_id}")
+    
+    return {"success": True, "message": "Booking confirmed"}
 
 
 # --- Deal Endpoints -----------------------------------------------------------

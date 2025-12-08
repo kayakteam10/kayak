@@ -101,6 +101,27 @@ class ConversationTurn(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
     # Bundles associated with this turn (for assistant responses) - stored as JSON string
+    bundles: Optional[str] = Field(default=None)
+
+
+class PaymentToken(SQLModel, table=True):
+    """Payment link tokens for booking tracking"""
+    __tablename__ = "payment_tokens"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    token: str = Field(unique=True, index=True)  # Unique token for payment link
+    session_id: int = Field(foreign_key="chat_sessions.id", index=True)
+    bundle_id: int = Field(index=True)  # For bundles, or flight_id/hotel_id for singles
+    user_id: int = Field(index=True)
+    booking_type: str = Field(default="bundle")  # 'bundle', 'flight', 'hotel'
+    status: str = Field(default="pending")  # pending, used, expired
+    booking_id: Optional[int] = None  # Set after successful single booking
+    booking_ids: Optional[str] = Field(default=None, sa_column=Column(String(500)))  # JSON array for bundle bookings
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    used_at: Optional[datetime] = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)  # Additional timestamp field for compatibility
     bundles: Optional[str] = Field(default=None, sa_column=Column(String(1000)))  # JSON array as string
 
 

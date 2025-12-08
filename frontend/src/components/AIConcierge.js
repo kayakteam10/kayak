@@ -20,8 +20,10 @@ import {
 import BundleList from './BundleList';
 import WatchModal from './WatchModal';
 import './AIConcierge.css';
+import { useAuth } from '../contexts/AuthContext';
 
 const AIConcierge = () => {
+    const { isAuthenticated, user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [sessionId, setSessionId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -32,18 +34,25 @@ const AIConcierge = () => {
     const [selectedBundleId, setSelectedBundleId] = useState(null);
     const wsRef = useRef(null);
 
-    console.log('AIConcierge rendered. isOpen:', isOpen);
+    console.log('AIConcierge rendered. isOpen:', isOpen, 'isAuthenticated:', isAuthenticated);
 
     // Render message content with markdown links as buttons
     const renderMessageContent = (text) => {
-        // Decode HTML entities first
+        // Decode HTML entities and strip HTML tags
         const decodeHTML = (html) => {
             const txt = document.createElement('textarea');
             txt.innerHTML = html;
             return txt.value;
         };
         
-        const decodedText = decodeHTML(text);
+        // Strip HTML tags but preserve the text content
+        const stripHTMLTags = (html) => {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        };
+        
+        const decodedText = stripHTMLTags(decodeHTML(text));
         
         // Regex to match [text](url) markdown links
         const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -96,18 +105,32 @@ const AIConcierge = () => {
     // Initialize chat session
     useEffect(() => {
         const initSession = async () => {
+            // Check if user is authenticated
+            if (!isAuthenticated) {
+                setError('Please login to use AI chat services');
+                return;
+            }
+
+            // Clear any previous auth errors
+            setError(null);
+
             try {
                 // Get user ID from localStorage (set during login)
-                const userId = parseInt(localStorage.getItem('userId')) || 1;
+                const userId = parseInt(localStorage.getItem('userId'));
+                if (!userId) {
+                    setError('Please login to use AI chat services');
+                    return;
+                }
                 
-                // Try to restore previous session from localStorage
-                const storedSessionId = localStorage.getItem('aiChatSessionId');
+                // Use user-specific session storage key
+                const userSessionKey = `aiChatSessionId_user${userId}`;
+                const storedSessionId = localStorage.getItem(userSessionKey);
                 let currentSession;
                 
                 if (storedSessionId) {
                     // Try to load existing session
                     try {
-                        const history = await getChatHistory(storedSessionId);
+                        const history = await getChatHistory(storedSessionId, userId);
                         currentSession = { id: storedSessionId };
                         setMessages(
                             history.turns.map((turn) => ({
@@ -118,15 +141,15 @@ const AIConcierge = () => {
                             }))
                         );
                     } catch (err) {
-                        // Session expired, create new one
-                        console.log('Previous session expired, creating new one');
+                        // Session expired or invalid, create new one
+                        console.log('Previous session expired or access denied, creating new one');
                         currentSession = await createChatSession(userId);
-                        localStorage.setItem('aiChatSessionId', currentSession.id);
+                        localStorage.setItem(userSessionKey, currentSession.id);
                     }
                 } else {
-                    // Create new session
+                    // Create new session for this user
                     currentSession = await createChatSession(userId);
-                    localStorage.setItem('aiChatSessionId', currentSession.id);
+                    localStorage.setItem(userSessionKey, currentSession.id);
                 }
                 
                 setSessionId(currentSession.id);
@@ -139,7 +162,7 @@ const AIConcierge = () => {
         if (isOpen && !sessionId) {
             initSession();
         }
-    }, [isOpen, sessionId]);
+    }, [isOpen, sessionId, isAuthenticated, user]);
 
     // WebSocket connection
     useEffect(() => {
@@ -187,7 +210,7 @@ const AIConcierge = () => {
     }, [sessionId]);
 
     const handleSendMessage = async (message) => {
-        if (!sessionId) return;
+        if (!sessionId || !user) return;
 
         // Add user message immediately
         setMessages((prev) => [
@@ -199,7 +222,7 @@ const AIConcierge = () => {
         setError(null);
 
         try {
-            const response = await sendChatMessage(sessionId, message);
+            const response = await sendChatMessage(sessionId, message, user.id);
 
             // Add AI response
             setMessages((prev) => [
@@ -232,10 +255,69 @@ const AIConcierge = () => {
         }
     };
 
-    const handleBookBundle = (bundle) => {
-        // TODO: Navigate to booking page with bundle pre-selected
-        console.log('Book bundle:', bundle);
-        window.location.href = `/booking?bundleId=${bundle.bundle_id}`;
+    const handleBookBundle = async (bundle) => {
+        if (!sessionId || !user) return;
+        
+        // First, select the bundle by sending its price
+        const selectMessage = `I want the $${bundle.total_price.toFixed(0)} option`;
+        
+        setMessages((prev) => [
+            ...prev,
+            { message: selectMessage, sender: 'user', direction: 'outgoing' },
+        ]);
+        
+        setIsTyping(true);
+        
+        try {
+            // Step 1: Select the bundle
+            const selectResponse = await sendChatMessage(sessionId, selectMessage, user.id);
+            
+            setMessages((prev) => [
+                ...prev,
+                {
+                    message: selectResponse.content,
+                    sender: 'ai',
+                    direction: 'incoming',
+                },
+            ]);
+            
+            // Step 2: Confirm booking with "yes"
+            setTimeout(async () => {
+                setMessages((prev) => [
+                    ...prev,
+                    { message: 'yes', sender: 'user', direction: 'outgoing' },
+                ]);
+                
+                const bookResponse = await sendChatMessage(sessionId, 'yes', user.id);
+                
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        message: bookResponse.content,
+                        sender: 'ai',
+                        direction: 'incoming',
+                    },
+                ]);
+                
+                // Extract payment link with token from response
+                const linkMatch = bookResponse.content.match(/\[.*?\]\((.*?)\)/);
+                if (linkMatch && linkMatch[1]) {
+                    // Navigate to payment page with token
+                    window.location.href = linkMatch[1];
+                } else {
+                    // Fallback without token
+                    window.location.href = `/booking/bundles/${bundle.bundle_id}?passengers=1`;
+                }
+                
+                setIsTyping(false);
+            }, 500);
+            
+        } catch (err) {
+            console.error('Failed to initiate booking:', err);
+            setIsTyping(false);
+            // Fallback to direct navigation without token
+            window.location.href = `/booking/bundles/${bundle.bundle_id}?passengers=1`;
+        }
     };
 
     const handleTrackBundle = (bundle) => {
@@ -261,17 +343,24 @@ const AIConcierge = () => {
                 wsRef.current.close();
             }
 
-            // Clear current session
-            localStorage.removeItem('aiChatSessionId');
+            // Get user ID
+            const userId = parseInt(localStorage.getItem('userId'));
+            if (!userId) {
+                setError('Please login to use AI chat services');
+                return;
+            }
+
+            // Clear current session (user-specific key)
+            const userSessionKey = `aiChatSessionId_user${userId}`;
+            localStorage.removeItem(userSessionKey);
             setSessionId(null);
             setMessages([]);
             setBundles([]);
             setError(null);
 
-            // Create new session
-            const userId = parseInt(localStorage.getItem('userId')) || 1;
+            // Create new session for this user
             const newSession = await createChatSession(userId);
-            localStorage.setItem('aiChatSessionId', newSession.id);
+            localStorage.setItem(userSessionKey, newSession.id);
             setSessionId(newSession.id);
         } catch (err) {
             console.error('Failed to create new chat:', err);
@@ -299,43 +388,79 @@ const AIConcierge = () => {
                     <span>AI Travel Concierge</span>
                 </div>
                 <div className="ai-chat-header-actions">
-                    <button className="ai-chat-new" onClick={handleNewChat} aria-label="New chat" title="Start new chat">
-                        <FaPlus size={18} />
-                    </button>
+                    {isAuthenticated && (
+                        <button className="ai-chat-new" onClick={handleNewChat} aria-label="New chat" title="Start new chat">
+                            <FaPlus size={18} />
+                        </button>
+                    )}
                     <button className="ai-chat-close" onClick={toggleChat} aria-label="Close chat">
                         <FaTimes size={18} />
                     </button>
                 </div>
             </div>
 
-            <MainContainer>
-                <ChatContainer>
-                    <MessageList
-                        typingIndicator={isTyping ? <TypingIndicator content="AI is thinking..." /> : undefined}
+            {!isAuthenticated ? (
+                <div style={{
+                    padding: '20px',
+                    textAlign: 'center',
+                    height: '400px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: '#f5f5f5'
+                }}>
+                    <FaRobot size={48} color="#666" style={{ marginBottom: '20px' }} />
+                    <h3 style={{ color: '#333', marginBottom: '10px' }}>AI Chat Requires Login</h3>
+                    <p style={{ color: '#666', marginBottom: '20px' }}>
+                        Please login to use our AI Travel Concierge service
+                    </p>
+                    <button
+                        onClick={() => window.location.href = '/login'}
+                        style={{
+                            padding: '12px 24px',
+                            backgroundColor: '#ff6b35',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                        }}
                     >
-                        {messages.map((msg, index) => (
-                            <Message
-                                key={index}
-                                model={{
-                                    message: msg.message,
-                                    sender: msg.sender,
-                                    direction: msg.direction,
-                                }}
-                            >
-                                <Message.CustomContent>
-                                    {renderMessageContent(msg.message)}
-                                </Message.CustomContent>
-                            </Message>
-                        ))}
-                    </MessageList>
+                        Login to Continue
+                    </button>
+                </div>
+            ) : (
+                <MainContainer>
+                    <ChatContainer>
+                        <MessageList
+                            typingIndicator={isTyping ? <TypingIndicator content="AI is thinking..." /> : undefined}
+                        >
+                            {messages.map((msg, index) => (
+                                <Message
+                                    key={index}
+                                    model={{
+                                        message: msg.message,
+                                        sender: msg.sender,
+                                        direction: msg.direction,
+                                    }}
+                                >
+                                    <Message.CustomContent>
+                                        {renderMessageContent(msg.message)}
+                                    </Message.CustomContent>
+                                </Message>
+                            ))}
+                        </MessageList>
 
-                    <MessageInput
-                        placeholder="Ask me anything about your trip..."
-                        onSend={handleSendMessage}
-                        attachButton={false}
-                    />
-                </ChatContainer>
-            </MainContainer>
+                        <MessageInput
+                            placeholder="Ask me anything about your trip..."
+                            onSend={handleSendMessage}
+                            attachButton={false}
+                        />
+                    </ChatContainer>
+                </MainContainer>
+            )}
 
             {error && (
                 <div className="ai-chat-error">

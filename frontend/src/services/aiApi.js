@@ -18,15 +18,19 @@ export const createChatSession = async (userId) => {
     return response.data;
 };
 
-export const getChatHistory = async (sessionId) => {
-    const response = await aiApi.get(`/chat/sessions/${sessionId}/history`);
+export const getChatHistory = async (sessionId, userId) => {
+    const response = await aiApi.get(`/chat/sessions/${sessionId}/history`, {
+        params: { user_id: userId }
+    });
     return response.data;
 };
 
-export const sendChatMessage = async (sessionId, message) => {
+export const sendChatMessage = async (sessionId, message, userId) => {
     const response = await aiApi.post('/chat', {
         session_id: sessionId,
         message,
+    }, {
+        params: { user_id: userId }
     });
     return response.data;
 };
