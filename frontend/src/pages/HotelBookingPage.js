@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaLock, FaCheckCircle, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaUtensils, FaCoffee, FaBed } from 'react-icons/fa';
 import { authAPI, hotelsAPI, bookingsAPI } from '../services/api';
 import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
+import { parseLocalDate, calculateNights as calcNights, formatDateDisplay } from '../utils/dateUtils';
 import './HotelBookingPage.css';
 
 const HotelBookingPage = () => {
@@ -113,10 +114,7 @@ const HotelBookingPage = () => {
   };
 
   const calculateNights = () => {
-    if (!checkIn || !checkOut) return 1;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+    return calcNights(checkIn, checkOut);
   };
 
   const getHotelImage = (hotelName) => {
@@ -141,13 +139,13 @@ const HotelBookingPage = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   };
 
   const getCancellationDate = () => {
     if (!checkIn) return '';
-    const date = new Date(checkIn);
+    const date = parseLocalDate(checkIn);
     date.setDate(date.getDate() - 1);
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   };

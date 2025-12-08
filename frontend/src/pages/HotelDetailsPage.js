@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaStar, FaMapMarkerAlt, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaHeart, FaRegHeart, FaShare } from 'react-icons/fa';
 import { hotelsAPI } from '../services/api';
+import { parseLocalDate, calculateNights as calcNights, formatDateDisplay } from '../utils/dateUtils';
 import './HotelDetailsPage.css';
 
 const HotelDetailsPage = () => {
@@ -39,10 +40,7 @@ const HotelDetailsPage = () => {
   };
 
   const calculateNights = () => {
-    if (!checkIn || !checkOut) return 1;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+    return calcNights(checkIn, checkOut);
   };
 
   const getHotelImages = (hotelName) => {
@@ -342,9 +340,9 @@ const HotelDetailsPage = () => {
           <section id="rooms" className="rooms-section">
             <h2>Latest deals for {hotel.hotel_name}</h2>
             <div className="search-summary">
-              <span>{new Date(checkIn).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })}</span>
+              <span>{formatDateDisplay(checkIn)}</span>
               <span> - </span>
-              <span>{new Date(checkOut).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })}</span>
+              <span>{formatDateDisplay(checkOut)}</span>
               <span> | {rooms} room, {Number(adults) + Number(children)} guests</span>
             </div>
 
@@ -423,11 +421,11 @@ const HotelDetailsPage = () => {
             <div className="booking-details">
               <div className="detail-row">
                 <span>Check-in</span>
-                <span>{new Date(checkIn).toLocaleDateString()}</span>
+                <span>{formatDateDisplay(checkIn)}</span>
               </div>
               <div className="detail-row">
                 <span>Check-out</span>
-                <span>{new Date(checkOut).toLocaleDateString()}</span>
+                <span>{formatDateDisplay(checkOut)}</span>
               </div>
               <div className="detail-row">
                 <span>Guests</span>

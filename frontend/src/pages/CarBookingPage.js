@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { carsAPI, authAPI, bookingsAPI } from '../services/api';
 import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
 import { FaCar, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaCreditCard, FaLock } from 'react-icons/fa';
+import { parseLocalDate, calculateNights, formatDateDisplay } from '../utils/dateUtils';
 import './CarBookingPage.css';
 
 function CarBookingPage() {
@@ -44,12 +45,7 @@ function CarBookingPage() {
 
   // Calculate rental days
   const calculateRentalDays = () => {
-    if (!pickupDate || !dropoffDate) return 1;
-    const pickup = new Date(pickupDate);
-    const dropoff = new Date(dropoffDate);
-    const diffTime = Math.abs(dropoff - pickup);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays || 1;
+    return calculateNights(pickupDate, dropoffDate);
   };
 
   const rentalDays = calculateRentalDays();
@@ -415,8 +411,7 @@ function CarBookingPage() {
                       <FaCalendar /> Pick-up Date
                     </div>
                     <div className="detail-value">
-                      {new Date(pickupDate).toLocaleDateString('en-US', {
-                        weekday: 'short',
+                      {formatDateDisplay(pickupDate, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -445,8 +440,7 @@ function CarBookingPage() {
                       <FaCalendar /> Drop-off Date
                     </div>
                     <div className="detail-value">
-                      {new Date(dropoffDate).toLocaleDateString('en-US', {
-                        weekday: 'short',
+                      {formatDateDisplay(dropoffDate, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'

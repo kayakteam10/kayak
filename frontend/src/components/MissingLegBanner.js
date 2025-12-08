@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaExclamationTriangle, FaCalendarAlt } from 'react-icons/fa';
+import { parseLocalDate, formatDateForInput } from '../utils/dateUtils';
 import './MissingLegBanner.css';
 
 function MissingLegBanner({ missingLeg, onDateAdjust, departureDate, returnDate }) {
@@ -7,13 +8,13 @@ function MissingLegBanner({ missingLeg, onDateAdjust, departureDate, returnDate 
 
   const adjustDate = (days) => {
     if (missingLeg === 'outbound') {
-      const newDate = new Date(departureDate);
+      const newDate = parseLocalDate(departureDate);
       newDate.setDate(newDate.getDate() + days);
-      onDateAdjust('departure_date', newDate.toISOString().split('T')[0]);
+      onDateAdjust('departure_date', formatDateForInput(newDate));
     } else if (missingLeg === 'return') {
-      const newDate = new Date(returnDate);
+      const newDate = parseLocalDate(returnDate);
       newDate.setDate(newDate.getDate() + days);
-      onDateAdjust('return_date', newDate.toISOString().split('T')[0]);
+      onDateAdjust('return_date', formatDateForInput(newDate));
     }
   };
 

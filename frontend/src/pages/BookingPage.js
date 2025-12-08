@@ -5,6 +5,7 @@ import { FaPlane, FaHotel, FaCar, FaCheckCircle, FaArrowRight } from 'react-icon
 import { useAuth } from '../contexts/AuthContext';
 import SeatMap from '../components/SeatMap';
 import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
+import { parseLocalDate, formatDateDisplay } from '../utils/dateUtils';
 import './BookingPage.css';
 
 function BookingPage() {
@@ -1633,7 +1634,7 @@ function BookingPage() {
                           const checkIn = searchParams.get('checkIn') || searchParams.get('checkin');
                           const checkOut = searchParams.get('checkOut') || searchParams.get('checkout');
                           if (!checkIn || !checkOut) return 'Dates not selected';
-                          return `${new Date(checkIn).toLocaleDateString()} - ${new Date(checkOut).toLocaleDateString()}`;
+                          return `${formatDateDisplay(checkIn)} - ${formatDateDisplay(checkOut)}`;
                         })()}
                       </p>
                     </div>

@@ -16,6 +16,7 @@ const HotelLocationAutocomplete = ({
     const [isLoading, setIsLoading] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [selectedLocation, setSelectedLocation] = useState(null); // Store full location object
     const wrapperRef = useRef(null);
     const inputRef = useRef(null);
     const debounceTimer = useRef(null);
@@ -47,8 +48,11 @@ const HotelLocationAutocomplete = ({
 
     // Update input value when prop changes
     useEffect(() => {
-        setInputValue(value || '');
-    }, [value]);
+        // Only update if we don't have a selected location or if value changed
+        if (!selectedLocation || (value && value !== selectedLocation.value)) {
+            setInputValue(value || '');
+        }
+    }, [value, selectedLocation]);
 
     // Search hotels/cities with debouncing
     const searchLocations = async (searchTerm) => {
@@ -77,6 +81,7 @@ const HotelLocationAutocomplete = ({
     const handleInputChange = (e) => {
         const newValue = e.target.value;
         setInputValue(newValue);
+        setSelectedLocation(null); // Clear selection when user types
         onChange(newValue); // Update parent state immediately for typing
 
         // Clear existing timer
@@ -93,6 +98,7 @@ const HotelLocationAutocomplete = ({
     // Handle suggestion selection
     const handleSelectSuggestion = (location) => {
         setInputValue(location.value);
+        setSelectedLocation(location); // Store the selected location
         onChange(location.value, location); // Pass value and full location object
         setSuggestions([]);
         setIsOpen(false);
@@ -197,7 +203,10 @@ const HotelLocationAutocomplete = ({
                             key={`${location.type}-${location.value}-${index}`}
                             className={`airport-suggestion-item ${index === highlightedIndex ? 'highlighted' : ''
                                 }`}
-                            onClick={() => handleSelectSuggestion(location)}
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectSuggestion(location);
+                            }}
                             onMouseEnter={() => setHighlightedIndex(index)}
                         >
                             <div className="airport-suggestion-content">

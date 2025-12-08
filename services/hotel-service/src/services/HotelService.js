@@ -333,9 +333,10 @@ class HotelService {
         return hotels.map(hotel => {
             const pricePerNight = parseFloat(hotel.price_per_night) || 0;
 
-            // Calculate number of nights
-            const checkIn = new Date(filters.checkIn);
-            const checkOut = new Date(filters.checkOut);
+            // Calculate number of nights (UTC-agnostic)
+            // Parse dates as YYYY-MM-DD strings to avoid timezone issues
+            const checkIn = new Date(filters.checkIn + 'T00:00:00Z');
+            const checkOut = new Date(filters.checkOut + 'T00:00:00Z');
             const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
             // Calculate total price
