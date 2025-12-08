@@ -60,11 +60,11 @@ function SearchResultsPage() {
     const fetchResults = async () => {
       setLoading(true);
       setError('');
-      
+
       // Track page view
       trackPageView(`search-${type}`, 'results');
       trackSectionView(`search-${type}`, 'results-list', 90);
-      
+
       try {
         let response;
         const params = Object.fromEntries(searchParams);
@@ -104,7 +104,32 @@ function SearchResultsPage() {
         // Handle different response structures
         let data = [];
         if (type === 'flights') {
-          data = response.data.data || response.data.flights || response.data[type] || response.data.results || [];
+          const responseData = response.data.data;
+
+          // Check if this is a roundtrip response with separate outbound/return arrays
+          if (responseData && responseData.outbound && responseData.return && responseData.tripType === 'roundtrip') {
+            console.log('✈️ Roundtrip response detected');
+            console.log('✈️ Outbound flights:', responseData.outbound.length);
+            console.log('✈️ Return flights:', responseData.return.length);
+
+            // Transform roundtrip structure: pair each outbound with each return
+            data = [];
+            responseData.outbound.forEach(outbound => {
+              responseData.return.forEach(returnFlight => {
+                data.push({
+                  ...outbound,
+                  is_roundtrip: true,
+                  return_flight: returnFlight,
+                  total_price: (parseFloat(outbound.price) + parseFloat(returnFlight.price)).toFixed(2)
+                });
+              });
+            });
+            console.log('✈️ Created', data.length, 'roundtrip combinations');
+          } else {
+            // Regular one-way or other structure
+            data = responseData || response.data.flights || response.data[type] || response.data.results || [];
+          }
+
           console.log('✈️ Flight data extracted:', data);
           console.log('✈️ Number of flights:', data.length);
         } else if (type === 'hotels') {
