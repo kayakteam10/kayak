@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import SeatMap from '../components/SeatMap';
 import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
 import { parseLocalDate, formatDateDisplay } from '../utils/dateUtils';
+import { trackUserActivity } from '../utils/analytics';
 import './BookingPage.css';
 
 function BookingPage() {
@@ -913,6 +914,13 @@ function BookingPage() {
 
       // Extract booking ID from response (flights API returns response.data.booking.id)
       const bookingId = response.data.data?.bookingId || response.data.data?.id || response.data.booking?.id || response.data.booking_id || response.data.id;
+
+      // Track booking creation
+      trackUserActivity('booking_created', {
+        booking_type: type,
+        booking_id: bookingId,
+        total_amount: bookingPayload.total_amount
+      });
 
       // Save payment method to user's profile ONLY if using a new card
       if (useNewCard) {

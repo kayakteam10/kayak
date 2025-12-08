@@ -8,7 +8,7 @@ import PriceMatrix from '../components/PriceMatrix';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { FaPlane, FaHotel, FaCar, FaStar, FaMapMarkerAlt, FaClock, FaUsers, FaSuitcase } from 'react-icons/fa';
-import { trackPageView, trackPropertyClick, trackSectionView } from '../utils/analytics';
+import { trackPageView, trackPropertyClick, trackSectionView, trackSearch } from '../utils/analytics';
 import './SearchResultsPage.css';
 
 function SearchResultsPage() {
@@ -68,6 +68,9 @@ function SearchResultsPage() {
       try {
         let response;
         const params = Object.fromEntries(searchParams);
+
+        // Track search event
+        trackSearch(type, params);
 
         console.log('🔍 Search params:', params);
         console.log('🔍 Search type:', type);

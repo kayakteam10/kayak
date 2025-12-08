@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../services/api';
 
 // Track page clicks/views
 export const trackPageView = async (page, section = 'general') => {
@@ -44,8 +44,46 @@ export const trackSectionView = async (page, section, visibilityScore) => {
     }
 };
 
+// Track user activity (login, booking, etc.)
+export const trackUserActivity = async (activityType, details = {}) => {
+    try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return; // Only track for logged-in users
+
+        await api.post('/api/analytics/track', {
+            type: 'user_activity',
+            user_id: userId,
+            activity_type: activityType,
+            details,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Analytics tracking error:', error);
+    }
+};
+
+// Track search events
+export const trackSearch = async (searchType, searchParams) => {
+    try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return; // Only track for logged-in users
+
+        await api.post('/api/analytics/track', {
+            type: 'search',
+            user_id: userId,
+            search_type: searchType,
+            search_params: searchParams,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Analytics tracking error:', error);
+    }
+};
+
 export default {
     trackPageView,
     trackPropertyClick,
-    trackSectionView
+    trackSectionView,
+    trackUserActivity,
+    trackSearch
 };

@@ -345,109 +345,7 @@ router.get('/review-analytics/rating-distribution/:propertyType', async (req, re
     }
 });
 
-// ========== 5. USER COHORT ANALYTICS ==========
-router.get('/user-cohorts', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { cohortType, sortBy = 'total_bookings', order = 'desc', limit = 20 } = req.query;
-
-        let query = {};
-        if (cohortType) {
-            query.cohort_type = cohortType;
-        }
-
-        const sortOrder = order === 'desc' ? -1 : 1;
-
-        const data = await db.collection('user_cohorts')
-            .find(query)
-            .sort({ [sortBy]: sortOrder })
-            .limit(parseInt(limit))
-            .toArray();
-
-        res.json({
-            success: true,
-            data,
-            total: data.length,
-            cohortType: cohortType || 'all'
-        });
-    } catch (error) {
-        console.error('User cohorts error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get specific cohort details (e.g., users from San Jose, CA)
-router.get('/user-cohorts/:cohortName', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { cohortName } = req.params;
-
-        const cohortData = await db.collection('user_cohorts')
-            .findOne({ cohort_name: cohortName });
-
-        if (!cohortData) {
-            return res.status(404).json({
-                success: false,
-                error: 'Cohort not found'
-            });
-        }
-
-        // Get activity logs for this cohort if it's a location cohort
-        let activityData = [];
-        if (cohortData.cohort_type === 'location' && cohortData.city) {
-            activityData = await db.collection('activity_logs')
-                .find({ 'location.city': cohortData.city })
-                .sort({ timestamp: -1 })
-                .limit(50)
-                .toArray();
-        }
-
-        res.json({
-            success: true,
-            cohort: cohortData,
-            recentActivity: activityData,
-            activityCount: activityData.length
-        });
-    } catch (error) {
-        console.error('Cohort details error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get cohort comparison
-router.get('/user-cohorts/compare/:type', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { type } = req.params; // 'location' or 'age'
-
-        const data = await db.collection('user_cohorts')
-            .find({ cohort_type: type })
-            .sort({ total_bookings: -1 })
-            .toArray();
-
-        // Calculate metrics
-        const comparison = data.map(cohort => ({
-            name: cohort.cohort_name,
-            users: cohort.user_count,
-            bookings: cohort.total_bookings,
-            avgSpend: cohort.avg_spend_per_user,
-            conversionRate: ((cohort.total_bookings / cohort.user_count) * 100).toFixed(2),
-            totalRevenue: (cohort.total_bookings * cohort.avg_spend_per_user).toFixed(2)
-        }));
-
-        res.json({
-            success: true,
-            cohortType: type,
-            data: comparison,
-            total: comparison.length
-        });
-    } catch (error) {
-        console.error('Cohort comparison error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ========== 6. USER TRACE DIAGRAM DATA ==========
+// ========== 5. USER TRACE DIAGRAM DATA ==========
 router.get('/user-trace/:userId', async (req, res) => {
     try {
         const db = await initMongo();
@@ -540,7 +438,7 @@ router.get('/cohort-trace/:cohortName', async (req, res) => {
     }
 });
 
-// ========== 7. COMPREHENSIVE ANALYTICS DASHBOARD DATA ==========
+// ========== 6. COMPREHENSIVE ANALYTICS DASHBOARD DATA ==========
 router.get('/dashboard', async (req, res) => {
     try {
         const db = await initMongo();
