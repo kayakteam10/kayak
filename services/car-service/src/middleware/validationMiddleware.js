@@ -8,7 +8,7 @@ const validateCarSearch = (req, res, next) => {
     const schema = Joi.object({
         location: Joi.string().min(2).required(),
         pickupDate: Joi.date().iso().min('now').required(),
-        returnDate: Joi.date().iso().greater(Joi.ref('pickupDate')).required(),
+        returnDate: Joi.date().iso().min(Joi.ref('pickupDate')).required(),
         carType: Joi.string().valid('economy', 'compact', 'suv', 'luxury', 'any').optional()
     });
 
@@ -33,7 +33,7 @@ const validateCarSearch = (req, res, next) => {
 const validateCarReservation = (req, res, next) => {
     const schema = Joi.object({
         pickupDate: Joi.date().iso().min('now').required(),
-        returnDate: Joi.date().iso().greater(Joi.ref('pickupDate')).required()
+        returnDate: Joi.date().iso().min(Joi.ref('pickupDate')).required()
     });
 
     const { error } = schema.validate(req.body);

@@ -55,7 +55,39 @@ async function initializeKafka() {
     await kafkaProducer.connect();
     logger.info('✅ Kafka producer connected');
 
-    return kafkaProducer;
+    return { producer: kafkaProducer, kafka };
+}
+
+/**
+ * Initialize Kafka Consumer
+ */
+async function initializeKafkaConsumer(kafka, hotelService) {
+    if (!kafka) return null;
+
+    try {
+        const consumer = kafka.consumer({ groupId: 'hotel-service-group' });
+        await consumer.connect();
+
+        // Subscribe to booking events
+        await consumer.subscribe({ topic: 'booking.cancelled' });
+
+        await consumer.run({
+            eachMessage: async ({ topic, message }) => {
+                const event = JSON.parse(message.value.toString());
+                logger.info(`📨 Received ${topic}: ${event.bookingId}`);
+
+                if (topic === 'booking.cancelled') {
+                    await hotelService.handleBookingCancellation(event);
+                }
+            }
+        });
+
+        logger.info('✅ Kafka Consumer connected & listening');
+        return consumer;
+    } catch (error) {
+        logger.error(`❌ Kafka Consumer error: ${error.message}`);
+        return null;
+    }
 }
 
 /**
@@ -76,7 +108,10 @@ async function initializeApp() {
     });
 
     // Initialize Kafka (optional)
-    const kafka = await initializeKafka();
+    // Initialize Kafka
+    const kafkaData = await initializeKafka();
+    const kafka = kafkaData.kafka;
+    const kafkaProducer = kafkaData.producer;
 
     // Initialize MongoDB (optional)
     const mongoDb = getMongoDb();
@@ -84,7 +119,10 @@ async function initializeApp() {
     // Build dependency tree (Dependency Injection)
     const hotelRepo = new HotelRepository(dbPool);
     const cacheRepo = new CacheRepository(redisClient);
-    const hotelService = new HotelService(hotelRepo, cacheRepo, kafka, mongoDb);
+    const hotelService = new HotelService(hotelRepo, cacheRepo, kafkaProducer, mongoDb);
+
+    // Initialize Consumer
+    await initializeKafkaConsumer(kafka, hotelService);
     const hotelController = new HotelController(hotelService);
 
     // Register routes

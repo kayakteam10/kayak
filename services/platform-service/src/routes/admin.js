@@ -128,7 +128,7 @@ router.get('/bookings/:id', async (req, res) => {
 router.get('/flights', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
-        
+
         const [rows] = await dbPool.execute(`
             SELECT f.*, a1.city as departure_city, a2.city as arrival_city 
             FROM flights f
@@ -149,7 +149,7 @@ router.get('/flights', async (req, res) => {
 router.get('/users', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
-        
+
         const [rows] = await dbPool.execute(`
             SELECT id, first_name, last_name, email, role, phone_number, created_at 
             FROM users 
@@ -168,7 +168,7 @@ router.get('/users', async (req, res) => {
 router.get('/hotels', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
-        
+
         const [rows] = await dbPool.execute(`
             SELECT id, hotel_name, city, star_rating, price_per_night, 
                    available_rooms, total_rooms, user_rating, review_count
@@ -188,7 +188,7 @@ router.get('/hotels', async (req, res) => {
 router.get('/cars', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
-        
+
         const [rows] = await dbPool.execute(`
             SELECT id, company, model, car_type, location_city as city, 
                    num_seats, daily_rental_price, status, average_rating
@@ -204,15 +204,83 @@ router.get('/cars', async (req, res) => {
     }
 });
 
+// PUT /hotels/:id - Update hotel
+router.put('/hotels/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { hotel_name, city, star_rating, price_per_night, available_rooms } = req.body;
+
+        await dbPool.execute(`
+            UPDATE hotels 
+            SET hotel_name = ?, city = ?, star_rating = ?, 
+                price_per_night = ?, available_rooms = ?
+            WHERE id = ?
+        `, [hotel_name, city, star_rating, price_per_night, available_rooms, id]);
+
+        res.json({ success: true, message: 'Hotel updated successfully' });
+    } catch (error) {
+        console.error('Admin update hotel error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update hotel' });
+    }
+});
+
+// DELETE /hotels/:id - Delete hotel
+router.delete('/hotels/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await dbPool.execute('DELETE FROM hotels WHERE id = ?', [id]);
+
+        res.json({ success: true, message: 'Hotel deleted successfully' });
+    } catch (error) {
+        console.error('Admin delete hotel error:', error);
+        res.status(500).json({ success: false, error: 'Failed to delete hotel' });
+    }
+});
+
+// PUT /cars/:id - Update car
+router.put('/cars/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { company, model, car_type, location_city, num_seats, daily_rental_price, status } = req.body;
+
+        await dbPool.execute(`
+            UPDATE cars 
+            SET company = ?, model = ?, car_type = ?, location_city = ?, 
+                num_seats = ?, daily_rental_price = ?, status = ?
+            WHERE id = ?
+        `, [company, model, car_type, location_city, num_seats, daily_rental_price, status, id]);
+
+        res.json({ success: true, message: 'Car updated successfully' });
+    } catch (error) {
+        console.error('Admin update car error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update car' });
+    }
+});
+
+// DELETE /cars/:id - Delete car
+router.delete('/cars/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await dbPool.execute('DELETE FROM cars WHERE id = ?', [id]);
+
+        res.json({ success: true, message: 'Car deleted successfully' });
+    } catch (error) {
+        console.error('Admin delete car error:', error);
+        res.status(500).json({ success: false, error: 'Failed to delete car' });
+    }
+});
+
 // GET /analytics/revenue-by-property - Top 10 hotels with revenue
 router.get('/analytics/revenue-by-property', async (req, res) => {
     try {
         const year = req.query.year || new Date().getFullYear();
         const period = req.query.period;
-        
+
         let whereClause = 'WHERE b.status = \'confirmed\'';
         let params = [];
-        
+
         if (period) {
             // Use period-based filtering
             let days = 30;
@@ -226,7 +294,7 @@ router.get('/analytics/revenue-by-property', async (req, res) => {
             whereClause += ' AND YEAR(b.booking_date) = ?';
             params.push(year);
         }
-        
+
         // Get hotel revenue only
         const [hotelRevenue] = await dbPool.execute(`
             SELECT 
@@ -256,10 +324,10 @@ router.get('/analytics/summary', async (req, res) => {
     try {
         const year = req.query.year || new Date().getFullYear();
         const period = req.query.period;
-        
+
         let whereClause = 'WHERE b.status = \'confirmed\'';
         let params = [];
-        
+
         if (period) {
             // Use period-based filtering
             let days = 30;
@@ -273,7 +341,7 @@ router.get('/analytics/summary', async (req, res) => {
             whereClause += ' AND YEAR(b.booking_date) = ?';
             params.push(year);
         }
-        
+
         // Get total revenue and bookings
         const [summary] = await dbPool.execute(`
             SELECT 
@@ -301,10 +369,10 @@ router.get('/analytics/revenue-by-city', async (req, res) => {
     try {
         const year = req.query.year || new Date().getFullYear();
         const period = req.query.period;
-        
+
         let whereClause = 'WHERE b.status = \'confirmed\'';
         let params = [];
-        
+
         if (period) {
             // Use period-based filtering
             let days = 30;
@@ -318,7 +386,7 @@ router.get('/analytics/revenue-by-city', async (req, res) => {
             whereClause += ' AND YEAR(b.booking_date) = ?';
             params = [year, year, year];
         }
-        
+
         // Get all bookings with location data - use subquery to avoid GROUP BY issues
         const [cityRevenue] = await dbPool.execute(`
             SELECT 
@@ -408,47 +476,54 @@ router.get('/analytics/top-providers', async (req, res) => {
 // GET /analytics/reviews-stats - Reviews statistics
 router.get('/analytics/reviews-stats', async (req, res) => {
     try {
-        // Get total reviews and average rating
-        const [overallStats] = await dbPool.execute(`
-            SELECT COUNT(*) as total, AVG(rating) as avg_rating 
-            FROM reviews
-        `);
-        
-        const totalReviews = overallStats[0].total || 0;
-        const averageRating = parseFloat(overallStats[0].avg_rating) || 0;
+        const { MongoClient } = require('mongodb');
+        const mongoUrl = process.env.MONGO_URL || 'mongodb://mongodb:27017';
+        const client = new MongoClient(mongoUrl);
 
-        // Get rating distribution
-        const [ratingDist] = await dbPool.execute(`
-            SELECT rating, COUNT(*) as count 
-            FROM reviews 
-            GROUP BY rating
-        `);
-        
-        const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-        ratingDist.forEach(row => {
-            ratingDistribution[row.rating] = row.count;
-        });
+        try {
+            await client.connect();
+            const db = client.db('kayak_db');
+            const reviewsCollection = db.collection('reviews');
 
-        // Get reviews by type
-        const [typeStats] = await dbPool.execute(`
-            SELECT entity_type, COUNT(*) as count 
-            FROM reviews 
-            GROUP BY entity_type
-        `);
-        
-        const reviewsByType = { hotel: 0, flight: 0, car: 0 };
-        typeStats.forEach(row => {
-            reviewsByType[row.entity_type] = row.count;
-        });
+            // Get total reviews and average rating
+            const totalReviews = await reviewsCollection.countDocuments();
+            const avgResult = await reviewsCollection.aggregate([
+                { $group: { _id: null, avgRating: { $avg: '$rating' } } }
+            ]).toArray();
+            const averageRating = avgResult.length > 0 ? avgResult[0].avgRating : 0;
 
-        const stats = {
-            totalReviews,
-            averageRating: parseFloat(averageRating.toFixed(2)),
-            ratingDistribution,
-            reviewsByType
-        };
+            // Get rating distribution
+            const ratingDist = await reviewsCollection.aggregate([
+                { $group: { _id: '$rating', count: { $sum: 1 } } },
+                { $sort: { _id: -1 } }
+            ]).toArray();
 
-        res.json({ success: true, data: stats });
+            const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+            ratingDist.forEach(item => {
+                ratingDistribution[item._id] = item.count;
+            });
+
+            // Get reviews by type
+            const typeStats = await reviewsCollection.aggregate([
+                { $group: { _id: '$entity_type', count: { $sum: 1 } } }
+            ]).toArray();
+
+            const reviewsByType = { hotel: 0, flight: 0, car: 0 };
+            typeStats.forEach(item => {
+                reviewsByType[item._id] = item.count;
+            });
+
+            const stats = {
+                totalReviews,
+                averageRating: parseFloat(averageRating.toFixed(2)),
+                ratingDistribution,
+                reviewsByType
+            };
+
+            res.json({ success: true, data: stats });
+        } finally {
+            await client.close();
+        }
     } catch (error) {
         console.error('Reviews stats error:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch reviews stats' });
@@ -459,12 +534,12 @@ router.get('/analytics/reviews-stats', async (req, res) => {
 router.get('/analytics/booking-trends', async (req, res) => {
     try {
         const period = req.query.period || '30days';
-        
+
         let days = 30;
         if (period === '7days') days = 7;
         if (period === '90days') days = 90;
         if (period === '1year') days = 365;
-        
+
         const [trends] = await dbPool.execute(`
             SELECT 
                 DATE(booking_date) as date,

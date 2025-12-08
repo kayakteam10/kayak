@@ -54,7 +54,7 @@ function BookingConfirmationPage() {
     if (id) {
       // Initial fetch
       fetchBooking();
-      
+
       // Poll every 500ms for status updates
       pollInterval = setInterval(fetchBooking, 500);
 
@@ -113,9 +113,9 @@ function BookingConfirmationPage() {
 
     const passengers = bookingDetails?.passengers || [];
     const pricing = bookingDetails?.pricing;
-    const baseAmount = pricing?.base_amount || (parseFloat(booking?.total_amount) / 1.15) || 0;
-    const taxAmount = pricing?.tax_amount || (baseAmount * 0.15) || 0;
-    const totalAmount = pricing?.total_amount || parseFloat(booking?.total_amount) || 0;
+    const baseAmount = parseFloat(pricing?.base_amount) || (parseFloat(booking?.total_amount) / 1.15) || 0;
+    const taxAmount = parseFloat(pricing?.tax_amount) || (baseAmount * 0.15) || 0;
+    const totalAmount = parseFloat(pricing?.total_amount) || parseFloat(booking?.total_amount) || 0;
 
     return (
       <div className="print-body">
@@ -178,7 +178,7 @@ function BookingConfirmationPage() {
 
   const renderFlightDetails = (details) => {
     if (!details) return null;
-    
+
     return (
       <div className="print-section">
         <h3 className="section-title">Flight Details</h3>
@@ -191,10 +191,10 @@ function BookingConfirmationPage() {
             {details.departure_time && (
               <tr>
                 <td><strong>Departure Time:</strong></td>
-                <td>{new Date(details.departure_time).toLocaleString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
+                <td>{new Date(details.departure_time).toLocaleString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
@@ -204,10 +204,10 @@ function BookingConfirmationPage() {
             {details.arrival_time && (
               <tr>
                 <td><strong>Arrival Time:</strong></td>
-                <td>{new Date(details.arrival_time).toLocaleString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
+                <td>{new Date(details.arrival_time).toLocaleString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
@@ -224,15 +224,15 @@ function BookingConfirmationPage() {
 
   const renderHotelDetails = (details) => {
     if (!details) return null;
-    
+
     // Calculate number of nights
-    const nights = details.check_out && details.check_in 
+    const nights = details.check_out && details.check_in
       ? Math.ceil((new Date(details.check_out) - new Date(details.check_in)) / (1000 * 60 * 60 * 24))
       : details.nights || 0;
-    
+
     // Calculate total guests
     const totalGuests = (parseInt(details.adults) || 0) + (parseInt(details.children) || 0);
-    
+
     return (
       <div className="print-section">
         <h3 className="section-title">Hotel Reservation Details</h3>
@@ -253,10 +253,10 @@ function BookingConfirmationPage() {
             {(details.check_in_date || details.check_in) && (
               <tr>
                 <td><strong>Check-in:</strong></td>
-                <td>{new Date(details.check_in_date || details.check_in).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
+                <td>{new Date(details.check_in_date || details.check_in).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
                   day: 'numeric'
                 })} - After 3:00 PM</td>
               </tr>
@@ -264,10 +264,10 @@ function BookingConfirmationPage() {
             {(details.check_out_date || details.check_out) && (
               <tr>
                 <td><strong>Check-out:</strong></td>
-                <td>{new Date(details.check_out_date || details.check_out).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
+                <td>{new Date(details.check_out_date || details.check_out).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
                   day: 'numeric'
                 })} - Before 11:00 AM</td>
               </tr>
@@ -282,7 +282,7 @@ function BookingConfirmationPage() {
 
   const renderCarDetails = (details) => {
     if (!details) return null;
-    
+
     return (
       <div className="print-section">
         <h3 className="section-title">Car Rental Details</h3>
@@ -295,10 +295,10 @@ function BookingConfirmationPage() {
             {details.pickupDate && details.pickupTime && (
               <tr>
                 <td><strong>Pick-up:</strong></td>
-                <td>{new Date(details.pickupDate).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
+                <td>{new Date(details.pickupDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
                   day: 'numeric'
                 })} at {details.pickupTime}</td>
               </tr>
@@ -306,10 +306,10 @@ function BookingConfirmationPage() {
             {details.returnDate && details.returnTime && (
               <tr>
                 <td><strong>Drop-off:</strong></td>
-                <td>{new Date(details.returnDate).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
+                <td>{new Date(details.returnDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
                   day: 'numeric'
                 })} at {details.returnTime}</td>
               </tr>
@@ -415,7 +415,7 @@ function BookingConfirmationPage() {
 
                     // Display Hotel Details for hotel bookings
                     if (type === 'hotels' && bookingDetails) {
-                      const nights = bookingDetails.check_out && bookingDetails.check_in 
+                      const nights = bookingDetails.check_out && bookingDetails.check_in
                         ? Math.ceil((new Date(bookingDetails.check_out) - new Date(bookingDetails.check_in)) / (1000 * 60 * 60 * 24))
                         : bookingDetails.nights || 0;
                       const totalGuests = (parseInt(bookingDetails.adults) || 0) + (parseInt(bookingDetails.children) || 0);
@@ -467,10 +467,10 @@ function BookingConfirmationPage() {
                           {(bookingDetails.check_in_date || bookingDetails.check_in) && (
                             <div className="detail-row">
                               <span>Check-in:</span>
-                              <span>{new Date(bookingDetails.check_in_date || bookingDetails.check_in).toLocaleDateString('en-US', { 
-                                weekday: 'long', 
-                                year: 'numeric', 
-                                month: 'long', 
+                              <span>{new Date(bookingDetails.check_in_date || bookingDetails.check_in).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
                                 day: 'numeric'
                               })} - After 3:00 PM</span>
                             </div>
@@ -478,10 +478,10 @@ function BookingConfirmationPage() {
                           {(bookingDetails.check_out_date || bookingDetails.check_out) && (
                             <div className="detail-row">
                               <span>Check-out:</span>
-                              <span>{new Date(bookingDetails.check_out_date || bookingDetails.check_out).toLocaleDateString('en-US', { 
-                                weekday: 'long', 
-                                year: 'numeric', 
-                                month: 'long', 
+                              <span>{new Date(bookingDetails.check_out_date || bookingDetails.check_out).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
                                 day: 'numeric'
                               })} - Before 11:00 AM</span>
                             </div>
@@ -503,9 +503,9 @@ function BookingConfirmationPage() {
                     }
 
                     const pricing = bookingDetails?.pricing;
-                    const baseAmount = pricing?.base_amount || (parseFloat(booking?.total_amount) / 1.1) || 0;
-                    const taxAmount = pricing?.tax_amount || (baseAmount * 0.1) || 0;
-                    const totalAmount = pricing?.total_amount || parseFloat(booking?.total_amount) || 0;
+                    const baseAmount = parseFloat(pricing?.base_amount) || (parseFloat(booking?.total_amount) / 1.1) || 0;
+                    const taxAmount = parseFloat(pricing?.tax_amount) || (baseAmount * 0.1) || 0;
+                    const totalAmount = parseFloat(pricing?.total_amount) || parseFloat(booking?.total_amount) || 0;
 
                     return (
                       <>

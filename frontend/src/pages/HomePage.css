@@ -27,10 +27,14 @@
   position: relative;
   overflow: visible;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1200px;
+  /* Slightly constrained for better wide-screen look */
   display: flex;
+  flex-direction: column;
+  /* Stack vertically */
   gap: 48px;
-  align-items: flex-start;
+  align-items: center;
+  /* Center everything */
 }
 
 /* User Profile Display on Hero */
@@ -86,9 +90,11 @@
 }
 
 .hero-content {
-  flex: 1 1 60%;
+  width: 100%;
   min-width: 0;
   overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
 
 .hero-subnav {
@@ -133,10 +139,10 @@
   display: flex;
   align-items: center;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  padding: 4px;
-  height: 64px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  height: 96px;
   width: 100%;
   box-sizing: border-box;
   position: relative;
@@ -200,7 +206,7 @@
 
 .vertical-separator {
   width: 1px;
-  height: 32px;
+  height: 64px;
   background: #e0e0e0;
   flex-shrink: 0;
 }
@@ -224,10 +230,10 @@
 }
 
 .segment-label {
-  font-size: 11px;
+  font-size: 14px;
   color: #666;
-  font-weight: 600;
-  margin-bottom: 2px;
+  font-weight: 700;
+  margin-bottom: 6px;
   white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -236,14 +242,14 @@
 .segment-input {
   border: none;
   outline: none;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a1a1a;
   width: 100%;
   padding: 0;
   background: transparent;
-  height: 24px;
-  line-height: 24px;
+  height: 28px;
+  line-height: 28px;
   text-overflow: ellipsis;
 }
 
@@ -277,10 +283,10 @@
   background: #FF6B35;
   color: white;
   border: none;
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  font-size: 20px;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  font-size: 28px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -359,38 +365,32 @@
 }
 
 .hero-media {
-  flex: 0 0 400px;
-  max-width: 400px;
   width: 100%;
+  max-width: 100%;
   display: flex;
   align-items: center;
-  /* Center vertically relative to search bar */
   justify-content: center;
-  padding-top: 60px;
-  /* Align visually with search content */
+  padding-top: 0;
 }
 
 .hero-media-grid {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 16px;
-  aspect-ratio: 1;
-  /* Make the whole grid square */
+  grid-template-columns: repeat(4, 1fr);
+  /* 4 columns for a row */
+  grid-template-rows: 1fr;
+  gap: 24px;
+  /* aspect-ratio: 4/1; Remove forced square ratio for whole grid */
 }
 
 .hero-media-img {
   width: 100%;
-  height: 100%;
+  height: 200px;
+  /* Fixed height for row look */
   border-radius: 16px;
-  /* Consistent rounded corners */
   object-fit: cover;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  /* Soft shadow */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  aspect-ratio: 1;
-  /* Force square images */
 }
 
 .hero-media-img:hover {

@@ -144,7 +144,10 @@ function CarBookingPage() {
 
   const handleCVVChange = (e) => {
     const value = e.target.value;
-    if (value.length <= 4 && /^\d*$/.test(value)) {
+    const isAmex = paymentForm.cardType === 'American Express';
+    const maxLength = isAmex ? 4 : 3;
+
+    if (value.length <= maxLength && /^\d*$/.test(value)) {
       setPaymentForm(prev => ({
         ...prev,
         cvv: value
@@ -202,8 +205,10 @@ function CarBookingPage() {
       alert('Please enter the card expiry date');
       return false;
     }
-    if (!paymentForm.cvv || paymentForm.cvv.length < 3) {
-      alert('Please enter a valid CVV');
+    const isAmex = paymentForm.cardType === 'American Express';
+    const requiredCvvLength = isAmex ? 4 : 3;
+    if (!paymentForm.cvv || paymentForm.cvv.length !== requiredCvvLength) {
+      alert(`Please enter a valid ${requiredCvvLength}-digit CVV`);
       return false;
     }
     if (!paymentForm.billingAddress.trim() || !paymentForm.city.trim() ||
@@ -655,7 +660,7 @@ function CarBookingPage() {
                           value={paymentForm.cvv}
                           onChange={handleCVVChange}
                           placeholder="CVV"
-                          maxLength="4"
+                          maxLength={paymentForm.cardType === 'American Express' ? 4 : 3}
                           required
                         />
                       </div>

@@ -54,11 +54,15 @@ export const adminUsersAPI = {
 // Admin Hotels API
 export const adminHotelsAPI = {
     getAll: (params) => api.get('/api/admin/hotels', { params }),
+    update: (id, data) => api.put(`/api/admin/hotels/${id}`, data),
+    delete: (id) => api.delete(`/api/admin/hotels/${id}`),
 };
 
 // Admin Cars API
 export const adminCarsAPI = {
     getAll: (params) => api.get('/api/admin/cars', { params }),
+    update: (id, data) => api.put(`/api/admin/cars/${id}`, data),
+    delete: (id) => api.delete(`/api/admin/cars/${id}`),
 };
 
 export default api;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { FaPlane } from 'react-icons/fa';
 import { flightsAPI } from '../services/api';
 import './AirportAutocomplete.css';
 
@@ -161,9 +162,30 @@ const AirportAutocomplete = ({
               onClick={() => handleSelectSuggestion(airport)}
               onMouseEnter={() => setHighlightedIndex(index)}
             >
-              <div className="airport-suggestion-content">
-                <span className="airport-code">{airport.code}</span>
-                <span className="airport-label">{airport.label}</span>
+              <div className="airport-suggestion-content" style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '4px 0' }}>
+                <div className="airport-icon-wrapper" style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', backgroundColor: '#f0f4f8',
+                  borderRadius: '4px', color: '#555', flexShrink: 0
+                }}>
+                  <FaPlane className="airport-icon-svg" style={{ fontSize: '14px', color: '#666', transform: 'rotate(-45deg)' }} />
+                </div>
+                <div className="airport-info" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                  <div className="airport-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                    <span className="airport-city" style={{
+                      fontWeight: 600, color: '#2c3e50', fontSize: '15px',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>{airport.city}</span>
+                    <span className="airport-code-badge" style={{
+                      fontWeight: 700, color: '#666', fontSize: '12px',
+                      backgroundColor: '#eee', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                    }}>{airport.code}</span>
+                  </div>
+                  <div className="airport-sub" style={{
+                    color: '#666', fontSize: '13px', whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis', width: '100%'
+                  }}>{airport.name}</div>
+                </div>
               </div>
             </li>
           ))}
