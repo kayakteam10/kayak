@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kayak-config
+  namespace: default
+data:
+  # MySQL Database (Standard names)
+  MYSQL_HOST: "kayak-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "kayak_db"
+  
+  # MySQL Database (Node.js Service Compatibility)
+  DB_HOST: "kayak-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com"
+  DB_PORT: "3306"
+  DB_NAME: "kayak_db"
+  DB_CONNECTION_LIMIT: "5"
+  
+  # MongoDB Atlas
+  MONGODB_DATABASE: "kayak_reviews"
+  MONGO_DB_NAME: "kayak_reviews"
+  
+  # Redis ElastiCache
+  REDIS_HOST: "kayak-redis.dtrwn4.0001.usw1.cache.amazonaws.com"
+  REDIS_PORT: "6379"
+  REDIS_URL: "redis://kayak-redis.dtrwn4.0001.usw1.cache.amazonaws.com:6379"
+  
+  # Kafka (In-Cluster)
+  KAFKA_BROKER: "kafka:9092"
+  KAFKA_TOPIC_DEALS: "deals-updates"
+  
+  # Service URLs (internal cluster DNS)
+  FLIGHT_SERVICE_URL: "http://flight-service:8001"
+  HOTEL_SERVICE_URL: "http://hotel-service:8002"
+  CAR_SERVICE_URL: "http://car-service:8003"
+  BOOKING_SERVICE_URL: "http://booking-service:8004"
+  PAYMENT_SERVICE_URL: "http://payment-service:8005"
+  REVIEW_SERVICE_URL: "http://review-service:8006"
+  AI_SERVICE_URL: "http://ai-service:8007"
+  
+  # Application Settings
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  
+  # Gateway
+  GATEWAY_PORT: "8080"

@@ -1,0 +1,136 @@
+name: Kayak CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-1
+  ECR_REGISTRY: 623653227185.dkr.ecr.us-west-1.amazonaws.com
+  EKS_CLUSTER_NAME: kayak-cluster
+  # Default URLs if secrets aren't set (fallbacks)
+  DEFAULT_API_URL: http://a59259d7ea2364929a6fe78cc2e55d30-1509338866.us-west-1.elb.amazonaws.com:8080
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: 
+          - name: platform-service
+            path: services/platform-service
+            type: backend
+          - name: flight-service
+            path: services/flight-service
+            type: backend
+          - name: hotel-service
+            path: services/hotel-service
+            type: backend
+          - name: car-service
+            path: services/car-service
+            type: backend
+          - name: booking-service
+            path: services/booking-service
+            type: backend
+          - name: payment-billing-service
+            path: services/payment-billing-service
+            type: backend
+          - name: review-service
+            path: services/review-service
+            type: backend
+          - name: ai-service
+            path: services/ai-service
+            type: backend
+          - name: frontend
+            path: frontend
+            type: frontend
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build and Push Docker Image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+        REPO_NAME: kayak/${{ matrix.service.name }}
+      run: |
+        cd ${{ matrix.service.path }}
+        
+        # Build command depending on service type
+        if [ "${{ matrix.service.type }}" == "frontend" ]; then
+          docker build \
+            --build-arg REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL || env.DEFAULT_API_URL }} \
+            --build-arg REACT_APP_AI_SERVICE_URL=${{ secrets.REACT_APP_AI_SERVICE_URL || format('{0}/ai', secrets.REACT_APP_API_URL || env.DEFAULT_API_URL) }} \
+            -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$REPO_NAME:latest .
+        else
+          docker build \
+            -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$REPO_NAME:latest .
+        fi
+        
+        docker push $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$REPO_NAME:latest
+
+  deploy:
+    name: Deploy to EKS
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update Kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Deploy to EKS
+      env:
+        ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Update manifest images and apply
+        # We iterate over the deployments to set the new image
+        
+        deployments=(
+          "platform-service"
+          "flight-service"
+          "hotel-service"
+          "car-service"
+          "booking-service"
+          "payment-billing-service"
+          "review-service"
+          "ai-service"
+          "frontend"
+        )
+
+        for deploy in "${deployments[@]}"; do
+          echo "Updating $deploy deployment..."
+          kubectl set image deployment/$deploy $deploy=$ECR_REGISTRY/kayak/$deploy:$IMAGE_TAG
+        done
+        
+        echo "Verifying rollout status..."
+        kubectl rollout status deployment/platform-service

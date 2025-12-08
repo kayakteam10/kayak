@@ -1,19 +1,28 @@
-# Multi-stage build for React frontend
+# Build Stage
 FROM node:18-alpine as build
-
 WORKDIR /app
-
-# Copy package files
 COPY package.json ./
-
-# Install dependencies
 RUN npm install
-
-# Copy application files
 COPY . .
+# Accept build arguments for environment variables
+ARG REACT_APP_API_URL
+ARG REACT_APP_AI_SERVICE_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_AI_SERVICE_URL=$REACT_APP_AI_SERVICE_URL
+RUN npm run build
 
-# Expose port 8088
-EXPOSE 8088
-
-# Start the application
-CMD ["npm", "start"]
+# Production Stage
+FROM nginx:alpine
+# Copy built assets from local build directory
+COPY build /usr/share/nginx/html
+# Custom Nginx config
+RUN echo 'server { \
+    listen 80; \
+    location / { \
+    root /usr/share/nginx/html; \
+    index index.html index.htm; \
+    try_files $uri $uri/ /index.html; \
+    } \
+    }' > /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
