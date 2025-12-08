@@ -52,27 +52,27 @@ async function enrichReviewsWithEntityDetails(reviews) {
             // Fetch entity details based on type
             if (listingType === 'hotel') {
                 const response = await axios.get(`${HOTEL_SERVICE_URL}/hotels/${listingId}`, { timeout: 2000 });
-                const hotel = response.data;
+                const hotel = response.data.data; // API returns { success: true, data: {...} }
                 entityDetails = {
-                    entity_name: hotel.name,
+                    entity_name: hotel.hotel_name,
                     entity_address: hotel.address,
                     entity_city: hotel.city
                 };
             } else if (listingType === 'car') {
                 const response = await axios.get(`${CAR_SERVICE_URL}/cars/${listingId}`, { timeout: 2000 });
-                const car = response.data;
+                const car = response.data.data; // API returns { success: true, data: {...} }
                 entityDetails = {
-                    entity_name: `${car.make} ${car.model}`,
-                    entity_address: car.location,
-                    entity_city: car.city
+                    entity_name: `${car.company} ${car.model}`,
+                    entity_address: car.location_city,
+                    entity_city: car.location_city
                 };
             } else if (listingType === 'flight') {
                 const response = await axios.get(`${FLIGHT_SERVICE_URL}/flights/${listingId}`, { timeout: 2000 });
-                const flight = response.data;
+                const flight = response.data.data; // API returns { success: true, data: {...} }
                 entityDetails = {
                     entity_name: `${flight.airline} ${flight.flight_number}`,
-                    entity_address: `${flight.origin} → ${flight.destination}`,
-                    entity_city: flight.destination
+                    entity_address: `${flight.departure_airport} → ${flight.arrival_airport}`,
+                    entity_city: flight.arrival_city || flight.arrival_airport
                 };
             }
 
@@ -111,8 +111,8 @@ connectMongoDB();
 // CREATE Review
 app.post('/reviews', async (req, res) => {
     try {
-        const { 
-            listing_type, listing_id, user_id, rating, 
+        const {
+            listing_type, listing_id, user_id, rating,
             comment, user_name, title,
             entity_name, entity_address, entity_city,
             pros, cons, stay_date
@@ -142,17 +142,17 @@ app.post('/reviews', async (req, res) => {
             rating: parseFloat(rating),
             title: title || '',
             comment: comment || '',
-            
+
             // Entity details for better display
             entity_name: entity_name || null,
             entity_address: entity_address || null,
             entity_city: entity_city || null,
-            
+
             // Optional rich fields
             pros: Array.isArray(pros) ? pros : [],
             cons: Array.isArray(cons) ? cons : [],
             stay_date: stay_date || null,
-            
+
             created_at: new Date()
         };
 
