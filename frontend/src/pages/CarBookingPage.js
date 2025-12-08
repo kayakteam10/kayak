@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { carsAPI, authAPI, bookingsAPI } from '../services/api';
+import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
 import { FaCar, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaCreditCard, FaLock } from 'react-icons/fa';
 import './CarBookingPage.css';
 
@@ -83,30 +84,34 @@ function CarBookingPage() {
             country: userData.country || 'US' // Default to US if not present
           }));
 
-          // Get saved payment methods from localStorage (user-specific)
-          const userId = userData.id;
-          const storageKey = `savedPaymentMethods_${userId}`;
-          const savedPayments = localStorage.getItem(storageKey);
-          if (savedPayments) {
-            try {
-              let paymentMethods = JSON.parse(savedPayments);
-              // Filter only card payments
-              paymentMethods = paymentMethods.filter(p => p.paymentType === 'card');
+          // Get saved payment methods from API
+          try {
+            const result = await getPaymentMethods();
+            console.log('CarBookingPage - API Response:', result);
+            
+            if (result.success) {
+              const paymentMethods = result.data || [];
+              console.log('CarBookingPage - Loaded payment methods:', paymentMethods);
               setSavedPaymentMethods(paymentMethods);
 
               if (paymentMethods.length > 0) {
+                console.log('CarBookingPage - Found', paymentMethods.length, 'saved cards');
                 // Select the first card by default
-                const firstCard = paymentMethods[0];
-                handleSelectSavedCard(firstCard, 0);
+                setSelectedPaymentMethod(0);
+                setUseNewCard(false);
               } else {
-                setUseNewCard(true); // No saved cards for this user
+                console.log('CarBookingPage - No saved cards, using new card');
+                setUseNewCard(true); // No saved cards
               }
-            } catch (e) {
-              console.error('Error parsing saved payments:', e);
-              setUseNewCard(true); // Error parsing, treat as no saved cards
+            } else {
+              console.log('CarBookingPage - API returned success: false');
+              setSavedPaymentMethods([]);
+              setUseNewCard(true);
             }
-          } else {
-            setUseNewCard(true); // No saved payments in localStorage for this user
+          } catch (error) {
+            console.error('CarBookingPage - Error fetching payment methods:', error);
+            setSavedPaymentMethods([]);
+            setUseNewCard(true);
           }
         }
       } catch (error) {
@@ -163,14 +168,14 @@ function CarBookingPage() {
     setUseNewCard(false);
     setPaymentForm(prev => ({
       ...prev,
-      cardType: card.creditCardType || '',
-      cardNumber: card.creditCardNumber || '',
-      expiryMonth: card.expiryMonth || '',
-      expiryYear: card.expiryYear ? card.expiryYear.toString() : '',
-      billingAddress: card.billingAddress || prev.billingAddress,
-      city: card.billingCity || prev.city,
-      zipCode: card.billingZip || prev.zipCode,
-      cvv: card.cvv || '',
+      cardType: card.card_brand || '',
+      cardNumber: `************${card.card_last4}`,
+      expiryMonth: card.card_exp_month ? card.card_exp_month.toString() : '',
+      expiryYear: card.card_exp_year ? card.card_exp_year.toString() : '',
+      billingAddress: card.billing_address || prev.billingAddress,
+      city: card.billing_city || prev.city,
+      zipCode: card.billing_zip || prev.zipCode,
+      cvv: '', // CVV not stored for security
       // Keep existing cardholder if not in saved card (usually not saved)
       cardHolder: prev.cardHolder
     }));
@@ -191,6 +196,13 @@ function CarBookingPage() {
   };
 
   const validateForm = () => {
+    // Skip validation if using a saved card
+    if (!useNewCard && selectedPaymentMethod !== null) {
+      console.log('✅ Using saved card - skipping payment validation');
+      return true;
+    }
+    
+    // Validate new card details
     if (!paymentForm.cardType) {
       alert('Please select a card type');
       return false;
@@ -274,6 +286,43 @@ function CarBookingPage() {
       if (response.data && response.data.success) {
         // The booking service returns { data: { bookingId, booking_reference, ... } }
         const bookingId = response.data.data.bookingId || response.data.data.id;
+        
+        // Save payment method if using a new card
+        if (useNewCard) {
+          try {
+            const cardData = {
+              creditCardNumber: paymentForm.cardNumber.replace(/\s/g, ''),
+              cardExpMonth: parseInt(paymentForm.expiryMonth),
+              cardExpYear: parseInt(paymentForm.expiryYear),
+              cvv: paymentForm.cvv,
+              billingName: paymentForm.cardHolder,
+              billingAddress: paymentForm.billingAddress,
+              billingCity: paymentForm.city,
+              billingState: paymentForm.state || 'CA',
+              billingZip: paymentForm.zipCode,
+              billingCountry: paymentForm.country || 'US',
+              cardBrand: paymentForm.cardType,
+              setAsDefault: savedPaymentMethods.length === 0
+            };
+            await addPaymentMethod(cardData);
+            console.log('Payment method saved');
+          } catch (error) {
+            console.error('Error saving payment method:', error);
+          }
+        }
+        
+        // Mark payment method as used if using a saved card
+        if (!useNewCard && selectedPaymentMethod !== null) {
+          try {
+            const selectedCard = savedPaymentMethods[selectedPaymentMethod];
+            if (selectedCard && selectedCard.id) {
+              await markPaymentMethodUsed(selectedCard.id);
+            }
+          } catch (error) {
+            console.error('Error marking payment method as used:', error);
+          }
+        }
+        
         setProcessing(false);
         // Navigate to confirmation page like flights and hotels
         navigate(`/booking/confirmation/cars/${bookingId}`);
@@ -504,8 +553,8 @@ function CarBookingPage() {
                             )}
                           </div>
                           <div className="card-info">
-                            <span className="card-label">{card.creditCardType}</span>
-                            <span className="card-ending">•••• •••• •••• {card.creditCardNumber.slice(-4)}</span>
+                            <span className="card-label">{card.card_brand}</span>
+                            <span className="card-ending">•••• •••• •••• {card.card_last4}</span>
                           </div>
                         </div>
                         {selectedPaymentMethod === index && <span className="radio-check">✓</span>}

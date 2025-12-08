@@ -1,0 +1,138 @@
+/**
+ * Simple Card Input Component Styles
+ */
+
+.simple-card-input-form {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.full-width {
+  width: 100%;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.form-group input.error,
+.form-group select.error {
+  border-color: #dc3545;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.card-number-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.card-number-input input {
+  flex: 1;
+  padding-right: 100px;
+}
+
+.card-brand-indicator {
+  position: absolute;
+  right: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #007bff;
+  pointer-events: none;
+}
+
+.billing-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+}
+
+.billing-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.btn-save-card {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: #007bff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 24px;
+}
+
+.btn-save-card:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-save-card:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.test-card-note {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #856404;
+  text-align: center;
+}
+
+.test-card-note strong {
+  color: #856404;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .form-group {
+    width: 100%;
+  }
+}

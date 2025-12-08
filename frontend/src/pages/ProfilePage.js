@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingsAPI, authAPI, reviewsAPI } from '../services/api';
 import { FaPlane, FaHotel, FaCar, FaTimes, FaCheckCircle, FaClock, FaStar, FaSpinner } from 'react-icons/fa';
-import CardInput from '../components/CardInput';
+import SimpleCardInput from '../components/SimpleCardInput';
 import SavedCardSelector from '../components/SavedCardSelector';
-import StripeProvider from '../components/StripeProvider';
+import { getPaymentMethods, addPaymentMethod, setDefaultPaymentMethod, deletePaymentMethod } from '../services/paymentMethodsAPI';
 import './ProfilePage.css';
 
 const USA_STATES = [
@@ -124,49 +124,22 @@ function ProfilePage() {
     }
   }, [searchParams]);
 
-  // Load saved payment methods from localStorage (user-specific)
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
-
-    const savedPayments = localStorage.getItem(`savedPaymentMethods_${userId}`);
-    if (savedPayments) {
-      try {
-        const parsed = JSON.parse(savedPayments);
-        // Filter out invalid payment methods (incomplete card numbers)
-        const validPayments = parsed.filter(payment => {
-          if (payment.paymentType === 'card') {
-            // Card number must be at least 13 digits (without spaces)
-            const cardDigits = payment.creditCardNumber?.replace(/\s/g, '') || '';
-            return cardDigits.length >= 13;
-          }
-          return true; // Keep PayPal payments
-        });
-        setSavedPaymentMethods(validPayments);
-        // Update localStorage with cleaned data
-        if (validPayments.length !== parsed.length) {
-          localStorage.setItem(`savedPaymentMethods_${userId}`, JSON.stringify(validPayments));
-        }
-      } catch (e) {
-        console.error('Error loading saved payments:', e);
-        // Clear invalid data
-        localStorage.removeItem(`savedPaymentMethods_${userId}`);
+  // Load saved payment methods from database
+  const loadPaymentMethods = async () => {
+    try {
+      const result = await getPaymentMethods();
+      if (result.success) {
+        setSavedPaymentMethods(result.data || []);
       }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+      // Don't show error to user, just log it
     }
-  }, []);
+  };
 
-  // Save payment methods to localStorage whenever they change (user-specific)
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
-
-    if (savedPaymentMethods.length > 0) {
-      localStorage.setItem(`savedPaymentMethods_${userId}`, JSON.stringify(savedPaymentMethods));
-    } else {
-      // Remove the key if no payment methods
-      localStorage.removeItem(`savedPaymentMethods_${userId}`);
-    }
-  }, [savedPaymentMethods]);
+    loadPaymentMethods();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -273,78 +246,50 @@ function ProfilePage() {
   };
 
 
-  // Stripe Payment Method Handlers
+  // Payment Method Handlers (Database API)
   const handleDeleteCard = async (cardId) => {
     try {
-      const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_URL}/api/payment-methods/${cardId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        setSavedPaymentMethods(savedPaymentMethods.filter(card => card.id !== cardId));
-        alert('Card deleted successfully!');
+      const result = await deletePaymentMethod(cardId);
+      if (result.success) {
+        await loadPaymentMethods(); // Refresh list
+        showNotification('Card deleted successfully!', 'success');
       } else {
-        const data = await response.json();
-        alert(data.message || 'Failed to delete card');
+        showNotification('Error deleting card', 'error');
       }
     } catch (error) {
       console.error('Error deleting card:', error);
-      alert('Error deleting card');
+      showNotification('Error deleting card', 'error');
     }
   };
 
   const handleSetDefaultCard = async (cardId) => {
     try {
-      const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_URL}/api/payment-methods/${cardId}/set-default`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const updated = savedPaymentMethods.map(card => ({
-          ...card,
-          is_default: card.id === cardId
-        }));
-        setSavedPaymentMethods(updated);
-        alert('Default card updated!');
+      const result = await setDefaultPaymentMethod(cardId);
+      if (result.success) {
+        await loadPaymentMethods(); // Refresh list
+        showNotification('Default card updated!', 'success');
       } else {
-        const data = await response.json();
-        alert(data.message || 'Failed to set default card');
+        showNotification('Error setting default card', 'error');
       }
     } catch (error) {
       console.error('Error setting default card:', error);
-      alert('Error setting default card');
+      showNotification('Error setting default card', 'error');
     }
   };
 
-  const handleCardAdded = async () => {
-    // Refresh payment methods after adding new card
+  const handleCardAdded = async (cardData) => {
     try {
-      const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${API_URL}/api/payment-methods`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSavedPaymentMethods(data.data || []);
-        }
+      const result = await addPaymentMethod(cardData);
+      if (result.success) {
+        await loadPaymentMethods(); // Refresh list
+        showNotification('Card saved successfully!', 'success');
+      } else {
+        showNotification(result.message || 'Error saving card', 'error');
       }
     } catch (error) {
-      console.error('Error refreshing payment methods:', error);
+      console.error('Error saving card:', error);
+      const errorMsg = error.response?.data?.message || 'Error saving card';
+      showNotification(errorMsg, 'error');
     }
   };
 
@@ -1156,34 +1101,32 @@ function ProfilePage() {
 
         {activeTab === 'payment' && (
           <div className="payment-section">
-            <StripeProvider>
-              <div className="payment-info-card">
-                <div className="payment-header-section">
-                  <div>
-                    <h3>Payment Methods</h3>
-                    <p className="section-description">Manage your payment cards securely with Stripe</p>
-                  </div>
-                </div>
-
-                {/* Saved Cards List */}
-                <SavedCardSelector
-                  cards={savedPaymentMethods}
-                  onDelete={handleDeleteCard}
-                  onSetDefault={handleSetDefaultCard}
-                  showActions={true}
-                />
-
-                {/* Add New Card Form */}
-                <div style={{ marginTop: '24px' }}>
-                  <h4>Add New Card</h4>
-                  <CardInput
-                    onSuccess={handleCardAdded}
-                    onError={(error) => console.error('Card error:', error)}
-                    buttonText="Save Card"
-                  />
+            <div className="payment-info-card">
+              <div className="payment-header-section">
+                <div>
+                  <h3>Payment Methods</h3>
+                  <p className="section-description">Manage your saved payment cards (encrypted in browser storage)</p>
                 </div>
               </div>
-            </StripeProvider>
+
+              {/* Saved Cards List */}
+              <SavedCardSelector
+                cards={savedPaymentMethods}
+                onDelete={handleDeleteCard}
+                onSetDefault={handleSetDefaultCard}
+                showActions={true}
+              />
+
+              {/* Add New Card Form */}
+              <div style={{ marginTop: '24px' }}>
+                <h4>Add New Card</h4>
+                <SimpleCardInput
+                  onSuccess={handleCardAdded}
+                  onError={(error) => console.error('Card error:', error)}
+                  buttonText="Save Card"
+                />
+              </div>
+            </div>
           </div>
         )}
 

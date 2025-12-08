@@ -21,6 +21,8 @@ function BookingConfirmationPage() {
 
     const fetchBooking = async () => {
       try {
+        let bookingData = null;
+        
         // Handle bundle bookings - just store IDs, don't fetch details yet
         if (type === 'bundles') {
           const flightId = searchParams.get('flight');
@@ -35,19 +37,18 @@ function BookingConfirmationPage() {
         } else {
           // Handle single booking
           const response = await bookingsAPI.getDetails(id);
-          const bookingData = response.data.data || response.data;
-        setBooking(bookingData);
-          setLoading(false);
+          bookingData = response.data.data || response.data;
+          setBooking(bookingData);
         }
 
         // If booking is confirmed, stop polling
-        if (bookingData.status === 'confirmed') {
+        if (bookingData && bookingData.status === 'confirmed') {
           if (pollInterval) {
             clearInterval(pollInterval);
             pollInterval = null;
           }
           setLoading(false);
-        } else if (bookingData.status === 'pending' && pollCount < maxPolls) {
+        } else if (bookingData && bookingData.status === 'pending' && pollCount < maxPolls) {
           // Keep polling if still pending
           pollCount++;
         } else {

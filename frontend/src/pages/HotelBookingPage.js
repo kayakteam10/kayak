@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaLock, FaCheckCircle, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaUtensils, FaCoffee, FaBed } from 'react-icons/fa';
 import { authAPI, hotelsAPI, bookingsAPI } from '../services/api';
+import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
 import './HotelBookingPage.css';
 
 const HotelBookingPage = () => {
@@ -48,24 +49,32 @@ const HotelBookingPage = () => {
           const response = await authAPI.me();
           const userData = response.data.data || response.data;
 
-          // Get saved payment methods from localStorage (user-specific)
-          const userId = userData.id;
-          const storageKey = `savedPaymentMethods_${userId}`;
-          const savedPayments = localStorage.getItem(storageKey);
-          let paymentMethods = [];
-          if (savedPayments) {
-            try {
-              paymentMethods = JSON.parse(savedPayments);
-              // Filter only card payments
-              paymentMethods = paymentMethods.filter(p => p.paymentType === 'card');
+          // Get saved payment methods from API
+          try {
+            const result = await getPaymentMethods();
+            console.log('HotelBookingPage - API Response:', result);
+            
+            if (result.success) {
+              const paymentMethods = result.data || [];
+              console.log('HotelBookingPage - Loaded payment methods:', paymentMethods);
               setSavedPaymentMethods(paymentMethods);
-            } catch (e) {
-              console.error('Error parsing saved payments:', e);
+              
+              // If no cards, set useNewCard to true
+              if (paymentMethods.length === 0) {
+                console.log('HotelBookingPage - No saved cards, using new card');
+                setUseNewCard(true);
+              } else {
+                console.log('HotelBookingPage - Found', paymentMethods.length, 'saved cards');
+                setUseNewCard(false);
+              }
+            } else {
+              console.log('HotelBookingPage - API returned success: false');
+              setSavedPaymentMethods([]);
+              setUseNewCard(true);
             }
-          }
-
-          // If no cards, set useNewCard to true
-          if (paymentMethods.length === 0) {
+          } catch (error) {
+            console.error('HotelBookingPage - Error fetching payment methods:', error);
+            setSavedPaymentMethods([]);
             setUseNewCard(true);
           }
 
@@ -234,7 +243,7 @@ const HotelBookingPage = () => {
 
       if (paymentMethod === 'card') {
         if (useNewCard || savedPaymentMethods.length === 0) {
-          // Using new card - parse expiry date and save to localStorage
+          // Using new card - save to database via API
           const expiryParts = bookingData.expiryDate.split('/');
           const expiryMonth = expiryParts[0] || '';
           const expiryYear = expiryParts[1] || '';
@@ -247,59 +256,46 @@ const HotelBookingPage = () => {
             billingZip: bookingData.billingZip
           };
 
-          // Save new payment method to localStorage (full card number with formatting)
-          const fullYear = '20' + expiryYear;
-          const formattedCardNumber = bookingData.cardNumber.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+          // Save new payment method to database
+          try {
+            const cardData = {
+              creditCardNumber: bookingData.cardNumber.replace(/\s/g, ''),
+              cardExpMonth: parseInt(expiryMonth),
+              cardExpYear: parseInt('20' + expiryYear),
+              cvv: bookingData.cvv,
+              billingName: `${bookingData.firstName} ${bookingData.lastName}`,
+              billingAddress: bookingData.billingAddress,
+              billingCity: bookingData.billingCity,
+              billingState: bookingData.billingState,
+              billingZip: bookingData.billingZip,
+              billingCountry: 'US',
+              cardBrand: bookingData.cardType,
+              setAsDefault: savedPaymentMethods.length === 0
+            };
 
-          const newPaymentMethod = {
-            paymentType: 'card',
-            creditCardType: bookingData.cardType,
-            creditCardNumber: formattedCardNumber, // Store full card number (formatted)
-            cardholderName: bookingData.cardholderName,
-            expiryMonth: expiryMonth,
-            expiryYear: fullYear,
-            cvv: bookingData.cvv,
-            billingAddress: bookingData.billingAddress,
-            billingCity: bookingData.billingCity,
-            billingState: bookingData.billingState,
-            billingZip: bookingData.billingZip
-          };
-
-          console.log('Saving payment method:', newPaymentMethod); // Debug log
-
-          const userId = user?.id || bookingData.userId;
-          const storageKey = `savedPaymentMethods_${userId}`;
-          const existingSavedMethods = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-          // Check if this card already exists (compare last 4 digits)
-          const last4 = bookingData.cardNumber.replace(/\s/g, '').slice(-4);
-          const existingIndex = existingSavedMethods.findIndex(p =>
-            p.paymentType === 'card' && p.creditCardNumber.replace(/\s/g, '').slice(-4) === last4
-          );
-
-          if (existingIndex >= 0) {
-            // Update existing card
-            existingSavedMethods[existingIndex] = newPaymentMethod;
-          } else {
-            // Add new card
-            existingSavedMethods.push(newPaymentMethod);
+            await addPaymentMethod(cardData);
+            console.log('Payment method saved to database');
+          } catch (error) {
+            console.error('Error saving payment method:', error);
+            // Don't block booking if save fails
           }
-
-          localStorage.setItem('savedPaymentMethods', JSON.stringify(existingSavedMethods));
-
-          console.log('Updated saved methods:', existingSavedMethods); // Debug log
-
-          // Update state to reflect new saved card
-          setSavedPaymentMethods(existingSavedMethods);
         } else if (selectedPaymentMethod !== null) {
-          // Using saved card
+          // Using saved card - mark as used
           const selectedCard = savedPaymentMethods[selectedPaymentMethod];
+          if (selectedCard && selectedCard.id) {
+            try {
+              await markPaymentMethodUsed(selectedCard.id);
+            } catch (error) {
+              console.error('Error marking payment method as used:', error);
+            }
+          }
+          
           paymentDetails = {
             ...paymentDetails,
-            cardNumber: selectedCard.creditCardNumber,
-            cardType: selectedCard.creditCardType,
-            expiryMonth: selectedCard.expiryMonth,
-            expiryYear: selectedCard.expiryYear
+            cardNumber: `************${selectedCard.card_last4}`,
+            cardType: selectedCard.card_brand,
+            expiryMonth: selectedCard.card_exp_month,
+            expiryYear: selectedCard.card_exp_year
           };
         }
       }
@@ -414,6 +410,9 @@ const HotelBookingPage = () => {
             {/* Payment Method */}
             <section className="form-section">
               <h2>Payment Information</h2>
+              
+              {/* Debug: Show saved payment methods count */}
+              {console.log('HotelBookingPage - Rendering payment section. Saved cards:', savedPaymentMethods.length, 'useNewCard:', useNewCard)}
 
               {/* Saved Payment Methods */}
               {savedPaymentMethods.length > 0 && (
@@ -436,33 +435,33 @@ const HotelBookingPage = () => {
                         />
                         <div className="radio-content">
                           <div className="card-brand-icon-box">
-                            {card.creditCardType === 'Visa' && (
+                            {card.card_brand === 'Visa' && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
                                 <rect width="52" height="34" rx="5" fill="#1A1F71" />
                                 <text x="26" y="21" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="Arial">VISA</text>
                               </svg>
                             )}
-                            {card.creditCardType === 'MasterCard' && (
+                            {(card.card_brand === 'MasterCard' || card.card_brand === 'Mastercard') && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
                                 <rect width="52" height="34" rx="5" fill="#EB001B" />
                                 <circle cx="20" cy="17" r="10" fill="#FF5F00" opacity="0.8" />
                                 <circle cx="32" cy="17" r="10" fill="#F79E1B" opacity="0.8" />
                               </svg>
                             )}
-                            {card.creditCardType === 'American Express' && (
+                            {(card.card_brand === 'American Express' || card.card_brand === 'Amex') && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
                                 <rect width="52" height="34" rx="5" fill="#006FCF" />
                                 <text x="26" y="21" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold" fontFamily="Arial">AMEX</text>
                               </svg>
                             )}
-                            {card.creditCardType === 'Discover' && (
+                            {card.card_brand === 'Discover' && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
                                 <rect width="52" height="34" rx="5" fill="#FF6000" />
                                 <circle cx="15" cy="17" r="8" fill="#FF9900" />
                                 <text x="35" y="21" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="Arial">DISCOVER</text>
                               </svg>
                             )}
-                            {!['Visa', 'MasterCard', 'American Express', 'Discover'].includes(card.creditCardType) && (
+                            {!['Visa', 'MasterCard', 'Mastercard', 'American Express', 'Amex', 'Discover'].includes(card.card_brand) && (
                               <svg width="52" height="34" viewBox="0 0 52 34" fill="none" className="brand-logo">
                                 <rect width="52" height="34" rx="5" fill="#6B7280" />
                                 <rect x="8" y="10" width="36" height="6" rx="2" fill="white" opacity="0.3" />
@@ -471,8 +470,8 @@ const HotelBookingPage = () => {
                             )}
                           </div>
                           <div className="card-info">
-                            <span className="card-label">{card.creditCardType}</span>
-                            <span className="card-ending">•••• •••• •••• {card.creditCardNumber.slice(-4)}</span>
+                            <span className="card-label">{card.card_brand}</span>
+                            <span className="card-ending">•••• •••• •••• {card.card_last4}</span>
                           </div>
                         </div>
                         {selectedPaymentMethod === index && <span className="radio-check">✓</span>}

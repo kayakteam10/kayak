@@ -17,6 +17,7 @@ const dbPool = require('./config/database'); // Initializes DB connection
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const analyticsRoutes = require('./routes/analytics');
+const paymentMethodsRoutes = require('./routes/payment-methods-non-stripe');
 
 const app = express();
 
@@ -117,6 +118,7 @@ const localMiddleware = [jsonParser, urlEncodedParser];
 app.use('/auth', localMiddleware, authRoutes);
 app.use('/api/admin', localMiddleware, adminRoutes);
 app.use('/api/analytics', localMiddleware, analyticsRoutes);
+app.use('/api/payment-methods', localMiddleware, paymentMethodsRoutes);
 
 // ========== API GATEWAY - Route to Microservices ==========
 // Proxy routes come AFTER specific routes like /api/admin/*
