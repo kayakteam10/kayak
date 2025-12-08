@@ -124,6 +124,13 @@ async def on_startup() -> None:
     # Initialize service integrations (flight/hotel clients)
     await initialize_clients()
     
+    # Store clients in app state for access across the application
+    from .integrations import flight_client, hotel_client, booking_client
+    app.state.flight_client = flight_client
+    app.state.hotel_client = hotel_client
+    app.state.booking_client = booking_client
+    logger.info("✅ Service clients stored in app.state")
+    
     # Start watch loop
     asyncio.create_task(watch_loop())
 

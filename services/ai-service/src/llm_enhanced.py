@@ -343,8 +343,9 @@ class ContextMemory:
         budget_match = re.search(r'\$?(\d{3,5})', text)
         if budget_match and 'budget' in text_lower:
             constraints['budget'] = int(budget_match.group(1))
-        elif any(phrase in text_lower for phrase in ['no budget', 'no limit', 'unlimited', 'any price', 'flexible']):
-            constraints['budget'] = 1000000  # High value for unlimited
+        elif any(phrase in text_lower for phrase in ['no budget', 'no limit', 'unlimited', 'any price', 'flexible budget']):
+            # User explicitly said no budget limit - set to None (no constraint)
+            constraints['budget'] = None
         
         # Amenities
         if 'pet' in text_lower:
