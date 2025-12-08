@@ -413,9 +413,12 @@ services:
       # In Docker, services communicate via service names
       # From browser, it uses localhost:8080
       REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8080}
-      REACT_APP_AI_SERVICE_URL: ${REACT_APP_AI_SERVICE_URL:-http://localhost:8007}
+      REACT_APP_AI_SERVICE_URL: ${REACT_APP_AI_SERVICE_URL:-http://localhost:8080/api/ai}
       REACT_APP_WS_URL: ${REACT_APP_WS_URL:-ws://localhost:8080}
       PORT: 3000
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/public:/app/public
 
 volumes:
   mysql_data:

@@ -272,37 +272,59 @@ class LLMTimeoutHandler:
     async def call_llm_with_fallback(
         llm_func,
         timeout_seconds: int = 10,
-        fallback_response: Optional[Dict] = None
+        fallback_response: Optional[Dict] = None,
+        max_retries: int = 3
     ) -> Dict:
         """
-        Call LLM function with timeout and fallback
+        Call LLM function with timeout, exponential backoff retry, and fallback
         
         Args:
             llm_func: Async function to call
-            timeout_seconds: Timeout in seconds
-            fallback_response: Return this if LLM fails
+            timeout_seconds: Timeout in seconds for each attempt
+            fallback_response: Return this if all retries fail
+            max_retries: Maximum number of retry attempts (default: 3)
         
         Returns:
             LLM response or fallback
         """
-        try:
-            return await asyncio.wait_for(llm_func(), timeout=timeout_seconds)
+        last_error = None
         
-        except asyncio.TimeoutError:
-            logger.warning(f"LLM timeout after {timeout_seconds}s, using fallback")
-            return fallback_response or {
-                'intent': 'search',
-                'constraints': {},
-                'explanation': "Processing your request (LLM degraded, using basic search)"
-            }
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"🔄 LLM attempt {attempt + 1}/{max_retries} (timeout: {timeout_seconds}s)")
+                result = await asyncio.wait_for(llm_func(), timeout=timeout_seconds)
+                logger.info(f"✅ LLM succeeded on attempt {attempt + 1}")
+                return result
+            
+            except asyncio.TimeoutError:
+                last_error = f"Timeout after {timeout_seconds}s"
+                logger.warning(f"⏱️  LLM timeout after {timeout_seconds}s on attempt {attempt + 1}/{max_retries}")
+                
+                # Exponential backoff: wait 1s, 2s, 4s between retries
+                if attempt < max_retries - 1:
+                    backoff_delay = 2 ** attempt  # 1, 2, 4 seconds
+                    logger.info(f"⏳ Retrying in {backoff_delay}s...")
+                    await asyncio.sleep(backoff_delay)
+            
+            except Exception as e:
+                last_error = str(e)
+                logger.error(f"❌ LLM error on attempt {attempt + 1}/{max_retries}: {e}")
+                
+                # Exponential backoff for errors too
+                if attempt < max_retries - 1:
+                    backoff_delay = 2 ** attempt
+                    logger.info(f"⏳ Retrying in {backoff_delay}s...")
+                    await asyncio.sleep(backoff_delay)
         
-        except Exception as e:
-            logger.error(f"LLM error: {e}, using fallback")
-            return fallback_response or {
-                'intent': 'search',
-                'constraints': {},
-                'explanation': "I'll search for trips matching your criteria (using simplified mode)"
-            }
+        # All retries failed
+        logger.error(f"❌ All {max_retries} LLM attempts failed. Last error: {last_error}")
+        logger.warning("🔄 Using fallback response")
+        
+        return fallback_response or {
+            'intent': 'search',
+            'constraints': {},
+            'explanation': "Processing your request (LLM degraded, using basic search)"
+        }
     
     @staticmethod
     def get_rule_based_intent(user_message: str) -> Dict:

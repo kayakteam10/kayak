@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from typing import List
 
-from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -360,7 +360,7 @@ async def create_chat_session(request: ChatSessionCreate, session: Session = Dep
 
 
 @app.get("/chat/sessions/{session_id}/history", response_model=ChatHistoryResponse)
-async def get_chat_history(session_id: int, user_id: int, session: Session = Depends(get_session)):
+async def get_chat_history(session_id: int, user_id: int = Query(...), session: Session = Depends(get_session)):
     """Get conversation history for a session - validates user ownership"""
     
     # First verify the session belongs to this user
@@ -392,7 +392,7 @@ async def get_chat_history(session_id: int, user_id: int, session: Session = Dep
 
 
 @app.post("/chat", response_model=ChatMessageResponse)
-async def send_chat_message(request: ChatMessageRequest, user_id: int, session: Session = Depends(get_session)):
+async def send_chat_message(request: ChatMessageRequest, user_id: int = Query(...), session: Session = Depends(get_session)):
     """Send a message and get AI response with bundles - ENHANCED VERSION"""
     
     # Validate session belongs to user

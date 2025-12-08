@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 async def parse_intent(
     user_message: str,
     llm_client,
-    timeout: float = 15.0,
+    timeout: float = 45.0,
     conversation_history: list = None
 ) -> Optional[ChatQuery]:
     """
@@ -36,7 +36,7 @@ async def parse_intent(
     Args:
         user_message: User's natural language message
         llm_client: LLM client instance (Gemini or compatible)
-        timeout: Maximum time to wait for LLM response (seconds)
+        timeout: Maximum time to wait for LLM response (seconds) - increased for reliability
         conversation_history: Previous conversation turns for context (optional)
         
     Returns:
@@ -48,7 +48,7 @@ async def parse_intent(
         
         prompt = build_intent_prompt_with_context(user_message, conversation_history)
         
-        # Set timeout
+        # Set timeout (increased from 15s to 45s for better reliability)
         response = await asyncio.wait_for(
             llm_client.generate(prompt, temperature=0.3, json_mode=True),
             timeout=timeout

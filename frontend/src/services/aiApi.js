@@ -19,19 +19,23 @@ export const createChatSession = async (userId) => {
 };
 
 export const getChatHistory = async (sessionId, userId) => {
+    console.log('🔍 getChatHistory called:', { sessionId, userId });
     const response = await aiApi.get(`/chat/sessions/${sessionId}/history`, {
         params: { user_id: userId }
     });
+    console.log('✅ getChatHistory response:', response.data);
     return response.data;
 };
 
 export const sendChatMessage = async (sessionId, message, userId) => {
+    console.log('🔍 sendChatMessage called:', { sessionId, message, userId });
     const response = await aiApi.post('/chat', {
         session_id: sessionId,
         message,
     }, {
         params: { user_id: userId }
     });
+    console.log('✅ sendChatMessage response:', response.data);
     return response.data;
 };
 

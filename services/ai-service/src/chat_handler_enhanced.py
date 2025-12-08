@@ -75,31 +75,23 @@ class EnhancedChatHandler:
                     return await parse_intent(
                         user_message, 
                         self.llm, 
-                        timeout=30.0,  # Increased from 10s to 30s
+                        timeout=45.0,  # Increased timeout for reliability
                         conversation_history=conversation_history
                     )
                 
-                # Try up to 3 times before giving up
-                query_result = None
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        logger.info(f"🔄 Calling Gemini (attempt {attempt + 1}/{max_retries})...")
-                        query_result = await LLMTimeoutHandler.call_llm_with_fallback(
-                            llm_call,
-                            timeout_seconds=35,  # Increased from 12s to 35s
-                            fallback_response=None
-                        )
-                        if query_result:
-                            logger.info(f"✅ Gemini responded successfully on attempt {attempt + 1}")
-                            break
-                    except Exception as e:
-                        logger.warning(f"⚠️  Attempt {attempt + 1} failed: {e}")
-                        if attempt < max_retries - 1:
-                            logger.info(f"🔄 Retrying... ({attempt + 2}/{max_retries})")
-                            await asyncio.sleep(1)  # Wait 1s before retry
-                        else:
-                            logger.error(f"❌ All {max_retries} attempts failed, using fallback")
+                # Call Gemini with built-in retry and exponential backoff
+                logger.info(f"🔄 Calling Gemini with retry logic...")
+                query_result = await LLMTimeoutHandler.call_llm_with_fallback(
+                    llm_call,
+                    timeout_seconds=45,  # Increased timeout per attempt
+                    fallback_response=None,
+                    max_retries=3  # 3 attempts with exponential backoff (1s, 2s, 4s)
+                )
+                
+                if query_result:
+                    logger.info(f"✅ Gemini parsing succeeded")
+                else:
+                    logger.warning(f"⚠️  Gemini parsing returned None, using rule-based fallback")
                 
                 # Convert ChatQuery to dict format
                 if query_result:
