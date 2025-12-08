@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { trackUserActivity } from '../utils/analytics';
 import './AuthPage.css';
 
 function LoginPage() {
@@ -28,6 +29,9 @@ function LoginPage() {
         localStorage.setItem('profilePicture', userData.profilePicture);
       }
       localStorage.setItem('user', JSON.stringify(userData));
+
+      // Track login activity
+      trackUserActivity('login', { email: userData.email });
 
       // Check if there's a redirect URL stored
       const redirectUrl = localStorage.getItem('redirectAfterLogin');

@@ -119,27 +119,23 @@ const ProviderAnalytics = () => {
                 </ResponsiveContainer>
             </div>
 
-            <div className="admin-card" style={{ marginBottom: '24px' }}>
-                <h2>🌎 User Cohorts</h2>
-                <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={cohortComparison}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="users" fill="#0066CC" name="Users" />
-                        <Bar dataKey="bookings" fill="#4ECDC4" name="Bookings" />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-
             <div className="admin-card">
                 <h2>👤 User Trace</h2>
                 <div style={{ marginBottom: '20px' }}>
-                    <select value={selectedUserId} onChange={(e) => { setSelectedUserId(e.target.value); fetchUserTrace(e.target.value); }} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginRight: '10px' }}>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id => <option key={id} value={id}>User {id}</option>)}
-                    </select>
+                    <input 
+                        type="number" 
+                        value={selectedUserId} 
+                        onChange={(e) => setSelectedUserId(e.target.value)} 
+                        placeholder="Enter User ID"
+                        min="1"
+                        style={{ 
+                            padding: '8px 12px', 
+                            borderRadius: '6px', 
+                            border: '1px solid #d1d5db', 
+                            marginRight: '10px',
+                            width: '150px'
+                        }} 
+                    />
                     <button onClick={() => fetchUserTrace(selectedUserId)} className="admin-btn admin-btn-primary">Load Trace</button>
                 </div>
                 {userTrace && (

@@ -116,6 +116,26 @@ async function processAnalyticsEvent(event, database) {
             { upsert: true }
         );
     }
+    else if (event.type === 'user_activity') {
+        // Track user activities (login, booking, etc.)
+        const { user_id, activity_type, details } = event;
+        await database.collection('activity_logs').insertOne({
+            user_id: parseInt(user_id),
+            activity_type,
+            details: details || {},
+            timestamp: new Date()
+        });
+    }
+    else if (event.type === 'search') {
+        // Track user searches
+        const { user_id, search_type, search_params } = event;
+        await database.collection('search_history').insertOne({
+            user_id: parseInt(user_id),
+            search_type,
+            search_params: search_params || {},
+            timestamp: new Date()
+        });
+    }
     // Add more handlers as needed
 }
 

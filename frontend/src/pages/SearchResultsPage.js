@@ -8,6 +8,7 @@ import PriceMatrix from '../components/PriceMatrix';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { FaPlane, FaHotel, FaCar, FaStar, FaMapMarkerAlt, FaClock, FaUsers, FaSuitcase } from 'react-icons/fa';
+import { trackPageView, trackPropertyClick, trackSectionView, trackSearch } from '../utils/analytics';
 import './SearchResultsPage.css';
 
 function SearchResultsPage() {
@@ -59,9 +60,17 @@ function SearchResultsPage() {
     const fetchResults = async () => {
       setLoading(true);
       setError('');
+      
+      // Track page view
+      trackPageView(`search-${type}`, 'results');
+      trackSectionView(`search-${type}`, 'results-list', 90);
+      
       try {
         let response;
         const params = Object.fromEntries(searchParams);
+
+        // Track search event
+        trackSearch(type, params);
 
         console.log('🔍 Search params:', params);
         console.log('🔍 Search type:', type);
@@ -497,6 +506,22 @@ function SearchResultsPage() {
   const handleBook = async (itemId, explicitLegs = null) => {
     try {
       console.log('handleBook called with:', { itemId, explicitLegs, type });
+
+      // Track property click
+      if (type === 'flights') {
+        const flight = itemId;
+        trackPropertyClick(flight.id, flight.airline || 'Unknown', 'flight');
+      } else if (type === 'hotels') {
+        const hotel = results.find(h => h.id === itemId);
+        if (hotel) {
+          trackPropertyClick(hotel.id, hotel.name || 'Unknown Hotel', 'hotel');
+        }
+      } else if (type === 'cars') {
+        const car = results.find(c => c.id === itemId);
+        if (car) {
+          trackPropertyClick(car.id, car.model || 'Unknown Car', 'car');
+        }
+      }
 
       // Handle car bookings differently
       if (type === 'cars') {

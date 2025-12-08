@@ -21,6 +21,14 @@ router.get('/analytics', async (req, res) => {
         const [flightCountRows] = await dbPool.execute('SELECT COUNT(*) as count FROM flights');
         const totalFlights = flightCountRows[0].count;
 
+        // Total Hotels
+        const [hotelCountRows] = await dbPool.execute('SELECT COUNT(*) as count FROM hotels');
+        const totalHotels = hotelCountRows[0].count;
+
+        // Total Cars
+        const [carCountRows] = await dbPool.execute('SELECT COUNT(*) as count FROM cars');
+        const totalCars = carCountRows[0].count;
+
         // Recent Activity (last 5 bookings)
         const [recentActivityRows] = await dbPool.execute(`
             SELECT b.id, b.booking_type, b.total_amount, b.status, u.first_name, u.last_name, b.booking_date
@@ -46,6 +54,8 @@ router.get('/analytics', async (req, res) => {
                 totalRevenue,
                 totalUsers,
                 totalFlights,
+                totalHotels,
+                totalCars,
                 recentActivity
             }
         });

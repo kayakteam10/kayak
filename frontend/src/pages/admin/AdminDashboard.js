@@ -23,6 +23,19 @@ const AdminDashboard = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Format large numbers (K, M, B)
+    const formatNumber = (num) => {
+        const value = parseFloat(num);
+        if (value >= 1000000000) {
+            return (value / 1000000000).toFixed(2) + 'B';
+        } else if (value >= 1000000) {
+            return (value / 1000000).toFixed(2) + 'M';
+        } else if (value >= 1000) {
+            return (value / 1000).toFixed(2) + 'K';
+        }
+        return value.toFixed(2);
+    };
+
     useEffect(() => {
         fetchData();
     }, [refreshKey]);
@@ -30,21 +43,15 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [analyticsRes, bookingsRes, hotelsRes, carsRes] = await Promise.all([
+            const [analyticsRes, bookingsRes] = await Promise.all([
                 adminAnalyticsAPI.getOverview(),
-                adminBookingsAPI.getAll({ limit: 10 }),
-                adminHotelsAPI.getAll(),
-                adminCarsAPI.getAll()
+                adminBookingsAPI.getAll({ limit: 10 })
             ]);
 
             const analyticsData = analyticsRes.data.data || analyticsRes.data;
-            const hotelsData = hotelsRes.data.data || [];
-            const carsData = carsRes.data.data || [];
 
             setStats({
-                ...analyticsData,
-                totalHotels: hotelsData.length,
-                totalCars: carsData.length
+                ...analyticsData
             });
             const bookingsData = bookingsRes.data.data || bookingsRes.data;
             setRecentBookings(Array.isArray(bookingsData) ? bookingsData.slice(0, 10) : []);
@@ -145,7 +152,7 @@ const AdminDashboard = () => {
                     <div className="admin-stat-header">
                         <div>
                             <div className="admin-stat-label">Total Revenue</div>
-                            <div className="admin-stat-value">${stats.totalRevenue.toLocaleString()}</div>
+                            <div className="admin-stat-value">${formatNumber(stats.totalRevenue)}</div>
                         </div>
                         <div className="admin-stat-icon green">
                             <FaDollarSign />

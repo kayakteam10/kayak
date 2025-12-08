@@ -12,13 +12,28 @@ let db;
 
 // Initialize MongoDB connection
 async function initMongo() {
-    if (!mongoClient) {
-        mongoClient = new MongoClient(MONGO_URL);
-        await mongoClient.connect();
-        db = mongoClient.db(MONGO_DB);
-        console.log('✅ MongoDB connected for analytics');
+    try {
+        if (!mongoClient) {
+            console.log(`Connecting to MongoDB at ${MONGO_URL}...`);
+            mongoClient = new MongoClient(MONGO_URL, {
+                serverSelectionTimeoutMS: 5000,
+                connectTimeoutMS: 10000,
+            });
+            await mongoClient.connect();
+            db = mongoClient.db(MONGO_DB);
+            console.log('✅ MongoDB connected for analytics');
+        }
+        if (!db) {
+            throw new Error('MongoDB database instance is null');
+        }
+        return db;
+    } catch (error) {
+        console.error('❌ MongoDB connection error:', error.message);
+        // Reset client to allow retry on next request
+        mongoClient = null;
+        db = null;
+        throw new Error(`MongoDB connection failed: ${error.message}`);
     }
-    return db;
 }
 
 // ========== 0. TRACKING ENDPOINT (RECEIVE EVENTS) ==========
@@ -330,33 +345,38 @@ router.get('/review-analytics/rating-distribution/:propertyType', async (req, re
     }
 });
 
-// ========== 5. USER COHORT ANALYTICS ==========
-router.get('/user-cohorts', async (req, res) => {
+
+
+
+// Get cohort comparison (must be before :cohortName route)
+router.get('/user-cohorts/compare/:type', async (req, res) => {
     try {
         const db = await initMongo();
-        const { cohortType, sortBy = 'total_bookings', order = 'desc', limit = 20 } = req.query;
-
-        let query = {};
-        if (cohortType) {
-            query.cohort_type = cohortType;
-        }
-
-        const sortOrder = order === 'desc' ? -1 : 1;
+        const { type } = req.params; // 'location' or 'age'
 
         const data = await db.collection('user_cohorts')
-            .find(query)
-            .sort({ [sortBy]: sortOrder })
-            .limit(parseInt(limit))
+            .find({ cohort_type: type })
+            .sort({ total_bookings: -1 })
             .toArray();
+
+        // Calculate metrics
+        const comparison = data.map(cohort => ({
+            name: cohort.cohort_name,
+            users: cohort.user_count,
+            bookings: cohort.total_bookings,
+            avgSpend: cohort.avg_spend_per_user,
+            conversionRate: ((cohort.total_bookings / cohort.user_count) * 100).toFixed(2),
+            totalRevenue: (cohort.total_bookings * cohort.avg_spend_per_user).toFixed(2)
+        }));
 
         res.json({
             success: true,
-            data,
-            total: data.length,
-            cohortType: cohortType || 'all'
+            cohortType: type,
+            data: comparison,
+            total: comparison.length
         });
     } catch (error) {
-        console.error('User cohorts error:', error);
+        console.error('Cohort comparison error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -395,39 +415,6 @@ router.get('/user-cohorts/:cohortName', async (req, res) => {
         });
     } catch (error) {
         console.error('Cohort details error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get cohort comparison
-router.get('/user-cohorts/compare/:type', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { type } = req.params; // 'location' or 'age'
-
-        const data = await db.collection('user_cohorts')
-            .find({ cohort_type: type })
-            .sort({ total_bookings: -1 })
-            .toArray();
-
-        // Calculate metrics
-        const comparison = data.map(cohort => ({
-            name: cohort.cohort_name,
-            users: cohort.user_count,
-            bookings: cohort.total_bookings,
-            avgSpend: cohort.avg_spend_per_user,
-            conversionRate: ((cohort.total_bookings / cohort.user_count) * 100).toFixed(2),
-            totalRevenue: (cohort.total_bookings * cohort.avg_spend_per_user).toFixed(2)
-        }));
-
-        res.json({
-            success: true,
-            cohortType: type,
-            data: comparison,
-            total: comparison.length
-        });
-    } catch (error) {
-        console.error('Cohort comparison error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

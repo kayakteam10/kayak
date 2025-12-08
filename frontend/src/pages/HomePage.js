@@ -5,6 +5,7 @@ import { FaPlane, FaHotel, FaCar, FaUmbrellaBeach, FaMagic, FaSearch, FaExchange
 import AirportAutocomplete from '../components/AirportAutocomplete';
 import HotelLocationAutocomplete from '../components/HotelLocationAutocomplete';
 import CarLocationAutocomplete from '../components/CarLocationAutocomplete';
+import { trackPageView, trackSectionView } from '../utils/analytics';
 import './HomePage.css';
 
 const heroImages = [
@@ -158,6 +159,10 @@ const HomePage = () => {
 
   // Load user profile on mount and when login state changes
   useEffect(() => {
+    // Track page view
+    trackPageView('home', 'main');
+    trackSectionView('home', 'hero', 100);
+    
     const updateUserProfile = () => {
       const token = localStorage.getItem('token');
       const userName = localStorage.getItem('userName');
