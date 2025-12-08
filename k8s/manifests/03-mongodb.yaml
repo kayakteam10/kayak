@@ -25,7 +25,7 @@ spec:
           name: mongodb
         env:
         - name: MONGO_INITDB_DATABASE
-          value: "kayak_reviews"
+          value: "kayak_db"
         volumeMounts:
         - name: mongodb-storage
           mountPath: /data/db

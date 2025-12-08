@@ -16,8 +16,8 @@ data:
   DB_CONNECTION_LIMIT: "5"
   
   # MongoDB Atlas
-  MONGODB_DATABASE: "kayak_reviews"
-  MONGO_DB_NAME: "kayak_reviews"
+  MONGODB_DATABASE: "kayak_db"
+  MONGO_DB_NAME: "kayak_db"
   
   # Redis ElastiCache
   REDIS_HOST: "kayak-redis.dtrwn4.0001.usw1.cache.amazonaws.com"
