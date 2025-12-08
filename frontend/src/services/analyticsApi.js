@@ -4,6 +4,7 @@ import api from './api';
 
 // Page Clicks Analytics
 export const analyticsPageClicksAPI = {
+    track: (data) => api.post('/api/analytics/track', data),
     getAll: (params) => api.get('/api/analytics/page-clicks', { params }),
     getByPage: (pageName) => api.get(`/api/analytics/page-clicks/${pageName}`)
 };
