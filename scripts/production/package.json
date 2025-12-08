@@ -1,0 +1,23 @@
+{
+  "name": "kayak-production-seeding",
+  "version": "1.0.0",
+  "description": "Production data seeding for Kayak booking system",
+  "main": "run-all.js",
+  "scripts": {
+    "setup": "node 00-setup.js",
+    "seed:users": "node 01-seed-users.js",
+    "seed:hotels": "node 02-seed-hotels.js",
+    "seed:cars": "node 03-seed-cars.js",
+    "seed:flights": "node 04-seed-flights.js",
+    "seed:bookings": "node 05-seed-bookings.js",
+    "seed:reviews": "node 06-seed-reviews.js",
+    "seed:all": "node run-all.js"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^8.3.1",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.3.1",
+    "mongodb": "^6.3.0",
+    "mysql2": "^3.6.5"
+  }
+}

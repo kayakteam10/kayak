@@ -227,20 +227,24 @@ app.get('/bookings/user/:userId', async (req, res) => {
             // Enrich hotel bookings with hotel details
             if (booking.booking_type === 'hotel' && booking.booking_details.hotel_id) {
                 try {
+                    logger.info(`Enriching hotel booking ${booking.id} with hotel_id ${booking.booking_details.hotel_id}`);
                     const [hotelRows] = await dbPool.execute(
-                        `SELECT hotel_name, location, city, address, room_type, price_per_night 
+                        `SELECT hotel_name, location, city, address, price_per_night 
                          FROM hotels WHERE id = ?`,
                         [booking.booking_details.hotel_id]
                     );
 
+                    logger.info(`Hotel query returned ${hotelRows.length} rows`);
                     if (hotelRows.length > 0) {
                         const hotel = hotelRows[0];
                         booking.booking_details.hotel_name = hotel.hotel_name;
                         booking.booking_details.location = hotel.location;
                         booking.booking_details.city = hotel.city;
                         booking.booking_details.address = hotel.address;
-                        booking.booking_details.room_type = hotel.room_type;
                         booking.booking_details.price_per_night = hotel.price_per_night;
+                        logger.info(`✅ Enriched booking ${booking.id} with hotel: ${hotel.hotel_name}`);
+                    } else {
+                        logger.warn(`⚠️ Hotel ${booking.booking_details.hotel_id} not found in database`);
                     }
                 } catch (hotelError) {
                     logger.error(`Error fetching hotel details: ${hotelError.message}`);

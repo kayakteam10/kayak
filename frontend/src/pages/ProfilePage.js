@@ -458,15 +458,38 @@ function ProfilePage() {
       entityId = booking.id;
     }
 
-    // Extract entity details from booking
-    const entityName = details.hotelName || details.hotel_name || details.carModel || details.car_model || 
-                       (details.airline && details.flightNumber ? `${details.airline} ${details.flightNumber}` : '') || '';
-    const entityAddress = details.hotelAddress || details.hotel_address || details.pickupLocation || details.pickup_location || '';
-    const entityCity = details.city || details.location || details.destination || '';
-    
-    // Extract stay/travel date from booking
-    const stayDate = details.checkIn || details.check_in || details.departureDate || details.departure_date || 
-                     details.pickupDate || details.pickup_date || booking.booking_date || null;
+    // Extract entity details from booking based on type
+    let entityName = '';
+    let entityAddress = '';
+    let entityCity = '';
+    let stayDate = null;
+
+    if (entityType === 'hotel') {
+      entityName = details.hotel_name || details.hotelName || '';
+      entityAddress = details.address || details.hotelAddress || details.hotel_address || '';
+      entityCity = details.city || details.location || '';
+      stayDate = details.check_in || details.check_in_date || details.checkIn || null;
+    } else if (entityType === 'car') {
+      entityName = details.car_model || details.carModel || '';
+      entityAddress = details.pickupLocation || details.pickup_location || '';
+      entityCity = details.city || details.location || '';
+      stayDate = details.pickupDate || details.pickup_date || null;
+    } else if (entityType === 'flight') {
+      entityName = (details.airline && details.flight_number) ? `${details.airline} ${details.flight_number}` : 
+                   (details.airline && details.flightNumber) ? `${details.airline} ${details.flightNumber}` : '';
+      entityAddress = details.departure_airport || details.departureAirport || '';
+      entityCity = details.arrival_airport || details.arrivalAirport || '';
+      stayDate = details.departure_time || details.departure_date || details.departureDate || null;
+    }
+
+    console.log('🏷️ Extracted entity details:', {
+      entityType,
+      entityId,
+      entityName,
+      entityAddress,
+      entityCity,
+      stayDate
+    });
 
     const formData = {
       bookingId: booking.id,

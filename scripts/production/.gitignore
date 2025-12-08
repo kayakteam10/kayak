@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+
+# Generated data files
+user-ids.json
+hotel-ids.json
+car-ids.json
+flight-ids.json
+booking-ids.json
+
+# Logs
+*.log
