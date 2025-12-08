@@ -94,6 +94,35 @@ class CarService {
         return result;
     }
 
+    /**
+     * Handle booking cancellation event (Rollback)
+     * Called by Kafka consumer
+     */
+    async handleBookingCancellation(event) {
+        try {
+            const { booking_type, booking_details } = event;
+
+            // Only handle car bookings
+            if (booking_type !== 'car' && booking_type !== 'cars') {
+                return;
+            }
+
+            if (!booking_details || !booking_details.car_id) {
+                logger.warn('⚠️ No car details found in cancellation event');
+                return;
+            }
+
+            const carId = booking_details.car_id;
+
+            // RELEASE CAR
+            await this.releaseCar(carId);
+            logger.info(`✅ Rolled back availability for Car ${carId}`);
+
+        } catch (error) {
+            logger.error(`❌ Error handling car cancellation: ${error.message}`);
+        }
+    }
+
     async searchLocations(query) {
         if (!query || query.length < 2) {
             return [];
@@ -117,7 +146,7 @@ class CarService {
         const schema = Joi.object({
             location: Joi.string().min(2).required(),
             pickupDate: Joi.date().iso().min('now').required(),
-            returnDate: Joi.date().iso().greater(Joi.ref('pickupDate')).required(),
+            returnDate: Joi.date().iso().min(Joi.ref('pickupDate')).required(),
             carType: Joi.string().valid('economy', 'compact', 'suv', 'luxury', 'any').default('any')
         });
 

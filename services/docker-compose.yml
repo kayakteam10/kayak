@@ -262,6 +262,7 @@ services:
       DB_USER: root
       DB_PASSWORD: root123
       DB_NAME: kayak_db
+      KAFKA_BROKER: kafka:9092
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
       CAR_SERVICE_URL: http://car-service:8003
@@ -318,6 +319,21 @@ services:
 
   # ========== AI SERVICES ==========
 
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: kayak-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: pass
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
   ai-service:
     build: ../agentic_ai_services
     container_name: kayak-ai-service
@@ -326,6 +342,23 @@ services:
       - "8008:8008"
     volumes:
       - ../agentic_ai_services:/app
+
+  # ========== FRONTEND ==========
+
+  frontend:
+    build: ../frontend
+    container_name: kayak-frontend
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      PORT: 8088
+      REACT_APP_API_URL: http://localhost:8080
+    depends_on:
+      platform-service:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
 
 volumes:
   mysql_data:

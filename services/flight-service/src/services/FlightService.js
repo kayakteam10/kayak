@@ -37,10 +37,15 @@ class FlightService {
         // 1. Validate filters
         const validated = this.validateSearchFilters(filters);
 
-        // 2. Generate cache key
+        // 2. Handle roundtrip searches
+        if (validated.tripType === 'roundtrip' && validated.returnDate) {
+            return await this.searchRoundtrip(validated);
+        }
+
+        // 3. Generate cache key
         const cacheKey = this.generateCacheKey(validated);
 
-        // 3. Check cache (Read-Through Caching) - if enabled
+        // 4. Check cache (Read-Through Caching) - if enabled
         if (this.cacheEnabled) {
             const cached = await this.cacheRepo.get(cacheKey);
             if (cached) {
@@ -51,13 +56,13 @@ class FlightService {
 
         logger.info(`❌ Cache MISS: ${cacheKey}`);
 
-        // 4. Query database
+        // 5. Query database
         const flights = await this.flightRepo.searchFlights(validated);
 
-        // 5. Apply business rules & processing
+        // 6. Apply business rules & processing
         const processed = this.processFlights(flights, validated);
 
-        // 6. Cache results (Write-Through Caching) - if enabled
+        // 7. Cache results (Write-Through Caching) - if enabled
         if (this.cacheEnabled) {
             await this.cacheRepo.set(
                 cacheKey,
@@ -66,7 +71,7 @@ class FlightService {
             );
         }
 
-        // 7. Publish Kafka event (Fire-and-forget) - if enabled
+        // 8. Publish Kafka event (Fire-and-forget) - if enabled
         if (this.kafkaEnabled) {
             await this.publishEvent('flight.searched', {
                 filters: validated,
@@ -76,6 +81,42 @@ class FlightService {
         }
 
         return processed;
+    }
+
+    /**
+     * Search roundtrip flights
+     * Queries both outbound and return flights
+     */
+    async searchRoundtrip(filters) {
+        logger.info(`🔄 Roundtrip search: ${filters.origin} → ${filters.destination} → ${filters.origin}`);
+
+        // Search outbound flights
+        const outboundFilters = {
+            origin: filters.origin,
+            destination: filters.destination,
+            date: filters.date,
+            passengers: filters.passengers,
+            tripType: 'oneway'
+        };
+        const outboundFlights = await this.flightRepo.searchFlights(outboundFilters);
+
+        // Search return flights (swap origin and destination)
+        const returnFilters = {
+            origin: filters.destination,
+            destination: filters.origin,
+            date: filters.returnDate,
+            passengers: filters.passengers,
+            tripType: 'oneway'
+        };
+        const returnFlights = await this.flightRepo.searchFlights(returnFilters);
+
+        logger.info(`✈️ Found ${outboundFlights.length} outbound, ${returnFlights.length} return flights`);
+
+        return {
+            outbound: this.processFlights(outboundFlights, outboundFilters),
+            return: this.processFlights(returnFlights, returnFilters),
+            tripType: 'roundtrip'
+        };
     }
 
     /**
@@ -213,6 +254,74 @@ class FlightService {
     }
 
     /**
+     * Handle booking cancellation event (Rollback)
+     * Called by Kafka consumer
+     * 
+     * @param {Object} event - Cancellation event payload
+     */
+    async handleBookingCancellation(event) {
+        try {
+            const { booking_type, booking_details } = event;
+
+            // Only handle flight bookings
+            if (booking_type !== 'flight' && booking_type !== 'flights') {
+                return;
+            }
+
+            if (!booking_details) {
+                logger.warn('⚠️ No booking details found in cancellation event');
+                return;
+            }
+
+            // Extract Flight IDs (could be single or multiple for round-trips)
+            // Strategy: Look for specific flight IDs or array of legs
+            const primaryFlightId = booking_details.flight_id;
+
+            // Extract Seats
+            let seatsToRelease = [];
+
+            // Case 1: 'selected_seats' is array of strings: ['1A', '1B']
+            if (Array.isArray(booking_details.selected_seats)) {
+                // Check if elements are strings or objects
+                if (booking_details.selected_seats.length > 0) {
+                    const sample = booking_details.selected_seats[0];
+                    if (typeof sample === 'string') {
+                        seatsToRelease = booking_details.selected_seats;
+                    } else if (typeof sample === 'object' && sample.seatNumber) {
+                        // Case 2: Array of objects [{seatNumber: '1A'}, ...]
+                        seatsToRelease = booking_details.selected_seats.map(s => s.seatNumber);
+                    }
+                }
+            }
+            // Case 3: 'seats' object in passengers (older format)
+            else if (Array.isArray(booking_details.passengers)) {
+                const extracted = new Set();
+                booking_details.passengers.forEach(p => {
+                    if (p.seatNumber) extracted.add(p.seatNumber);
+                    if (p.seats && typeof p.seats === 'object') {
+                        Object.values(p.seats).forEach(s => extracted.add(s));
+                    }
+                });
+                seatsToRelease = Array.from(extracted);
+            }
+
+            if (!primaryFlightId || seatsToRelease.length === 0) {
+                logger.warn(`⚠️ Could not parse flight/seats for rollback. FlightID: ${primaryFlightId}, Seats: ${seatsToRelease.length}`);
+                return;
+            }
+
+            logger.info(`Checking rollback for Flight ${primaryFlightId}, Seats: ${seatsToRelease.join(', ')}`);
+
+            // RELEASE SEATS
+            await this.releaseSeats(primaryFlightId, seatsToRelease);
+            logger.info(`✅ Rolled back ${seatsToRelease.length} seats for Flight ${primaryFlightId}`);
+
+        } catch (error) {
+            logger.error(`❌ Error handling cancellation: ${error.message}`);
+        }
+    }
+
+    /**
      * Search airports (autocomplete)
      * 
      * @param {string} query
@@ -259,6 +368,7 @@ class FlightService {
             origin: Joi.string().length(3).uppercase().required(),
             destination: Joi.string().length(3).uppercase().required(),
             date: Joi.date().iso().required(),
+            returnDate: Joi.date().iso().min(Joi.ref('date')).optional(),
             passengers: Joi.number().integer().min(1).max(9).default(1),
             tripType: Joi.string().valid('oneway', 'roundtrip', 'multicity').default('oneway')
         });

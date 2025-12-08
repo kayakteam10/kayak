@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingsAPI, authAPI, reviewsAPI } from '../services/api';
-import { FaPlane, FaHotel, FaCar, FaTimes, FaCheckCircle, FaClock, FaStar } from 'react-icons/fa';
+import { FaPlane, FaHotel, FaCar, FaTimes, FaCheckCircle, FaClock, FaStar, FaSpinner } from 'react-icons/fa';
 import './ProfilePage.css';
 
 const USA_STATES = [
@@ -111,6 +111,7 @@ function ProfilePage() {
     title: '',
     reviewText: ''
   });
+  const [notification, setNotification] = useState(null); // { message, type: 'success' | 'error' | 'info' }
 
   // Handle URL parameter for tab switching
   useEffect(() => {
@@ -120,9 +121,12 @@ function ProfilePage() {
     }
   }, [searchParams]);
 
-  // Load saved payment methods from localStorage
+  // Load saved payment methods from localStorage (user-specific)
   useEffect(() => {
-    const savedPayments = localStorage.getItem('savedPaymentMethods');
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+
+    const savedPayments = localStorage.getItem(`savedPaymentMethods_${userId}`);
     if (savedPayments) {
       try {
         const parsed = JSON.parse(savedPayments);
@@ -138,20 +142,26 @@ function ProfilePage() {
         setSavedPaymentMethods(validPayments);
         // Update localStorage with cleaned data
         if (validPayments.length !== parsed.length) {
-          localStorage.setItem('savedPaymentMethods', JSON.stringify(validPayments));
+          localStorage.setItem(`savedPaymentMethods_${userId}`, JSON.stringify(validPayments));
         }
       } catch (e) {
         console.error('Error loading saved payments:', e);
         // Clear invalid data
-        localStorage.removeItem('savedPaymentMethods');
+        localStorage.removeItem(`savedPaymentMethods_${userId}`);
       }
     }
   }, []);
 
-  // Save payment methods to localStorage whenever they change
+  // Save payment methods to localStorage whenever they change (user-specific)
   useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+
     if (savedPaymentMethods.length > 0) {
-      localStorage.setItem('savedPaymentMethods', JSON.stringify(savedPaymentMethods));
+      localStorage.setItem(`savedPaymentMethods_${userId}`, JSON.stringify(savedPaymentMethods));
+    } else {
+      // Remove the key if no payment methods
+      localStorage.removeItem(`savedPaymentMethods_${userId}`);
     }
   }, [savedPaymentMethods]);
 
@@ -170,11 +180,27 @@ function ProfilePage() {
         const [bookingsRes, profileRes, reviewsRes] = await Promise.all([
           bookingsAPI.getAll(userId),
           authAPI.me(),
-          reviewsAPI.getMyReviews(userId).catch(() => ({ data: { reviews: [] } }))
+          reviewsAPI.getMyReviews(userId).catch(() => ({ data: { data: [] } }))
         ]);
 
         setBookings(bookingsRes.data.data || bookingsRes.data.bookings || []);
-        setReviews(reviewsRes.data?.reviews || []);
+
+        // Parse reviews array - handle multiple possible response formats
+        let reviewsArray = [];
+        if (Array.isArray(reviewsRes.data?.data)) {
+          reviewsArray = reviewsRes.data.data;
+        } else if (Array.isArray(reviewsRes.data?.reviews)) {
+          reviewsArray = reviewsRes.data.reviews;
+        } else if (Array.isArray(reviewsRes.data)) {
+          reviewsArray = reviewsRes.data;
+        } else if (reviewsRes.data?.data && typeof reviewsRes.data.data === 'object') {
+          reviewsArray = Object.values(reviewsRes.data.data);
+        }
+
+        setReviews(reviewsArray);
+        console.log('📋 Initial reviews loaded:', reviewsArray.length, 'reviews');
+        console.log('📋 Reviews data:', reviewsArray);
+
         // Billing feature not yet implemented
         setBillings([]);
 
@@ -272,22 +298,24 @@ function ProfilePage() {
   const validateForm = () => {
     const newErrors = {};
 
-    // SSN validation (###-##-####) - MANDATORY
+    // SSN validation (###-##-####) - REQUIRED
     if (!profile.ssn) {
       newErrors.ssn = 'SSN is required';
     } else if (!/^\d{3}-\d{2}-\d{4}$/.test(profile.ssn)) {
       newErrors.ssn = 'SSN must be in format ###-##-####';
     }
 
-    // Phone validation - MANDATORY
+    // Phone validation - REQUIRED
     if (!profile.phone) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/.test(profile.phone)) {
-      newErrors.phone = 'Invalid phone number format';
+    } else if (!/^\d{3}-\d{3}-\d{4}$/.test(profile.phone)) {
+      newErrors.phone = 'Phone must be in format ###-###-####';
     }
 
-    // ZIP code validation (##### or #####-####)
-    if (profile.zipCode && !/^\d{5}(-\d{4})?$/.test(profile.zipCode)) {
+    // ZIP code validation - REQUIRED
+    if (!profile.zipCode) {
+      newErrors.zipCode = 'ZIP code is required';
+    } else if (!/^\d{5}(-\d{4})?$/.test(profile.zipCode)) {
       newErrors.zipCode = 'ZIP code must be in format ##### or #####-####';
     }
 
@@ -302,11 +330,6 @@ function ProfilePage() {
     ];
     if (profile.state && !validStates.includes(profile.state.toUpperCase())) {
       newErrors.state = 'Invalid state abbreviation';
-    }
-
-    // Phone validation
-    if (profile.phone && !/^(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/.test(profile.phone)) {
-      newErrors.phone = 'Invalid phone number format';
     }
 
     // Credit card last 4 validation
@@ -356,16 +379,25 @@ function ProfilePage() {
 
         // Trigger header update
         window.dispatchEvent(new Event('login'));
-        alert('Profile updated successfully!');
+        showNotification('Profile updated successfully!', 'success');
         setErrors({});
       }
     } catch (e) {
       console.error('Profile update error:', e);
-      if (e.response?.data?.validationErrors) {
+      const errorMessage = e.response?.data?.error || 'Failed to update profile';
+
+      // Handle specific validation errors
+      if (errorMessage.includes('Phone number already exists')) {
+        setErrors({ ...errors, phone: 'This phone number is already registered to another user' });
+        showNotification('Phone number already exists. Please use a different phone number.', 'error');
+      } else if (errorMessage.includes('SSN already exists')) {
+        setErrors({ ...errors, ssn: 'This SSN is already registered to another user' });
+        showNotification('SSN already exists. Please use a different SSN.', 'error');
+      } else if (e.response?.data?.validationErrors) {
         setErrors(e.response.data.validationErrors);
-        alert('Validation failed. Please check the form.');
+        showNotification('Validation failed. Please check the form.', 'error');
       } else {
-        alert(e.response?.data?.error || 'Failed to update profile');
+        showNotification(errorMessage, 'error');
       }
     } finally {
       setSaving(false);
@@ -417,25 +449,71 @@ function ProfilePage() {
 
   const submitReview = async () => {
     try {
-      console.log('Submitting review:', reviewForm);
-      const response = await reviewsAPI.create(reviewForm);
+      const userId = localStorage.getItem('userId');
+      const userName = localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Anonymous';
+
+      console.log('🔑 User ID from localStorage:', userId, 'Type:', typeof userId);
+      console.log('🔑 Parsed user ID:', parseInt(userId));
+
+      // Map frontend fields to backend expected fields
+      const reviewData = {
+        listing_type: reviewForm.entityType,
+        listing_id: reviewForm.entityId,
+        user_id: parseInt(userId),
+        user_name: userName,
+        rating: reviewForm.rating,
+        comment: reviewForm.reviewText || reviewForm.title || ''
+      };
+
+      console.log('📝 Submitting review:', reviewData);
+      const response = await reviewsAPI.create(reviewData);
       console.log('Review response:', response);
 
-      // Add the new review to the reviews list
-      setReviews([response.data.review, ...reviews]);
-
-      // Close modal and show success message
+      // Close modal immediately
       setShowReviewModal(false);
-      alert('Review submitted successfully!');
 
       // Fetch updated reviews list to ensure we have the latest data
       try {
         const userId = localStorage.getItem('userId');
+        console.log('🔍 Fetching reviews for user ID:', userId, 'Type:', typeof userId);
+        console.log('🔍 Parsed user ID:', parseInt(userId));
+
         const reviewsRes = await reviewsAPI.getMyReviews(userId);
-        setReviews(reviewsRes.data?.reviews || []);
-        console.log('✅ Reviews refreshed after submission');
+        console.log('🔍 FULL RESPONSE:', JSON.stringify(reviewsRes, null, 2));
+        console.log('🔍 reviewsRes.data:', reviewsRes.data);
+        console.log('🔍 reviewsRes.data.data:', reviewsRes.data?.data);
+        console.log('🔍 Type of reviewsRes.data.data:', typeof reviewsRes.data?.data);
+        console.log('🔍 Is reviewsRes.data.data an array?', Array.isArray(reviewsRes.data?.data));
+
+        // Parse reviews array from response - handle multiple possible formats
+        let reviewsArray = [];
+
+        if (Array.isArray(reviewsRes.data?.data)) {
+          // Standard format: { data: { data: [...] } }
+          reviewsArray = reviewsRes.data.data;
+        } else if (Array.isArray(reviewsRes.data?.reviews)) {
+          // Alternative format: { data: { reviews: [...] } }
+          reviewsArray = reviewsRes.data.reviews;
+        } else if (Array.isArray(reviewsRes.data)) {
+          // Direct array: { data: [...] }
+          reviewsArray = reviewsRes.data;
+        } else if (reviewsRes.data?.data && typeof reviewsRes.data.data === 'object') {
+          // If data.data is an object, try to extract reviews from it
+          reviewsArray = Object.values(reviewsRes.data.data);
+        }
+
+        console.log('✅ Final reviews array:', reviewsArray);
+        console.log('✅ Array length:', reviewsArray.length);
+        console.log('✅ Is array?', Array.isArray(reviewsArray));
+
+        setReviews(reviewsArray);
+
+        // Switch to reviews tab to show the newly submitted review
+        setActiveTab('reviews');
+        showNotification(`Review submitted successfully! You now have ${reviewsArray.length} review(s).`, 'success');
       } catch (fetchError) {
-        console.error('Error refreshing reviews:', fetchError);
+        console.error('❌ Error refreshing reviews:', fetchError);
+        showNotification('Review submitted but failed to refresh the list. Please reload the page.', 'error');
       }
 
       // Reset form
@@ -465,7 +543,7 @@ function ProfilePage() {
         displayMsg += '\n\nDetails: ' + errorDetails;
       }
 
-      alert(displayMsg);
+      showNotification(displayMsg, 'error');
     }
   };
 
@@ -479,10 +557,57 @@ function ProfilePage() {
     return bookings.filter(b => b.status === bookingFilter);
   };
 
-  if (loading) return <div className="profile-loading">Loading your bookings...</div>;
+  // Notification helper
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+      setNotification(null);
+    }, 8000);
+  };
+
+  if (loading) {
+    return (
+      <div className="profile-page">
+        <div className="profile-loading">
+          <FaSpinner className="spinner icon-spin" /> Loading your profile...
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="profile-page">
+        <div className="profile-container" style={{ marginTop: '100px', textAlign: 'center' }}>
+          <h3>Failed to load profile</h3>
+          <p>Please try logging in again.</p>
+          <button onClick={() => navigate('/login')} className="save-profile-btn">
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page">
+      {/* Notification Banner */}
+      {notification && (
+        <div className={`notification-banner notification-${notification.type}`}>
+          <div className="notification-content">
+            <span className="notification-message">{notification.message}</span>
+            <button
+              className="notification-close"
+              onClick={() => setNotification(null)}
+              aria-label="Close notification"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="profile-banner"></div>
 
       <div className="profile-container">
@@ -685,7 +810,7 @@ function ProfilePage() {
                       >
                         View Details
                       </button>
-                      {booking.status === 'confirmed' && !reviews.find(r => r.bookingId === booking.id) && (
+                      {booking.status === 'confirmed' && (
                         <button
                           onClick={() => openReviewModal(booking)}
                           className="action-btn review-btn"
@@ -711,7 +836,7 @@ function ProfilePage() {
 
         {activeTab === 'reviews' && (
           <div className="reviews-section">
-            {reviews.length === 0 ? (
+            {!Array.isArray(reviews) || reviews.length === 0 ? (
               <div className="no-reviews">
                 <div className="empty-icon">⭐</div>
                 <h3>No reviews yet</h3>
@@ -719,30 +844,56 @@ function ProfilePage() {
               </div>
             ) : (
               <div className="reviews-list">
-                {reviews.map((review) => (
-                  <div key={review._id} className="review-card">
-                    <div className="review-header">
-                      <div className="review-rating">
-                        {[...Array(5)].map((_, i) => (
-                          <FaStar key={i} className={i < review.rating ? 'star-filled' : 'star-empty'} />
-                        ))}
+                {Array.isArray(reviews) && reviews.map((review, index) => {
+                  // Handle MongoDB ObjectId format
+                  const reviewId = review._id?.$oid || review._id || `review-${index}`;
+
+                  // Parse date - handle both string and Date object
+                  let dateStr = 'N/A';
+                  try {
+                    const date = review.created_at ? new Date(review.created_at) : null;
+                    if (date && !isNaN(date.getTime())) {
+                      dateStr = date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      });
+                    }
+                  } catch (e) {
+                    console.error('Date parsing error:', e, review.created_at);
+                  }
+
+                  // Log review data for debugging
+                  if (index === 0) {
+                    console.log('📝 Sample review object:', review);
+                  }
+
+                  // Fallback to legacy fields (including seeded data fields)
+                  const displayRating = review.rating || 0;
+                  const displayComment = review.comment || review.review_text || '';
+                  const displayType = (review.listing_type || review.entity_type || review.target_type || 'UNKNOWN').toUpperCase();
+                  const displayId = review.listing_id || review.entity_id || review.target_id || 'N/A';
+
+                  return (
+                    <div key={reviewId} className="review-card">
+                      <div className="review-header">
+                        <div className="review-rating">
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar key={i} className={i < displayRating ? 'star-filled' : 'star-empty'} />
+                          ))}
+                        </div>
+                        <span className="review-date">{dateStr}</span>
                       </div>
-                      <span className="review-date">
-                        {new Date(review.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
+                      {displayComment && <p className="review-text">{displayComment}</p>}
+                      <div className="review-meta">
+                        <span className="review-entity">
+                          {displayType} #{displayId}
+                        </span>
+                        {(review.verified || review.verified_booking) && <span className="verified-badge">✓ Verified</span>}
+                      </div>
                     </div>
-                    <h4 className="review-title">{review.title}</h4>
-                    <p className="review-text">{review.comment}</p>
-                    <div className="review-meta">
-                      <span className="review-entity">{review.target_type?.toUpperCase() || 'UNKNOWN'}</span>
-                      {review.verified && <span className="verified-badge">✓ Verified</span>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -787,21 +938,29 @@ function ProfilePage() {
                   <label>Phone Number *</label>
                   <input
                     type="tel"
-                    value={profile.phone}
+                    value={profile.phone || ''}
                     onChange={(e) => {
-                      // Remove all non-digits
-                      let value = e.target.value.replace(/\D/g, '');
+                      // Remove all non-digits to get raw input
+                      const digits = e.target.value.replace(/\D/g, '');
 
-                      // Format as xxx-xxx-xxxx
-                      if (value.length >= 6) {
-                        value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6, 10);
-                      } else if (value.length >= 3) {
-                        value = value.slice(0, 3) + '-' + value.slice(3, 6);
+                      // Limit to 10 digits max
+                      const limitedDigits = digits.slice(0, 10);
+
+                      // Format based on number of digits
+                      let formatted = '';
+                      if (limitedDigits.length === 0) {
+                        formatted = '';
+                      } else if (limitedDigits.length <= 3) {
+                        formatted = limitedDigits;
+                      } else if (limitedDigits.length <= 6) {
+                        formatted = limitedDigits.slice(0, 3) + '-' + limitedDigits.slice(3);
+                      } else {
+                        formatted = limitedDigits.slice(0, 3) + '-' + limitedDigits.slice(3, 6) + '-' + limitedDigits.slice(6);
                       }
 
-                      setProfile({ ...profile, phone: value });
+                      setProfile({ ...profile, phone: formatted });
                     }}
-                    placeholder="123-456-7890"
+                    placeholder="555-010-6363"
                     maxLength="12"
                     className={errors.phone ? 'error' : ''}
                   />
@@ -809,10 +968,10 @@ function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>SSN * (###-##-####)</label>
+                  <label>User ID (SSN No)*</label>
                   <input
                     type="text"
-                    value={profile.ssn}
+                    value={profile.ssn || ''}
                     onChange={(e) => {
                       // Remove all non-digits
                       const digits = e.target.value.replace(/\D/g, '');
@@ -876,10 +1035,10 @@ function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>ZIP Code (##### or #####-####)</label>
+                  <label>ZIP Code * (##### or #####-####)</label>
                   <input
                     type="text"
-                    value={profile.zipCode}
+                    value={profile.zipCode || ''}
                     onChange={(e) => {
                       // Remove all non-digits
                       const digits = e.target.value.replace(/\D/g, '');

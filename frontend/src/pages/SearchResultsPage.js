@@ -33,6 +33,9 @@ function SearchResultsPage() {
   const [showDetailsSlideOver, setShowDetailsSlideOver] = useState(false);
   const [missingLeg, setMissingLeg] = useState(null);
 
+  // Ensure filteredResults is always an array
+  const safeFilteredResults = Array.isArray(filteredResults) ? filteredResults : [];
+
   const type = searchParams.get('type') || 'flights';
   const tripType = searchParams.get('tripType');
   const origin = searchParams.get('origin');
@@ -101,6 +104,12 @@ function SearchResultsPage() {
           data = response.data.data || response.data.cars || response.data[type] || response.data.results || [];
         }
 
+        // Ensure data is always an array
+        if (!Array.isArray(data)) {
+          console.warn('⚠️ Data is not an array, converting to empty array:', data);
+          data = [];
+        }
+
         console.log('✅ Setting results:', data.length, 'items');
         if (data.length > 0) {
           console.log('✅ First result sample:', {
@@ -130,6 +139,9 @@ function SearchResultsPage() {
         console.error('❌ Error response:', err.response);
         setError('Failed to load results. Please try again.');
         setMissingLeg(null);
+        // Ensure we set empty arrays on error
+        setResults([]);
+        setFilteredResults([]);
       } finally {
         setLoading(false);
       }
@@ -139,6 +151,13 @@ function SearchResultsPage() {
   }, [searchParams, type, tripType]);
 
   useEffect(() => {
+    // Ensure results is an array before filtering
+    if (!Array.isArray(results)) {
+      console.warn('⚠️ Results is not an array in filter useEffect, using empty array');
+      setFilteredResults([]);
+      return;
+    }
+
     let filtered = [...results];
 
     // Apply filters
@@ -563,7 +582,10 @@ function SearchResultsPage() {
       const children = searchParams.get('children') || '0';
       const infants = searchParams.get('infants') || '0';
       const passengerParams = `passengers=${passengers}&adults=${adults}&children=${children}&infants=${infants}`;
-      navigate(`/booking/flights/${flight.id || flight}?${passengerParams}`);
+      const flightId = itemId?.id || itemId;
+      if (flightId) {
+        navigate(`/booking/flights/${flightId}?${passengerParams}`);
+      }
     }
   };
 
@@ -676,14 +698,14 @@ function SearchResultsPage() {
               <div className="roundtrip-actions">
                 <button
                   className="details-btn"
-                  onClick={() => handleViewDetails(flight)}
+                  onClick={() => handleViewDetails({ ...flight, legs })}
                   aria-label="View flight details"
                 >
                   View Details
                 </button>
                 <button
                   className="book-btn"
-                  onClick={() => handleBook(legs[0] || flight, legs)}
+                  onClick={() => handleBook(legs[0] || { ...flight, id: legs[0]?.id }, legs)}
                   aria-label="Book this flight now"
                 >
                   Book Now
@@ -1204,7 +1226,7 @@ function SearchResultsPage() {
                 )}
 
                 <div className="results-grid">
-                  {filteredResults.map(item =>
+                  {safeFilteredResults.map(item =>
                     type === 'flights' ? renderFlightCard(item) :
                       type === 'hotels' ? renderHotelCard(item) :
                         renderCarCard(item)

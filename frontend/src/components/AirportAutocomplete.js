@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { FaPlane } from 'react-icons/fa';
 import { flightsAPI } from '../services/api';
 import './AirportAutocomplete.css';
 
@@ -14,8 +16,22 @@ const AirportAutocomplete = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
   const debounceTimer = useRef(null);
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -128,6 +144,7 @@ const AirportAutocomplete = ({
   return (
     <div className="airport-autocomplete" ref={wrapperRef}>
       <input
+        ref={inputRef}
         type="text"
         name={name}
         value={inputValue}
@@ -151,8 +168,17 @@ const AirportAutocomplete = ({
         </div>
       )}
 
-      {isOpen && suggestions.length > 0 && (
-        <ul className="airport-suggestions">
+      {isOpen && suggestions.length > 0 && createPortal(
+        <ul 
+          className="airport-suggestions airport-suggestions-portal" 
+          style={{
+            position: 'fixed',
+            top: `${dropdownPosition.top + 4}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+            zIndex: 2147483647
+          }}
+        >
           {suggestions.map((airport, index) => (
             <li
               key={airport.code}
@@ -161,21 +187,53 @@ const AirportAutocomplete = ({
               onClick={() => handleSelectSuggestion(airport)}
               onMouseEnter={() => setHighlightedIndex(index)}
             >
-              <div className="airport-suggestion-content">
-                <span className="airport-code">{airport.code}</span>
-                <span className="airport-label">{airport.label}</span>
+              <div className="airport-suggestion-content" style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '4px 0' }}>
+                <div className="airport-icon-wrapper" style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', backgroundColor: '#f0f4f8',
+                  borderRadius: '4px', color: '#555', flexShrink: 0
+                }}>
+                  <FaPlane className="airport-icon-svg" style={{ fontSize: '14px', color: '#666', transform: 'rotate(-45deg)' }} />
+                </div>
+                <div className="airport-info" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                  <div className="airport-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                    <span className="airport-city" style={{
+                      fontWeight: 600, color: '#2c3e50', fontSize: '15px',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>{airport.city}</span>
+                    <span className="airport-code-badge" style={{
+                      fontWeight: 700, color: '#666', fontSize: '12px',
+                      backgroundColor: '#eee', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                    }}>{airport.code}</span>
+                  </div>
+                  <div className="airport-sub" style={{
+                    color: '#666', fontSize: '13px', whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis', width: '100%'
+                  }}>{airport.name}</div>
+                </div>
               </div>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
 
-      {isOpen && !isLoading && suggestions.length === 0 && inputValue.length >= 2 && (
-        <ul className="airport-suggestions">
+      {isOpen && !isLoading && suggestions.length === 0 && inputValue.length >= 2 && createPortal(
+        <ul 
+          className="airport-suggestions airport-suggestions-portal"
+          style={{
+            position: 'fixed',
+            top: `${dropdownPosition.top + 4}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+            zIndex: 2147483647
+          }}
+        >
           <li className="airport-suggestion-item no-results">
             No airports found
           </li>
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   );

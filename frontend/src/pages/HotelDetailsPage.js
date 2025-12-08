@@ -324,7 +324,7 @@ const HotelDetailsPage = () => {
               <h3>Children and extra beds</h3>
               <p><strong>Children are welcome</strong></p>
               <p>2 children, up to the age of 6 years, can stay for free if using existing beds when occupying the parent or guardian's room</p>
-              <p>Rollaway/extra beds are available for INR 2000.0 per night</p>
+              <p>Rollaway/extra beds are available for $60 per night</p>
               <p>Free cribs are available on request at the property</p>
             </div>
 
