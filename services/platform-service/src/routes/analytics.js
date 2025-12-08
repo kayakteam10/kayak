@@ -348,6 +348,39 @@ router.get('/review-analytics/rating-distribution/:propertyType', async (req, re
 
 
 
+// Get cohort comparison (must be before :cohortName route)
+router.get('/user-cohorts/compare/:type', async (req, res) => {
+    try {
+        const db = await initMongo();
+        const { type } = req.params; // 'location' or 'age'
+
+        const data = await db.collection('user_cohorts')
+            .find({ cohort_type: type })
+            .sort({ total_bookings: -1 })
+            .toArray();
+
+        // Calculate metrics
+        const comparison = data.map(cohort => ({
+            name: cohort.cohort_name,
+            users: cohort.user_count,
+            bookings: cohort.total_bookings,
+            avgSpend: cohort.avg_spend_per_user,
+            conversionRate: ((cohort.total_bookings / cohort.user_count) * 100).toFixed(2),
+            totalRevenue: (cohort.total_bookings * cohort.avg_spend_per_user).toFixed(2)
+        }));
+
+        res.json({
+            success: true,
+            cohortType: type,
+            data: comparison,
+            total: comparison.length
+        });
+    } catch (error) {
+        console.error('Cohort comparison error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get specific cohort details (e.g., users from San Jose, CA)
 router.get('/user-cohorts/:cohortName', async (req, res) => {
     try {
@@ -382,95 +415,6 @@ router.get('/user-cohorts/:cohortName', async (req, res) => {
         });
     } catch (error) {
         console.error('Cohort details error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get cohort comparison
-router.get('/user-cohorts/compare/:type', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { type } = req.params; // 'location' or 'age'
-
-        const data = await db.collection('user_cohorts')
-            .find({ cohort_type: type })
-            .sort({ total_bookings: -1 })
-            .toArray();
-
-        // Calculate metrics
-        const comparison = data.map(cohort => ({
-            name: cohort.cohort_name,
-            users: cohort.user_count,
-            bookings: cohort.total_bookings,
-            avgSpend: cohort.avg_spend_per_user,
-            conversionRate: ((cohort.total_bookings / cohort.user_count) * 100).toFixed(2),
-            totalRevenue: (cohort.total_bookings * cohort.avg_spend_per_user).toFixed(2)
-        }));
-
-        res.json({
-            success: true,
-            cohortType: type,
-            data: comparison,
-            total: comparison.length
-        });
-    } catch (error) {
-        console.error('Cohort comparison error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ========== 5. USER COHORT ANALYTICS ==========
-router.get('/user-cohorts', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { cohortType, sortBy = 'action_count', order = 'desc', limit = 20 } = req.query;
-
-        let query = {};
-        if (cohortType) {
-            query.cohort_type = cohortType;
-        }
-
-        const sortOrder = order === 'desc' ? -1 : 1;
-
-        const data = await db.collection('user_cohorts')
-            .find(query)
-            .sort({ [sortBy]: sortOrder })
-            .limit(parseInt(limit))
-            .toArray();
-
-        res.json({
-            success: true,
-            data,
-            total: data.length,
-            cohortType: cohortType || 'all'
-        });
-    } catch (error) {
-        console.error('User cohorts error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get cohort comparison by type
-router.get('/user-cohorts/compare/:type', async (req, res) => {
-    try {
-        const db = await initMongo();
-        const { type } = req.params;
-        const { limit = 10 } = req.query;
-
-        const data = await db.collection('user_cohorts')
-            .find({ cohort_type: type })
-            .sort({ action_count: -1 })
-            .limit(parseInt(limit))
-            .toArray();
-
-        res.json({
-            success: true,
-            cohortType: type,
-            data,
-            total: data.length
-        });
-    } catch (error) {
-        console.error('Cohort comparison error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
