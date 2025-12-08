@@ -55,7 +55,9 @@ class EnhancedChatHandler:
         
         # STEP 1: Build context from conversation history
         context = ContextMemory.build_context_summary(session_id, self.db)
-        logger.info(f"Context loaded: {len(context['conversation_flow'])} turns")
+        logger.info(f"🔍 [Session {session_id}] Processing message: '{user_message[:50]}...'")
+        logger.info(f"📊 [Session {session_id}] Context loaded: {len(context['conversation_flow'])} turns")
+        logger.info(f"📌 [Session {session_id}] Previous constraints: {context['user_constraints']}")
         
         # STEP 2: Parse intent with LLM (AI reasoning is PRIMARY)
         intent = None
@@ -89,9 +91,10 @@ class EnhancedChatHandler:
                 )
                 
                 if query_result:
-                    logger.info(f"✅ Gemini parsing succeeded")
+                    logger.info(f"✅ [Session {session_id}] Gemini parsing succeeded")
+                    logger.info(f"📍 [Session {session_id}] Parsed: origin={query_result.origin}, dest={query_result.destination}, dates={query_result.start_date}-{query_result.end_date}, budget=${query_result.budget}")
                 else:
-                    logger.warning(f"⚠️  Gemini parsing returned None, using rule-based fallback")
+                    logger.warning(f"⚠️  [Session {session_id}] Gemini parsing returned None, using rule-based fallback")
                 
                 # Convert ChatQuery to dict format
                 if query_result:
@@ -325,10 +328,16 @@ class EnhancedChatHandler:
         self.db.commit()
         
         # Generate candidate bundles
+        logger.info(f"🔍 [Session {session_id}] Generating bundles with constraints: {constraints}")
         bundles = await self._generate_bundles(constraints)
+        logger.info(f"📦 [Session {session_id}] Generated {len(bundles)} candidate bundles")
         
         # EDGE CASE: No results
         if not bundles:
+            logger.warning(f"❌ [Session {session_id}] NO BUNDLES FOUND for constraints: {constraints}")
+            logger.warning(f"🔍 [Session {session_id}] Available origins: {self._get_available_origins()}")
+            logger.warning(f"🔍 [Session {session_id}] Available destinations: {self._get_available_destinations()}")
+            
             error_response = handle_bundle_error('no_results', {
                 'constraints': constraints,
                 'origins': self._get_available_origins(),
@@ -355,13 +364,19 @@ class EnhancedChatHandler:
         # EDGE CASE: Budget too low
         if constraints.get('budget'):
             cheapest = min(bundles, key=lambda b: b[0].total_price)
+            logger.info(f"💰 [Session {session_id}] Budget check: user=${constraints['budget']}, cheapest=${cheapest[0].total_price:.2f}")
+            
             if cheapest[0].total_price > constraints['budget']:
+                logger.warning(f"❌ [Session {session_id}] BUDGET TOO LOW: Cheapest trip ${cheapest[0].total_price:.2f} exceeds budget ${constraints['budget']}")
+                
                 error_response = handle_bundle_error('budget_too_low', {
                     'budget': constraints['budget'],
                     'cheapest': cheapest[0].total_price
                 })
                 
                 if not error_response['is_feasible']:
+                    logger.error(f"💸 [Session {session_id}] NO FEASIBLE OPTIONS within budget. User needs to increase budget.")
+                    
                     assistant_turn = ConversationTurn(
                         session_id=session_id,
                         role="assistant",
@@ -543,9 +558,12 @@ class EnhancedChatHandler:
         if constraints.get('direct_flight'):
             flights_stmt = flights_stmt.where(FlightDeal.is_direct == True)
         
+        logger.info(f"🛫 [Bundle Gen] Executing flight query: {flights_stmt}")
         flights = self.db.exec(flights_stmt.limit(20)).all()
+        logger.info(f"✈️  [Bundle Gen] Found {len(flights)} flights matching criteria")
         
         if not flights:
+            logger.warning(f"❌ [Bundle Gen] NO FLIGHTS FOUND with constraints: origin={constraints.get('origin')}, dest={constraints.get('destination')}, date={constraints.get('start_date')}")
             return []
         
         # Query hotels - now we can directly match on airport_code!
@@ -574,9 +592,12 @@ class EnhancedChatHandler:
         if constraints.get('refundable'):
             hotels_stmt = hotels_stmt.where(HotelDeal.is_refundable == True)
         
+        logger.info(f"🏨 [Bundle Gen] Executing hotel query with airport codes: {list(all_airport_codes)}")
         hotels = self.db.exec(hotels_stmt.limit(20)).all()
+        logger.info(f"🏨 [Bundle Gen] Found {len(hotels)} hotels matching criteria")
         
         if not hotels:
+            logger.warning(f"❌ [Bundle Gen] NO HOTELS FOUND for airport codes: {list(all_airport_codes)} with constraints: pet_friendly={constraints.get('pet_friendly')}, breakfast={constraints.get('breakfast')}")
             return []
         
         # Compose bundles - now simple airport code matching!
