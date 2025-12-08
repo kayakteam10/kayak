@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { MongoClient } = require('mongodb');
+const { sendAnalyticsEvent } = require('../events/kafka');
 
 // MongoDB connection
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongodb:27017';
@@ -19,6 +20,22 @@ async function initMongo() {
     }
     return db;
 }
+
+// ========== 0. TRACKING ENDPOINT (RECEIVE EVENTS) ==========
+router.post('/track', async (req, res) => {
+    try {
+        const event = req.body;
+        // event: { type, page, section, property_id, etc. }
+
+        // Send to Kafka (Async processing)
+        await sendAnalyticsEvent(event);
+
+        res.json({ success: true, message: 'Event queued' });
+    } catch (error) {
+        console.error('Tracking error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // ========== 1. PAGE CLICKS ANALYTICS ==========
 router.get('/page-clicks', async (req, res) => {

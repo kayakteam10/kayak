@@ -124,6 +124,50 @@ router.get('/bookings/:id', async (req, res) => {
     }
 });
 
+// PUT /bookings/:id/cancel - Cancel booking
+router.put('/bookings/:id/cancel', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if booking exists and get type/details for restoration (optional enhancement)
+        const [rows] = await dbPool.execute('SELECT * FROM bookings WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Booking not found' });
+        }
+
+        // Update status
+        await dbPool.execute("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [id]);
+
+        // TODO: Restore inventory (seats/rooms) logic could go here if needed
+
+        res.json({ success: true, message: 'Booking cancelled successfully' });
+    } catch (error) {
+        console.error('Admin cancel booking error:', error);
+        res.status(500).json({ success: false, error: 'Failed to cancel booking' });
+    }
+});
+
+// PUT /bookings/:id/cancel - Cancel booking
+router.put('/bookings/:id/cancel', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if booking exists
+        const [rows] = await dbPool.execute('SELECT * FROM bookings WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Booking not found' });
+        }
+
+        // Update status
+        await dbPool.execute("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [id]);
+
+        res.json({ success: true, message: 'Booking cancelled successfully' });
+    } catch (error) {
+        console.error('Admin cancel booking error:', error);
+        res.status(500).json({ success: false, error: 'Failed to cancel booking' });
+    }
+});
+
 // GET /flights
 router.get('/flights', async (req, res) => {
     try {
@@ -142,6 +186,40 @@ router.get('/flights', async (req, res) => {
     } catch (error) {
         console.error('Admin flights error:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch flights' });
+    }
+});
+
+// PUT /flights/:id - Update flight
+router.put('/flights/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { flight_number, airline, departure_airport, arrival_airport,
+            departure_time, arrival_time, price, available_seats, total_seats } = req.body;
+
+        await dbPool.execute(`
+            UPDATE flights 
+            SET flight_number=?, airline=?, departure_airport=?, arrival_airport=?, 
+                departure_time=?, arrival_time=?, price=?, available_seats=?, total_seats=?
+            WHERE id = ?
+        `, [flight_number, airline, departure_airport, arrival_airport,
+            departure_time, arrival_time, price, available_seats, total_seats, id]);
+
+        res.json({ success: true, message: 'Flight updated successfully' });
+    } catch (error) {
+        console.error('Admin update flight error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update flight' });
+    }
+});
+
+// DELETE /flights/:id - Delete flight
+router.delete('/flights/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await dbPool.execute('DELETE FROM flights WHERE id = ?', [id]);
+        res.json({ success: true, message: 'Flight deleted successfully' });
+    } catch (error) {
+        console.error('Admin delete flight error:', error);
+        res.status(500).json({ success: false, error: 'Failed to delete flight' });
     }
 });
 

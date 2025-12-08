@@ -298,6 +298,8 @@ if (require.main === module) {
 
     // Initialize Notification System
     initNotificationSystem();
+    // Initialize Analytics Kafka System
+    require('./events/kafka').initKafka();
 
     app.listen(PORT, () => {
         logger.info('');

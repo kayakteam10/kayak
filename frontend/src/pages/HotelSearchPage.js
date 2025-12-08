@@ -333,7 +333,19 @@ const HotelSearchPage = () => {
 
             <button
               className="view-deal-btn"
-              onClick={() => navigate(`/hotel-details/${hotel.id}?checkIn=${searchCriteria.checkIn}&checkOut=${searchCriteria.checkOut}&rooms=${searchCriteria.rooms}&adults=${searchCriteria.adults}&children=${searchCriteria.children}`)}
+              onClick={() => {
+                // Track Property Click
+                import('../services/analyticsApi').then(({ analyticsPageClicksAPI }) => {
+                  analyticsPageClicksAPI.track({
+                    type: 'property_click',
+                    property_id: hotel.id,
+                    property_name: hotel.hotel_name,
+                    property_type: 'hotel'
+                  });
+                });
+
+                navigate(`/hotel-details/${hotel.id}?checkIn=${searchCriteria.checkIn}&checkOut=${searchCriteria.checkOut}&rooms=${searchCriteria.rooms}&adults=${searchCriteria.adults}&children=${searchCriteria.children}`);
+              }}
             >
               View Deal
             </button>
