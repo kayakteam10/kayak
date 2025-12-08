@@ -69,8 +69,8 @@ export const queryPolicy = async (entityType, entityId, question) => {
 
 // WebSocket connection helper
 export const createWebSocketConnection = (sessionId) => {
-    const wsUrl = AI_SERVICE_URL.replace('http', 'ws').replace('/api/ai', '');
-    return new WebSocket(`${wsUrl}/events?session_id=${sessionId}`);
+    const wsUrl = AI_SERVICE_URL.replace('http', 'ws').replace('/api/ai', '/api/ai/events');
+    return new WebSocket(`${wsUrl}?session_id=${sessionId}`);
 };
 
 export default aiApi;

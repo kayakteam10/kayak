@@ -25,6 +25,9 @@ kafka-python==2.0.2
 # Ollama (optional SDK)
 # ollama==0.1.0
 
+# Google Generative AI (Gemini)
+google-generativeai==0.3.2
+
 # Redis (optional, for caching)
 redis==5.0.1
 

@@ -62,8 +62,6 @@ class KafkaProducer:
                 key_serializer=lambda k: k.encode('utf-8') if k else None,
                 compression_type='gzip',
                 acks='all',  # Wait for all in-sync replicas
-                retries=3,
-                max_in_flight_requests_per_connection=5,
             )
             
             await self._producer.start()

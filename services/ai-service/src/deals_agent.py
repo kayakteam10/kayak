@@ -18,8 +18,8 @@ from typing import Dict, List, Optional
 import pandas as pd
 from sqlmodel import Session, create_engine, select
 
-from models import FlightDeal, HotelDeal
-from kafka import (
+from .models import FlightDeal, HotelDeal
+from .kafka import (
     KafkaProducer,
     KafkaConsumer,
     RAW_SUPPLIER_FEEDS,

@@ -41,7 +41,7 @@ class ChatMessageResponse(BaseModel):
     role: str = Field(..., description="Message role: user or assistant")
     content: str = Field(..., description="Message content")
     timestamp: datetime
-    bundles: Optional[List[BundleResponse]] = None
+    bundles: Optional[List['BundleResponse']] = None
 
 
 class ChatHistoryResponse(BaseModel):
@@ -57,10 +57,10 @@ class ChatHistoryResponse(BaseModel):
 class ChatQuery(BaseModel):
     """Structured travel search query"""
     origin: str = Field(..., min_length=3, max_length=3, description="Origin airport code (IATA)")
-    destination: str = Field(..., min_length=3, max_length=10, description="Destination airport/city")
+    destination: str = Field(..., min_length=3, max_length=20, description="Destination airport/city")
     start_date: date = Field(..., description="Trip start date")
     end_date: date = Field(..., description="Trip end date")
-    budget: float = Field(..., gt=0, description="Maximum total budget in USD")
+    budget: Optional[float] = Field(default=None, description="Maximum total budget in USD (None = no constraint)")
     adults: int = Field(default=1, ge=1, le=10, description="Number of adults")
     pet_friendly: bool = Field(default=False, description="Require pet-friendly accommodation")
     avoid_redeye: bool = Field(default=False, description="Avoid red-eye flights")
@@ -98,6 +98,35 @@ class ChatResponse(BaseModel):
     """Response with query and generated bundles"""
     query: ChatQuery
     bundles: List[BundleResponse]
+
+
+class FlightDetails(BaseModel):
+    id: int
+    airline: str
+    origin: str
+    destination: str
+    depart_date: date
+    return_date: Optional[date]
+    price: float
+    stops: int
+    duration_minutes: int
+    is_direct: bool
+
+class HotelDetails(BaseModel):
+    id: int
+    city: str
+    neighbourhood: str
+    price: float
+    is_pet_friendly: bool
+    has_breakfast: bool
+
+class BundleDetailsResponse(BaseModel):
+    """Detailed bundle information for booking"""
+    bundle_id: int
+    total_price: float
+    currency: str = "USD"
+    flight: FlightDetails
+    hotel: HotelDetails
 
 
 # ============================================================================
@@ -153,3 +182,54 @@ class PolicyResponse(BaseModel):
     question: str
     answer: str = Field(..., description="Answer based on metadata (≤40 words)")
     source_metadata: dict = Field(default_factory=dict, description="Source data used")
+
+
+# ============================================================================
+# Time-Series Price Analysis Endpoints
+# ============================================================================
+
+class PriceTrendResponse(BaseModel):
+    """Price trend analysis"""
+    trend: str = Field(..., description="'rising', 'falling', or 'stable'")
+    change_pct: float = Field(..., description="Percentage change over lookback period")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in trend (0-1)")
+
+
+class DealAnalysisResponse(BaseModel):
+    """Deal quality analysis vs historical prices"""
+    is_deal: bool = Field(..., description="Is current price a good deal?")
+    vs_avg_30d: str = Field(..., description="Comparison to 30-day average")
+    vs_avg_60d: str = Field(..., description="Comparison to 60-day average")
+    percentile: int = Field(..., ge=0, le=100, description="Price percentile (lower is better)")
+    explanation: str = Field(..., description="Human-readable explanation")
+
+
+class BookingRecommendationResponse(BaseModel):
+    """Booking timing recommendation"""
+    recommendation: str = Field(..., description="'book_now', 'wait', or 'uncertain'")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in recommendation")
+    reasoning: str = Field(..., description="Explanation of recommendation")
+
+
+class PriceHistoryPoint(BaseModel):
+    """Single price data point"""
+    date: str = Field(..., description="ISO date string")
+    price: float = Field(..., description="Price on that date")
+    is_deal: bool = Field(..., description="Was it a deal on that date?")
+
+
+class PriceAnalysisResponse(BaseModel):
+    """Complete price analysis for a flight or hotel"""
+    entity_id: int
+    entity_type: str = Field(..., description="'flight' or 'hotel'")
+    name: str = Field(..., description="Route or hotel name")
+    current_price: float
+    trend: PriceTrendResponse
+    deal_analysis: DealAnalysisResponse
+    booking_recommendation: BookingRecommendationResponse
+    price_history: List[PriceHistoryPoint] = Field(..., description="Last 7 days of prices")
+
+
+# Rebuild models to resolve forward references
+ChatMessageResponse.model_rebuild()
+ChatHistoryResponse.model_rebuild()

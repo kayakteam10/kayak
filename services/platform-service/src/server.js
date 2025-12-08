@@ -14,8 +14,9 @@ const compression = require('compression');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const logger = require('./utils/logger');
 const dbPool = require('./config/database'); // Initializes DB connection
-const authRoutes = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
+const authRouter = require('./routes/auth');
+const adminRouter = require('./routes/admin');
+const paymentMethodsRouter = require('./routes/payment-methods');
 
 const app = express();
 app.use(cors());
@@ -104,7 +105,7 @@ app.use('/api/reviews', createProxyMiddleware({
 
 // AI Service
 app.use('/api/ai', createProxyMiddleware({
-    target: process.env.AI_SERVICE_URL || 'http://127.0.0.1:8008',
+    target: process.env.AI_SERVICE_URL || 'http://127.0.0.1:8007',
     changeOrigin: true,
     pathRewrite: { '^/api/ai': '' },
     onError: (err, req, res) => {
@@ -116,8 +117,10 @@ app.use('/api/ai', createProxyMiddleware({
 // ========== USER AUTH & ADMIN ENDPOINTS ==========
 app.use(express.json()); // Applied here for Auth and Admin endpoints
 
-app.use('/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
+// Register routes
+app.use('/auth', authRouter);
+app.use('/api/payment-methods', paymentMethodsRouter);
+app.use('/api/admin', adminRouter);
 
 // Aggregate Health Check
 app.get('/admin/health', async (req, res) => {
@@ -216,6 +219,7 @@ if (require.main === module) {
         logger.info(`  /api/bookings/*  → Booking Service (8004)`);
         logger.info(`  /api/payments/*  → Payment Service (8005)`);
         logger.info(`  /api/reviews/*   → Review Service (8006)`);
+        logger.info(`  /api/ai/*        → AI Service (8007)`);
         logger.info('');
         logger.info('  Auth:');
         logger.info(`  POST /auth/register`);

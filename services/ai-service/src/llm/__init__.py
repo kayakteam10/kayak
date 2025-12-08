@@ -1,14 +1,14 @@
 """
 LLM Package
 
-Exports Ollama client, prompts, and parsing utilities.
+Exports Gemini Vertex AI client and parsing utilities.
 """
 
-from .client import OllamaClient
+from .gemini_client import GeminiClient
 from .parser import parse_intent, generate_explanation, answer_policy_question
 
 __all__ = [
-    "OllamaClient",
+    "GeminiClient",
     "parse_intent",
     "generate_explanation",
     "answer_policy_question",

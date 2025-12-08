@@ -1,17 +1,106 @@
 """
 LLM Prompt Templates
 
-Structured prompts for different AI agent tasks:
-- Intent extraction from natural language
-- Bundle explanation generation
-- Policy Q&A
-- Search refinement
+Optimized prompts for Gemini 2.5 Flash - leveraging structured output and context awareness.
 """
 
+from datetime import datetime, date
+
 # =============================================================================
-# Intent Extraction Prompt
+# Intent Extraction Prompt (Optimized for Gemini)
 # =============================================================================
 
+def build_intent_prompt_with_context(user_message: str, conversation_history: list = None) -> str:
+    """
+    Build optimized intent extraction prompt with conversation context.
+    
+    Args:
+        user_message: Latest user message
+        conversation_history: List from ContextMemory with format:
+            [{'timestamp': str, 'content': str, 'extracted': dict}]
+    """
+    today = date.today()
+    current_year = today.year
+    
+    context_section = ""
+    if conversation_history and len(conversation_history) > 0:
+        context_section = "\n\nPrevious user messages (for context):\n"
+        for turn in conversation_history[-5:]:  # Last 5 user messages
+            content = turn.get('content', '')
+            extracted = turn.get('extracted', {})
+            if extracted:
+                context_section += f"User said: {content}\n  → We extracted: {extracted}\n"
+            else:
+                context_section += f"User said: {content}\n"
+        context_section += "\nLatest message to process:\n"
+    
+    return f"""You are an expert AI Travel Concierge. Your goal is to help users plan trips, find deals, and answer travel questions.
+
+Today's date: {today.strftime('%Y-%m-%d')} (use this for date interpretation)
+
+You have access to the following capabilities (intents):
+1. 'search': Look for flights and hotels. (e.g., "Plan a trip to NYC", "I need a vacation")
+2. 'refine': Modify an existing search. (e.g., "Make it pet friendly", "Cheaper options")
+3. 'create_watch': Monitor prices for a specific trip. (e.g., "Track this price", "Alert me if it drops")
+4. 'compare': Compare specific options. (e.g., "Which is better?", "Compare the first two")
+5. 'policy_question': Answer questions about rules/fees. (e.g., "Is it refundable?", "Pet policy")
+6. 'select': User wants to choose an option that was previously shown. (e.g., "Book the first one", "I'll take the premium option", "I want the $582 option", "cheapest", "option 2")
+7. 'book': User confirms they want to proceed to payment. (e.g., "Yes", "Proceed to payment", "Let's book it")
+
+INSTRUCTIONS:
+1. Analyze the Conversation History and the New User Message.
+2. REASON: Think step-by-step about what the user actually wants.
+3. OUTPUT: Return a JSON object with your reasoning and the structured data.
+
+CRITICAL RULES:
+- If the user says "I need a vacation" or "I want to travel", this is a SEARCH intent, but missing destination/dates.
+- Do NOT classify "vacation" or "travel" as policy questions.
+- If information is missing (like destination), set "clarification_question" to a natural question.
+- If the user confirms a selection (e.g., "Yes", "Proceed"), use 'book' intent.
+- If PREVIOUS messages showed bundle options AND user mentions "option", a price (e.g., "$1262", "1262 dollars"), or selection keyword (e.g., "premium", "cheapest", "first"), this is ALWAYS 'select' intent - NOT 'refine' or 'search'.
+
+Required fields to extract:
+- reasoning: Brief thought process about what the user wants and what is missing (REQUIRED!)
+- intent: One of "search", "refine", "create_watch", "compare", "policy_question", "select", "book" (REQUIRED!)
+- origin: IATA airport code (3 letters, uppercase) - departure city
+- destination: IATA airport code or city name - arrival destination  
+- start_date: Departure/check-in date (YYYY-MM-DD format)
+- end_date: Return/check-out date (YYYY-MM-DD format)
+- budget: Use "NOT_SPECIFIED" if not mentioned, null if "no budget limit", or number if specified
+- adults: Number of travelers (integer, default: 1)
+- pet_friendly: Pet-friendly accommodation needed (boolean)
+- avoid_redeye: Avoid red-eye flights (boolean)
+- missing_info: List of missing critical fields ["origin", "destination", "dates", "budget"]
+- clarification_question: A natural, polite question to ask the user for the missing info (or null if nothing missing)
+
+Date interpretation examples:
+- "Dec 10 - 14" → start_date: "{current_year}-12-10", end_date: "{current_year}-12-14"
+- "October 25-27" → start_date: "{current_year}-10-25", end_date: "{current_year}-10-27"
+- "next week" → 7 days from today
+- "3 nights" → end_date is start_date + 3 days
+{context_section}
+User: {user_message}
+
+Return ONLY valid JSON with this exact structure:
+{{
+  "reasoning": "User wants X but missing Y...",
+  "intent": "search",
+  "origin": "XXX",
+  "destination": "XXX", 
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "budget": null,
+  "adults": 1,
+  "pet_friendly": false,
+  "avoid_redeye": false,
+  "missing_info": [],
+  "clarification_question": null
+}}
+
+Use null for any field you cannot extract. Do not include any explanation, only the JSON object."""
+
+
+# Legacy function for backward compatibility
 INTENT_EXTRACTION_PROMPT = """You are a travel booking assistant. Extract structured travel intent from user messages.
 
 Extract the following information:
@@ -25,17 +114,6 @@ Extract the following information:
 - avoid_redeye: Whether to avoid red-eye flights (true/false)
 
 Return ONLY a JSON object with these fields. Use null for missing values.
-
-Examples:
-
-User: "I need a weekend trip from SFO to NYC, budget $1200"
-Output: {{"origin": "SFO", "destination": "NYC", "start_date": "2024-12-14", "end_date": "2024-12-16", "budget": 1200, "adults": 1, "pet_friendly": false, "avoid_redeye": false}}
-
-User: "Looking for a pet-friendly hotel in Miami for 3 nights starting Jan 5th, coming from LAX, max $900"
-Output: {{"origin": "LAX", "destination": "MIA", "start_date": "2024-01-05", "end_date": "2024-01-08", "budget": 900, "adults": 1, "pet_friendly": true, "avoid_redeye": false}}
-
-User: "Book me a flight from JFK to Paris for 2 people, leaving Dec 20, returning Dec 27, no red-eyes please, budget $3000"
-Output: {{"origin": "JFK", "destination": "CDG", "start_date": "2024-12-20", "end_date": "2024-12-27", "budget": 3000, "adults": 2, "pet_friendly": false, "avoid_redeye": true}}
 
 Now extract from this message:
 User: {user_message}

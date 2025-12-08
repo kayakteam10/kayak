@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { flightsAPI, hotelsAPI, carsAPI, bookingsAPI, authAPI } from '../services/api';
+import { flightsAPI, hotelsAPI, carsAPI, bookingsAPI, authAPI, bundlesAPI } from '../services/api';
 import { FaPlane, FaHotel, FaCar, FaCheckCircle, FaArrowRight } from 'react-icons/fa';
 import SeatMap from '../components/SeatMap';
 import './BookingPage.css';
@@ -32,7 +32,7 @@ function BookingPage() {
   const [errors, setErrors] = useState({});
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [useNewCard, setUseNewCard] = useState(false);
+  const [useNewCard, setUseNewCard] = useState(true); // Default to true so form shows initially
 
   // Multi-passenger support
   const [passengers, setPassengers] = useState([{
@@ -197,6 +197,13 @@ function BookingPage() {
           response = await flightsAPI.getDetails(id);
         } else if (type === 'hotels') {
           response = await hotelsAPI.getDetails(id);
+        } else if (type === 'bundles') {
+          response = await bundlesAPI.getDetails(id);
+          // For bundles, set the bundle data directly
+          const bundleData = response.data;
+          setItem(bundleData);
+          setLoading(false);
+          return; // Skip flight-specific processing
         } else {
           response = await carsAPI.getDetails(id);
         }
@@ -366,11 +373,34 @@ function BookingPage() {
 
   const validateStep2 = () => {
     const newErrors = {};
+    
+    console.log('🔍 Validating Step 2:', {
+      cardNumber: bookingData.cardNumber,
+      cardNumberLength: bookingData.cardNumber?.replace(/\s/g, '').length,
+      expiryDate: bookingData.expiryDate,
+      cvv: bookingData.cvv,
+      billingAddress: bookingData.billingAddress,
+      city: bookingData.city,
+      zipCode: bookingData.zipCode,
+      cardType: bookingData.cardType
+    });
+    
+    // Card Type validation
+    if (!bookingData.cardType) {
+      newErrors.cardType = 'Please select a card type';
+    }
+    
+    // Card Number validation
     if (!bookingData.cardNumber) {
       newErrors.cardNumber = 'Card number is required';
-    } else if (!/^\d{16}$/.test(bookingData.cardNumber.replace(/\s/g, ''))) {
-      newErrors.cardNumber = 'Card number must be 16 digits';
+    } else {
+      const cleanCardNumber = bookingData.cardNumber.replace(/\s/g, '');
+      if (!/^\d{16}$/.test(cleanCardNumber)) {
+        newErrors.cardNumber = `Card number must be 16 digits (currently ${cleanCardNumber.length})`;
+      }
     }
+    
+    // Expiry Date validation
     if (!bookingData.expiryDate) {
       newErrors.expiryDate = 'Expiry date is required';
     } else if (!/^\d{2}\/\d{2}$/.test(bookingData.expiryDate)) {
@@ -395,6 +425,8 @@ function BookingPage() {
         }
       }
     }
+    
+    // CVV validation
     if (!bookingData.cvv) {
       newErrors.cvv = 'CVV is required';
     } else if (!/^\d{3}$/.test(bookingData.cvv)) {
@@ -402,6 +434,8 @@ function BookingPage() {
     } else if (bookingData.cvv === '000') {
       newErrors.cvv = 'CVV cannot be all zeros';
     }
+    
+    // Billing Address validation
     if (!bookingData.billingAddress) newErrors.billingAddress = 'Address is required';
     if (!bookingData.city) newErrors.city = 'City is required';
     if (!bookingData.zipCode) {
@@ -411,24 +445,45 @@ function BookingPage() {
     } else if (bookingData.zipCode.replace(/-/g, '') === '000000000' || bookingData.zipCode === '00000') {
       newErrors.zipCode = 'ZIP code cannot be all zeros';
     }
+    
+    console.log('❌ Validation errors:', newErrors);
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
+    console.log('🔵 handleNext called:', { currentStep, type });
+    
     if (currentStep === 1 && validateStep1()) {
-      // For flights, go to seat selection; for others, go to payment
+      // For flights, go to seat selection; for bundles/hotels/cars, go to payment
       if (type === 'flights') {
-        setCurrentStep(2);
+        setCurrentStep(2); // Go to seat selection
       } else {
-        setCurrentStep(3);
+        setCurrentStep(2); // Go to payment (step 2 for non-flights)
       }
-    } else if (currentStep === 2 && type === 'flights') {
-      // Seat selection -> Payment
-      setCurrentStep(3);
-    } else if (currentStep === 3 && validateStep2()) {
-      handleSubmit();
+    } else if (currentStep === 2) {
+      if (type === 'flights') {
+        // Seat selection -> Payment
+        setCurrentStep(3);
+      } else {
+        // Payment step for non-flights -> Validate and Submit
+        console.log('🟢 Validating payment for non-flight booking');
+        const isValid = validateStep2();
+        console.log('✅ Validation result:', isValid);
+        if (isValid) {
+          console.log('🚀 Submitting booking...');
+          handleSubmit();
+        } else {
+          console.log('⛔ Validation failed, not submitting');
+        }
+      }
+    } else if (currentStep === 3 && type === 'flights') {
+      // Payment step for flights -> Validate and Submit
+      const isValid = validateStep2();
+      if (isValid) {
+        handleSubmit();
+      }
     }
   };
 
@@ -475,9 +530,10 @@ function BookingPage() {
   // Save payment method to localStorage (user-specific)
   const savePaymentMethod = () => {
     try {
-      if (!user?.id) return; // Need user ID
+      const userId = localStorage.getItem('userId');
+      if (!userId) return; // Need user ID
 
-      const storageKey = `savedPaymentMethods_${user.id}`;
+      const storageKey = `savedPaymentMethods_${userId}`;
       const savedPayments = localStorage.getItem(storageKey);
       let paymentMethods = [];
       if (savedPayments) {
@@ -527,7 +583,7 @@ function BookingPage() {
       return;
     }
 
-    // Validate seat selection for flights
+    // Validate seat selection for flights (skip for bundles - AI handles seat assignment)
     if (type === 'flights') {
       // For multi-leg flights, validate all legs have seats
       if (flightLegs.length > 1) {
@@ -568,7 +624,110 @@ function BookingPage() {
       const userIdStr = localStorage.getItem('userId') || (authAPI.getCurrentUser()?.userId);
       const userId = userIdStr ? parseInt(userIdStr) : null;
 
-      // Construct payload for Booking Service
+      // Save payment method BEFORE booking (so it's available in all code paths)
+      if (userId) {
+        savePaymentMethod();
+      }
+
+      // For bundles, create two separate bookings (flight + hotel)
+      if (type === 'bundles') {
+        // Validate bundle data is loaded
+        if (!item.flight || !item.hotel) {
+          alert('Bundle data not loaded. Please try again.');
+          return;
+        }
+
+        // AI automatically assigns seats - no manual selection needed
+        // Generate auto-assigned seats (e.g., 12A, 12B, 12C...)
+        const autoSeats = passengers.map((_, idx) => {
+          const row = 12 + Math.floor(idx / 3);
+          const seatLetter = String.fromCharCode(65 + (idx % 3)); // A, B, C
+          return `${row}${seatLetter}`;
+        });
+
+        // Create flight booking with auto-assigned seats
+        const flightBooking = await bookingsAPI.create({
+          user_id: userId,
+          booking_type: 'flight',
+          total_amount: item.flight.price,
+          payment_method: 'credit_card',
+          booking_details: {
+            flight_id: item.flight.id,
+            passengers: passengers.map((p, idx) => ({
+              firstName: p.firstName,
+              lastName: p.lastName,
+              email: p.email,
+              phone: p.phone,
+              ssn: p.ssn,
+              passengerType: p.passengerType,
+              seatNumber: autoSeats[idx]
+            })),
+            selected_seats: autoSeats,
+            payment_details: {
+              cardType: bookingData.cardType,
+              cardNumber: bookingData.cardNumber,
+              expiryDate: bookingData.expiryDate,
+              cvv: bookingData.cvv,
+              billingAddress: bookingData.billingAddress,
+              city: bookingData.city,
+              state: bookingData.state,
+              zipCode: bookingData.zipCode
+            },
+            ai_booking: true // Flag to indicate AI-driven booking
+          }
+        });
+
+        // Create hotel booking
+        const hotelBooking = await bookingsAPI.create({
+          user_id: userId,
+          booking_type: 'hotel',
+          total_amount: item.hotel.price * 3, // Assume 3 nights
+          payment_method: 'credit_card',
+          booking_details: {
+            hotel_id: item.hotel.id,
+            guest_info: {
+              firstName: bookingData.firstName,
+              lastName: bookingData.lastName,
+              email: bookingData.email,
+              phone: bookingData.phone
+            },
+            payment_details: {
+              cardType: bookingData.cardType,
+              cardNumber: bookingData.cardNumber,
+              expiryDate: bookingData.expiryDate,
+              cvv: bookingData.cvv,
+              billingAddress: bookingData.billingAddress,
+              city: bookingData.city,
+              state: bookingData.state,
+              zipCode: bookingData.zipCode
+            }
+          }
+        });
+        
+        // Extract booking IDs from responses (API returns bookingId)
+        console.log('🔍 Full flight response:', flightBooking);
+        console.log('🔍 Full hotel response:', hotelBooking);
+        console.log('📦 Flight data:', flightBooking.data);
+        console.log('📦 Hotel data:', hotelBooking.data);
+        
+        const flightBookingId = flightBooking.data?.bookingId || flightBooking.data?.data?.bookingId;
+        const hotelBookingId = hotelBooking.data?.bookingId || hotelBooking.data?.data?.bookingId;
+        
+        console.log('✅ Extracted IDs:', { flightBookingId, hotelBookingId });
+        
+        if (!flightBookingId || !hotelBookingId) {
+          console.error('❌ Failed to extract booking IDs');
+          alert('Booking created but failed to retrieve booking IDs. Please check your profile for bookings.');
+          navigate('/profile');
+          return;
+        }
+        
+        // Navigate to bundle confirmation page with booking IDs
+        navigate(`/booking/confirmation/bundles/${item.bundle_id}?flight=${flightBookingId}&hotel=${hotelBookingId}`);
+        return; // Exit early for bundles
+      }
+
+      // Construct payload for single bookings (flights/hotels/cars)
       // Schema: { user_id, booking_type, booking_details, total_amount, payment_method }
       const bookingPayload = {
         user_id: userId,
@@ -630,7 +789,7 @@ function BookingPage() {
 
       console.log('📤 Sending booking payload:', JSON.stringify(bookingPayload, null, 2));
 
-      // Use centralized Bookings API
+      // Use centralized Bookings API for single bookings
       response = await bookingsAPI.create(bookingPayload);
 
       // Extract booking ID from response (flights API returns response.data.booking.id)
@@ -663,7 +822,9 @@ function BookingPage() {
   const getPrice = () => {
     if (!item) return 0;
     let basePrice = 0;
-    if (type === 'flights') {
+    if (type === 'bundles') {
+      basePrice = parsePrice(item.total_price);
+    } else if (type === 'flights') {
       // Prefer total price if provided (e.g., roundtrip), fall back to base price
       basePrice = parsePrice(item.total_price ?? item.price);
       // Add seat selection fee for flights
@@ -891,9 +1052,23 @@ function BookingPage() {
               </div>
             )}
 
-            {currentStep === (type === 'flights' ? 3 : 2) && (
+            {((type === 'flights' && currentStep === 3) || (type !== 'flights' && currentStep === 2)) && (
               <div className="form-step payment-step">
                 <h2 className="payment-heading">Payment Information</h2>
+                
+                {type === 'bundles' && (
+                  <div className="bundle-notice" style={{ 
+                    background: '#f0f9ff', 
+                    border: '1px solid #0ea5e9', 
+                    borderRadius: '8px', 
+                    padding: '16px', 
+                    marginBottom: '20px' 
+                  }}>
+                    <p style={{ margin: 0, color: '#0369a1' }}>
+                      💡 <strong>Bundle Booking:</strong> Your flight and hotel will be booked separately but charged together.
+                    </p>
+                  </div>
+                )}
 
                 {/* Saved Payment Methods */}
                 {savedPaymentMethods.length > 0 && (
@@ -1227,7 +1402,7 @@ function BookingPage() {
                 </button>
               )}
               <button className="btn-primary" onClick={handleNext}>
-                {currentStep === (type === 'flights' ? 3 : 2) ? 'Complete Booking' : 'Continue'} <FaArrowRight />
+                {(type === 'flights' && currentStep === 3) || (type !== 'flights' && currentStep === 2) ? 'Complete Booking' : 'Continue'} <FaArrowRight />
               </button>
             </div>
           </div>
@@ -1277,6 +1452,33 @@ function BookingPage() {
                         </p>
                       </div>
                     )}
+                  </div>
+                )}
+                {type === 'bundles' && (
+                  <div className="summary-details">
+                    <div className="summary-leg">
+                      <h4 style={{ fontSize: '1.1em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>✈️</span> {item.flight?.airline || 'Flight'}
+                      </h4>
+                      <p style={{ fontSize: '1.1em', fontWeight: 'bold', marginBottom: '4px', marginLeft: '28px' }}>
+                        {item.flight?.origin} → {item.flight?.destination}
+                      </p>
+                      <p style={{ fontSize: '1.1em', marginLeft: '28px', color: '#666' }}>
+                        ${item.flight?.price?.toFixed(2)}
+                      </p>
+                    </div>
+                    
+                    <div className="summary-leg" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #eee' }}>
+                      <h4 style={{ fontSize: '1.1em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>🏨</span> Hotel
+                      </h4>
+                      <p style={{ fontSize: '1.1em', fontWeight: 'bold', marginBottom: '4px', marginLeft: '28px' }}>
+                        {item.hotel?.neighbourhood}, {item.hotel?.city}
+                      </p>
+                      <p style={{ fontSize: '1.1em', marginLeft: '28px', color: '#666' }}>
+                        ${item.hotel?.price?.toFixed(2)}/night × 3 nights
+                      </p>
+                    </div>
                   </div>
                 )}
                 {type === 'hotels' && (

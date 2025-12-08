@@ -1,7 +1,0 @@
-airline,source,destination,duration,price,total_stops,seats_left
-United,SFO,JFK,5h 30m,350,0,50
-Delta,SFO,JFK,6h 15m,320,1,20
-American,JFK,LHR,7h 00m,600,0,100
-British Airways,JFK,LHR,7h 15m,650,0,80
-Southwest,LAX,LAS,1h 10m,100,0,30
-United,SFO,LHR,10h 30m,800,1,15

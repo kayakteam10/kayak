@@ -320,21 +320,6 @@ services:
 
   # ========== AI SERVICES ==========
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kayak-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_models:/root/.ollama
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/tags" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
   ai-service:
     build: ./ai-service
     container_name: kayak-ai-service
@@ -349,8 +334,8 @@ services:
       DB_PASSWORD: root123
       DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: llama3.2:3b
+      GEMINI_API_KEY: AIzaSyBbJNws3UzrkoZ0wah_Tw0XxEX0GhFDN8I
+      GEMINI_MODEL: gemini-3-pro-preview
       REDIS_URL: redis://redis:6379
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
@@ -364,8 +349,6 @@ services:
       mysql:
         condition: service_healthy
       kafka:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -417,4 +400,3 @@ volumes:
   mysql_data:
   mongo_data:
   redis_data:
-  ollama_models:

@@ -1,31 +1,47 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingsAPI } from '../services/api';
 import { FaCheckCircle, FaPlane, FaHotel, FaCar, FaPrint } from 'react-icons/fa';
 import './BookingConfirmationPage.css';
 
 function BookingConfirmationPage() {
   const { type, id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
+  const [flightBooking, setFlightBooking] = useState(null);
+  const [hotelBooking, setHotelBooking] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        const response = await bookingsAPI.getDetails(id);
-        // Extract booking from correct response structure
-        setBooking(response.data.data || response.data);
+        // Handle bundle bookings - just store IDs, don't fetch details yet
+        if (type === 'bundles') {
+          const flightId = searchParams.get('flight');
+          const hotelId = searchParams.get('hotel');
+          
+          if (flightId && hotelId) {
+            // Store the IDs for the buttons
+            setFlightBooking({ id: flightId });
+            setHotelBooking({ id: hotelId });
+          }
+          setLoading(false);
+        } else {
+          // Handle single booking
+          const response = await bookingsAPI.getDetails(id);
+          setBooking(response.data.data || response.data);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error('Failed to load booking');
-      } finally {
+        console.error('Failed to load booking:', err);
         setLoading(false);
       }
     };
-    if (id) {
+    if (id || type === 'bundles') {
       fetchBooking();
     }
-  }, [id]);
+  }, [id, type, searchParams]);
 
   const handlePrint = () => {
     window.print();
@@ -38,6 +54,95 @@ function BookingConfirmationPage() {
   };
 
   if (loading) return <div className="confirmation-loading">Loading confirmation...</div>;
+  
+  // Bundle confirmation - show summary with buttons to view details
+  if (type === 'bundles' && flightBooking && hotelBooking) {
+    return (
+      <div className="confirmation-page">
+        <div className="confirmation-container">
+          <div className="confirmation-header">
+            <FaCheckCircle className="success-icon" />
+            <h1>Bundle Booking Confirmed!</h1>
+            <p>Your flight + hotel package has been successfully booked.</p>
+          </div>
+
+          <div className="confirmation-details">
+            <div className="detail-card" style={{textAlign: 'center', padding: '32px'}}>
+              <h3 style={{marginBottom: '24px', fontSize: '1.3em'}}>Your bookings have been created</h3>
+              <p style={{marginBottom: '32px', color: '#666', fontSize: '1.1em'}}>
+                Two separate bookings have been created for your convenience.
+                <br />You can view the details of each booking below.
+              </p>
+              
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px'}}>
+                {/* Flight Booking Card */}
+                <div style={{
+                  padding: '24px',
+                  border: '2px solid #0066CC',
+                  borderRadius: '12px',
+                  backgroundColor: '#f8fbff',
+                  transition: 'transform 0.2s',
+                  cursor: 'pointer'
+                }} onClick={() => navigate(`/booking/confirmation/flights/${flightBooking.id}`)}>
+                  <div style={{fontSize: '48px', marginBottom: '16px', color: '#0066CC'}}>
+                    <FaPlane />
+                  </div>
+                  <h4 style={{marginBottom: '12px', fontSize: '1.2em'}}>Flight Booking</h4>
+                  <p style={{color: '#666', marginBottom: '16px'}}>Booking ID: #{flightBooking.id}</p>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/booking/confirmation/flights/${flightBooking.id}`);
+                    }}
+                    className="btn-primary"
+                    style={{width: '100%', padding: '12px'}}
+                  >
+                    View Flight Details
+                  </button>
+                </div>
+
+                {/* Hotel Booking Card */}
+                <div style={{
+                  padding: '24px',
+                  border: '2px solid #ff6b35',
+                  borderRadius: '12px',
+                  backgroundColor: '#fff8f5',
+                  transition: 'transform 0.2s',
+                  cursor: 'pointer'
+                }} onClick={() => navigate(`/booking/confirmation/hotels/${hotelBooking.id}`)}>
+                  <div style={{fontSize: '48px', marginBottom: '16px', color: '#ff6b35'}}>
+                    <FaHotel />
+                  </div>
+                  <h4 style={{marginBottom: '12px', fontSize: '1.2em'}}>Hotel Booking</h4>
+                  <p style={{color: '#666', marginBottom: '16px'}}>Booking ID: #{hotelBooking.id}</p>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/booking/confirmation/hotels/${hotelBooking.id}`);
+                    }}
+                    className="btn-primary"
+                    style={{width: '100%', padding: '12px', backgroundColor: '#ff6b35'}}
+                  >
+                    View Hotel Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="confirmation-actions">
+            <button onClick={() => navigate('/profile')} className="btn-primary">
+              View All My Bookings
+            </button>
+            <button onClick={() => navigate('/')} className="btn-secondary">
+              Continue Searching
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   if (!booking && !id) {
     // If no booking ID, show success message anyway
     return (

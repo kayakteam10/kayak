@@ -21,6 +21,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminFlights from './pages/admin/AdminFlights';
 import AdminBookings from './pages/admin/AdminBookings';
+import AIConcierge from './components/AIConcierge';
 
 import './App.css';
 
@@ -57,6 +58,7 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <AIConcierge />
           </div>
         } />
       </Routes>

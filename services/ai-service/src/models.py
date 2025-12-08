@@ -1,21 +1,15 @@
-# agentic_ai_service/models.py
 """
-SQLModel Database Models for AI Service
-
-Includes:
-- Travel deals (hotels, flights)
-- Bundles and recommendations
-- Chat sessions and conversation history
-- Watches and events
+Data models for AI Travel Concierge Service
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime, date
+from typing import List, Optional
 
-from sqlmodel import SQLModel, Field, Column, String, DateTime, Index
-from sqlalchemy import func
+from sqlmodel import Column, Field, Index, SQLModel
+from sqlalchemy import JSON, String
+from sqlalchemy.dialects.mysql import JSON as MySQLJSON
 
 
 class HotelDeal(SQLModel, table=True):
@@ -25,6 +19,7 @@ class HotelDeal(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     listing_id: str = Field(index=True)
     city: str
+    airport_code: Optional[str] = None
     neighbourhood: str
     price: float
     avg_30d_price: float = 0.0
@@ -70,8 +65,9 @@ class FlightDeal(SQLModel, table=True):
     # Inventory and metadata
     seats_left: int = 10
     deal_score: int = 0  # 0-100
-    tags: str = ""  # Comma-separated tags
-    source: str = "kaggle"
+    tags: str = ""  # Comma-separated
+    # Source
+    source: str = "manual"
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -94,18 +90,18 @@ class ChatSession(SQLModel, table=True):
 
 
 class ConversationTurn(SQLModel, table=True):
-    """Individual conversation turn (message) in a chat session"""
+    """Individual message in a chat session"""
     __tablename__ = "conversation_turns"
-    __table_args__ = (
-        Index('idx_session_timestamp', 'session_id', 'timestamp'),
-    )
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="chat_sessions.id", index=True)
-    role: str  # "user", "assistant", "system"
-    content: str = Field(sa_column=Column(String(4000)))  # Message text
-    metadata: Optional[str] = None  # JSON string for structured data
-    timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
+    session_id: int = Field(foreign_key="chat_sessions.id")
+    role: str  # 'user' or 'assistant'
+    content: str
+    turn_metadata: Optional[str] = Field(default=None)  # JSON string for any extra data
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Bundles associated with this turn (for assistant responses) - stored as JSON string
+    bundles: Optional[str] = Field(default=None, sa_column=Column(String(1000)))  # JSON array as string
 
 
 class DealEvent(SQLModel, table=True):
@@ -166,4 +162,3 @@ class Watch(SQLModel, table=True):
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
-

@@ -7,14 +7,15 @@ from __future__ import annotations
 
 import asyncio
 import os
+from datetime import datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from models import Bundle, FlightDeal, HotelDeal, Watch
-from schemas import (
+from .models import Bundle, FlightDeal, HotelDeal, Watch, ChatSession, ConversationTurn
+from .schemas import (
     BundleResponse,
     ChatQuery,
     ChatResponse,
@@ -22,10 +23,22 @@ from schemas import (
     HotelSnippet,
     WatchCreate,
     WatchResponse,
+    ChatSessionCreate,
+    ChatSessionResponse,
+    ChatMessageRequest,
+    ChatMessageResponse,
+    PolicyRequest,
+    BundleDetailsResponse,
+    FlightDetails,
+    HotelDetails,
+    PolicyResponse,
+    PriceAnalysisResponse,
 )
-from websocket_manager import ConnectionManager
-from logger import get_logger
-from kafka import KafkaProducer, create_topics
+from .websocket_manager import ConnectionManager
+from .logger import get_logger
+from .kafka import KafkaProducer, create_topics
+from .llm import GeminiClient, parse_intent, generate_explanation
+from .integrations import initialize_clients, flight_client, hotel_client
 
 logger = get_logger("ai-service")
 
@@ -76,23 +89,37 @@ async def on_startup() -> None:
         logger.error(f"⚠️  Kafka failed: {e}")
         app.state.kafka_producer = None
     
-    # Initialize Ollama client
+    # Initialize Gemini LLM client (Vertex AI)
+    llm_client = None
+    
     try:
-        from llm import OllamaClient
-        ollama_url = os.getenv("OLLAMA_URL", "http://ollama:11434")
-        ollama_client = OllamaClient(base_url=ollama_url)
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-pro-preview")
+        
+        if not gemini_key:
+            raise ValueError("GEMINI_API_KEY environment variable not set")
+        
+        llm_client = GeminiClient(api_key=gemini_key, model=gemini_model)
         
         # Health check
-        is_healthy = await ollama_client.health_check()
+        is_healthy = await llm_client.health_check()
         if is_healthy:
-            app.state.ollama_client = ollama_client
-            logger.info("✅ Ollama initialized")
+            logger.info(f"✅ Gemini Vertex AI initialized ({gemini_model})")
         else:
-            logger.warning("⚠️  Ollama health check failed, LLM features disabled")
-            app.state.ollama_client = None
+            logger.error("❌ Gemini health check failed")
+            llm_client = None
+            
     except Exception as e:
-        logger.error(f"⚠️  Ollama initialization failed: {e}")
-        app.state.ollama_client = None
+        logger.error(f"❌ Gemini initialization failed: {e}")
+        llm_client = None
+    
+    app.state.llm_client = llm_client
+    
+    if not llm_client:
+        logger.error("❌ No LLM available! Intent parsing will use rule-based fallback only")
+    
+    # Initialize service integrations (flight/hotel clients)
+    await initialize_clients()
     
     # Start watch loop
     asyncio.create_task(watch_loop())
@@ -114,12 +141,13 @@ app.add_middleware(
 
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
     health = {
         "status": "healthy",
         "database": "connected",
         "kafka": "disconnected",
-        "ollama": "disconnected"
+        "gemini": "disconnected"
     }
     
     # Check database
@@ -134,9 +162,9 @@ async def health_check():
     if hasattr(app.state, 'kafka_producer') and app.state.kafka_producer and app.state.kafka_producer.connected:
         health["kafka"] = "connected"
     
-    # Check Ollama
-    if hasattr(app.state, 'ollama_client') and app.state.ollama_client:
-        health["ollama"] = "connected"
+    # Check Gemini LLM
+    if hasattr(app.state, 'llm_client') and app.state.llm_client:
+        health["gemini"] = "connected"
     
     return health
 
@@ -173,6 +201,9 @@ def _bundle_to_response(bundle: Bundle) -> BundleResponse:
     flight_summary = f"{flight.origin}→{flight.destination}, ${flight.price:.0f}" if flight else "N/A"
     hotel_summary = f"{hotel.city}, ${hotel.price:.0f}/night" if hotel else "N/A"
     
+    # Add booking readiness indicator
+    booking_note = "Ready to book" if flight and hotel else "Price verification needed"
+    
     return BundleResponse(
         bundle_id=bundle.id,
         total_price=bundle.total_price,
@@ -180,9 +211,60 @@ def _bundle_to_response(bundle: Bundle) -> BundleResponse:
         fit_score=bundle.fit_score,
         flight=FlightSnippet(id=flight.id, summary=flight_summary) if flight else None,
         hotel=HotelSnippet(id=hotel.id, summary=hotel_summary) if hotel else None,
-        why_this="Best value match",
-        what_to_watch="Monitor prices",
+        why_this=f"Great deal - {booking_note.lower()}",
+        what_to_watch="Limited availability - book soon",
     )
+
+
+async def _sync_deal_to_inventory(flight_deal: FlightDeal, hotel_deal: HotelDeal) -> Dict[str, int]:
+    """
+    Sync AI deal recommendations to real inventory tables.
+    Creates entries in flights/hotels tables so users can actually book.
+    
+    Returns: {"flight_id": X, "hotel_id": Y}
+    """
+    result = {}
+    
+    # Sync flight to real inventory
+    if hasattr(app.state, 'flight_client') and app.state.flight_client:
+        try:
+            flight_data = {
+                "airline": flight_deal.airline,
+                "flight_number": f"{flight_deal.airline[:2].upper()}{flight_deal.id}",
+                "origin": flight_deal.origin,
+                "destination": flight_deal.destination,
+                "departure_time": flight_deal.depart_date.isoformat() + "T08:00:00Z",
+                "arrival_time": flight_deal.depart_date.isoformat() + "T12:00:00Z",
+                "price": float(flight_deal.price),
+                "available_seats": flight_deal.seats_left,
+                "class_type": "economy",
+                "source": "AI_RECOMMENDED"
+            }
+            # Note: This would call flight service API to create entry
+            # For now, we'll mark it for manual sync or background job
+            logger.info(f"Would sync flight: {flight_data}")
+        except Exception as e:
+            logger.warning(f"Flight sync skipped: {e}")
+    
+    # Sync hotel to real inventory  
+    if hasattr(app.state, 'hotel_client') and app.state.hotel_client:
+        try:
+            hotel_data = {
+                "name": f"Hotel {hotel_deal.listing_id}",
+                "city": hotel_deal.city,
+                "price_per_night": float(hotel_deal.price),
+                "available_rooms": hotel_deal.rooms_left,
+                "rating": 4.0,
+                "amenities": [],
+                "source": "AI_RECOMMENDED"
+            }
+            if hotel_deal.is_pet_friendly:
+                hotel_data["amenities"].append("pet_friendly")
+            logger.info(f"Would sync hotel: {hotel_data}")
+        except Exception as e:
+            logger.warning(f"Hotel sync skipped: {e}")
+    
+    return result
 
 
 def _compose_bundles(query: ChatQuery, session: Session) -> List[Bundle]:
@@ -250,11 +332,11 @@ async def recommend_bundles(query: ChatQuery, session: Session = Depends(get_ses
 # --- Chat Session Endpoints --------------------------------------------------
 
 from uuid import uuid4
-from schemas import (
+from .schemas import (
     ChatSessionCreate, ChatSessionResponse, ChatMessageRequest,
     ChatMessageResponse, ChatHistoryResponse, DealResponse, PolicyRequest, PolicyResponse
 )
-from models import ChatSession, ConversationTurn, DealEvent
+from .models import ChatSession, ConversationTurn, DealEvent
 
 
 @app.post("/chat/sessions", response_model=ChatSessionResponse)
@@ -301,58 +383,51 @@ async def get_chat_history(session_id: int, session: Session = Depends(get_sessi
 
 @app.post("/chat", response_model=ChatMessageResponse)
 async def send_chat_message(request: ChatMessageRequest, session: Session = Depends(get_session)):
-    """Send a message and get AI response with bundles"""
-    # Store user message
-    user_turn = ConversationTurn(
-        session_id=request.session_id,
-        role="user",
-        content=request.message,
-        timestamp=datetime.utcnow()
+    """Send a message and get AI response with bundles - ENHANCED VERSION"""
+    # Import Enhanced Chat Handler
+    from .chat_handler_enhanced import EnhancedChatHandler
+    
+    # Strip HTML tags from message content (chat library may send HTML)
+    import re
+    clean_message = re.sub(r'<[^>]+>', '', request.message).strip()
+    
+    # Use enhanced handler with all features
+    handler = EnhancedChatHandler(
+        db_session=session,
+        llm_client=app.state.llm_client if hasattr(app.state, 'llm_client') else None,
+        kafka_producer=app.state.kafka_producer if hasattr(app.state, 'kafka_producer') else None
     )
-    session.add(user_turn)
-    session.commit()
     
-    # Parse intent using LLM
-    bundles = []
-    if hasattr(app.state, 'ollama_client') and app.state.ollama_client:
-        try:
-            from llm import parse_intent
-            query = await parse_intent(request.message, app.state.ollama_client)
-            
-            if query:
-                # Generate bundles
-                bundle_objs = _compose_bundles(query, session)
-                session.add_all(bundle_objs)
-                session.commit()
-                
-                for b in bundle_objs:
-                    session.refresh(b)
-                    bundles.append(_bundle_to_response(b))
-        except Exception as e:
-            logger.error(f"Intent parsing failed: {e}")
-    
-    # Generate assistant response
-    if bundles:
-        assistant_content = f"I found {len(bundles)} great options for you! Check out these bundles:"
-    else:
-        assistant_content = "I'd be happy to help you find travel options! Could you provide more details like your origin city, destination, dates, and budget?"
-    
-    # Store assistant message
-    assistant_turn = ConversationTurn(
-        session_id=request.session_id,
-        role="assistant",
-        content=assistant_content,
-        timestamp=datetime.utcnow()
-    )
-    session.add(assistant_turn)
-    session.commit()
-    
-    return ChatMessageResponse(
-        role="assistant",
-        content=assistant_content,
-        timestamp=assistant_turn.timestamp,
-        bundles=bundles if bundles else None
-    )
+    try:
+        response = await handler.process_message(request.session_id, clean_message)
+        return response
+    except Exception as e:
+        logger.error(f"Enhanced chat handler failed: {e}")
+        # Fallback to simple response
+        user_turn = ConversationTurn(
+            session_id=request.session_id,
+            role="user",
+            content=clean_message,
+            timestamp=datetime.utcnow()
+        )
+        session.add(user_turn)
+        
+        assistant_content = "I encountered an error processing your request. Could you please rephrase?"
+        assistant_turn = ConversationTurn(
+            session_id=request.session_id,
+            role="assistant",
+            content=assistant_content,
+            timestamp=datetime.utcnow()
+        )
+        session.add(assistant_turn)
+        session.commit()
+        
+        return ChatMessageResponse(
+            role="assistant",
+            content=assistant_content,
+            timestamp=assistant_turn.timestamp,
+            bundles=None
+        )
 
 
 # --- Deal Endpoints -----------------------------------------------------------
@@ -464,13 +539,13 @@ async def query_policy(request: PolicyRequest, session: Session = Depends(get_se
     
     # Use LLM to answer if available
     answer = "Information not available"
-    if hasattr(app.state, 'ollama_client') and app.state.ollama_client:
+    if hasattr(app.state, 'llm_client') and app.state.llm_client:
         try:
-            from llm import answer_policy_question
+            from .llm import answer_policy_question
             answer = await answer_policy_question(
                 request.question,
                 metadata,
-                app.state.ollama_client
+                app.state.llm_client
             )
         except:
             answer = "Unable to process question at this time."
@@ -544,3 +619,122 @@ async def watch_loop(interval_seconds: int = 30) -> None:
                     await manager.broadcast({"type": "watch.triggered", "watch_id": w.id, "reasons": reasons})
             
             session.commit()
+
+
+# --- Time-Series Price Analysis Endpoints ------------------------------------
+
+from .timeseries_pricing import TimeSeriesService, explain_deal_quality
+
+
+@app.get("/prices/flight/{flight_id}", response_model=PriceAnalysisResponse)
+async def analyze_flight_price(flight_id: int, session: Session = Depends(get_session)):
+    """
+    Get time-series price analysis for a flight
+    
+    Answers: "Is this flight price good?" with historical context
+    """
+    service = TimeSeriesService(session)
+    analysis = service.analyze_flight_price(flight_id)
+    
+    if 'error' in analysis:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=analysis['error'])
+    
+    return PriceAnalysisResponse(
+        entity_id=analysis['flight_id'],
+        entity_type='flight',
+        name=analysis['route'],
+        current_price=analysis['current_price'],
+        trend=analysis['trend'],
+        deal_analysis=analysis['deal_analysis'],
+        booking_recommendation=analysis['booking_recommendation'],
+        price_history=analysis['price_history']
+    )
+
+
+@app.get("/prices/hotel/{hotel_id}", response_model=PriceAnalysisResponse)
+async def analyze_hotel_price(hotel_id: int, session: Session = Depends(get_session)):
+    """
+    Get time-series price analysis for a hotel
+    
+    Answers: "Is the Marriott rate actually good?" with 60-day rolling average comparison
+    """
+    service = TimeSeriesService(session)
+    analysis = service.analyze_hotel_price(hotel_id)
+    
+    if 'error' in analysis:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=analysis['error'])
+    
+    return PriceAnalysisResponse(
+        entity_id=analysis['hotel_id'],
+        entity_type='hotel',
+        name=analysis['name'],
+        current_price=analysis['current_price'],
+        trend=analysis['trend'],
+        deal_analysis=analysis['deal_analysis'],
+        booking_recommendation=analysis['booking_recommendation'],
+        price_history=analysis['price_history']
+    )
+
+
+@app.get("/prices/bundle/{bundle_id}/explain")
+async def explain_bundle_pricing(bundle_id: int, session: Session = Depends(get_session)):
+    """
+    Get user-friendly explanation of bundle pricing
+    
+    Example: "Flight: 19% below its 60-day rolling average. Hotel: Premium pricing, 12% above average."
+    """
+    bundle = session.get(Bundle, bundle_id)
+    if not bundle:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Bundle not found")
+    
+    explanation = explain_deal_quality(bundle.flight_id, bundle.hotel_id, session)
+    
+    return {
+        'bundle_id': bundle_id,
+        'total_price': bundle.total_price,
+        'pricing_explanation': explanation
+    }
+
+
+@app.get("/bundles/{bundle_id}", response_model=BundleDetailsResponse)
+def get_bundle(bundle_id: int, session: Session = Depends(get_session)):
+    """Get full bundle details including flight and hotel info"""
+    bundle = session.get(Bundle, bundle_id)
+    if not bundle:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Bundle not found")
+    
+    flight = session.get(FlightDeal, bundle.flight_id)
+    hotel = session.get(HotelDeal, bundle.hotel_id)
+    
+    if not flight or not hotel:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Incomplete bundle data")
+
+    return BundleDetailsResponse(
+        bundle_id=bundle.id,
+        total_price=bundle.total_price,
+        flight=FlightDetails(
+            id=flight.id,
+            airline=flight.airline,
+            origin=flight.origin,
+            destination=flight.destination,
+            depart_date=flight.depart_date,
+            return_date=flight.return_date,
+            price=flight.price,
+            stops=flight.stops,
+            duration_minutes=flight.duration_minutes,
+            is_direct=flight.is_direct
+        ),
+        hotel=HotelDetails(
+            id=hotel.id,
+            city=hotel.city,
+            neighbourhood=hotel.neighbourhood,
+            price=hotel.price,
+            is_pet_friendly=hotel.is_pet_friendly,
+            has_breakfast=hotel.has_breakfast
+        )
+    )

@@ -53,7 +53,7 @@ const BundleCard = ({ bundle, onBook, onTrack }) => {
                 {hotel && (
                     <div className="bundle-section">
                         <div className="section-icon">
-                            <Fa Hotel />
+                            <FaHotel />
                         </div>
                         <div className="section-content">
                             <span className="section-label">Hotel</span>

@@ -5,15 +5,15 @@ Parse and validate LLM outputs with fallback to rule-based parsing.
 Handles malformed JSON and extracts structured data from natural language.
 """
 
+import asyncio
 import json
 import logging
 import re
 from datetime import date, datetime, timedelta
 from typing import Dict, Optional, Tuple
 
-from schemas import ChatQuery
-from llm.client import OllamaClient
-from llm.prompts import (
+from ..schemas import ChatQuery
+from .prompts import (
     build_intent_prompt,
     build_explanation_prompt,
     build_policy_qa_prompt,
@@ -24,8 +24,9 @@ logger = logging.getLogger(__name__)
 
 async def parse_intent(
     user_message: str,
-    ollama_client: OllamaClient,
-    timeout: float = 3.0
+    llm_client,
+    timeout: float = 15.0,
+    conversation_history: list = None
 ) -> Optional[ChatQuery]:
     """
     Extract structured travel intent from natural language.
@@ -34,40 +35,88 @@ async def parse_intent(
     
     Args:
         user_message: User's natural language message
-        ollama_client: Ollama client instance
+        llm_client: LLM client instance (Gemini or compatible)
         timeout: Maximum time to wait for LLM response (seconds)
+        conversation_history: Previous conversation turns for context (optional)
         
     Returns:
         ChatQuery object or None if parsing fails
     """
     try:
-        # Try LLM-based parsing first
-        prompt = build_intent_prompt(user_message)
+        # Try LLM-based parsing with conversation context
+        from .prompts import build_intent_prompt_with_context
+        
+        prompt = build_intent_prompt_with_context(user_message, conversation_history)
         
         # Set timeout
         response = await asyncio.wait_for(
-            ollama_client.generate(prompt, temperature=0.3),
+            llm_client.generate(prompt, temperature=0.3, json_mode=True),
             timeout=timeout
         )
         
-        # Extract JSON from response
-        json_match = re.search(r'\{[^}]+\}', response)
+        # Extract JSON from response (handle markdown code blocks)
+        json_text = response.strip()
+        if json_text.startswith("```json"):
+            json_text = json_text.replace("```json", "").replace("```", "").strip()
+        elif json_text.startswith("```"):
+            json_text = json_text.replace("```", "").strip()
+        
+        # Find JSON object
+        json_match = re.search(r'\{[^}]+\}', json_text, re.DOTALL)
         if json_match:
             intent_dict = json.loads(json_match.group())
             
+            # Extract intent (new field)
+            intent = intent_dict.get("intent", "search")
+            
             # Validate and create ChatQuery
+            # Budget handling:
+            # - "NOT_SPECIFIED" → None (will trigger clarifying question)
+            # - null → None (user said no budget limit - no constraint)
+            # - number → that budget limit
+            budget_value = intent_dict.get("budget")
+            if budget_value == "NOT_SPECIFIED":
+                # Budget not mentioned - set to special marker
+                budget_value = "NOT_SPECIFIED"
+            elif budget_value is None or budget_value == "null":
+                # User explicitly said no budget limit
+                budget_value = None
+            else:
+                # Budget specified
+                try:
+                    budget_value = float(budget_value)
+                except (ValueError, TypeError):
+                    budget_value = "NOT_SPECIFIED"
+            
+            # For compare/watch/policy intents, origin/destination may be null
+            origin_val = intent_dict.get("origin") or ""
+            dest_val = intent_dict.get("destination") or ""
+            
             query = ChatQuery(
-                origin=intent_dict.get("origin", "").upper(),
-                destination=intent_dict.get("destination", "").upper(),
+                origin=origin_val.upper() if origin_val else "XXX",
+                destination=dest_val.upper() if dest_val else "XXX",
                 start_date=_parse_date(intent_dict.get("start_date")),
                 end_date=_parse_date(intent_dict.get("end_date")),
-                budget=float(intent_dict.get("budget", 1000)),
+                budget=budget_value if budget_value != "NOT_SPECIFIED" else None,
                 adults=int(intent_dict.get("adults", 1)),
                 pet_friendly=bool(intent_dict.get("pet_friendly", False)),
                 avoid_redeye=bool(intent_dict.get("avoid_redeye", False)),
             )
             
-            logger.info(f"✅ LLM parsed intent: {query.origin} → {query.destination}")
+            # Store special marker for budget not specified (for clarifying questions)
+            if budget_value == "NOT_SPECIFIED":
+                query.budget = None  # Set to None but mark it was not specified
+                # We'll add a flag to the return to indicate budget needs clarification
+            
+            # Store intent in query metadata (as string attribute)
+            query._intent = intent  # Add as internal attribute
+            query._reasoning = intent_dict.get("reasoning")
+            query._missing_info = intent_dict.get("missing_info", [])
+            query._clarification_question = intent_dict.get("clarification_question")
+            
+            logger.info(f"✅ LLM parsed intent={intent}: {query.origin} → {query.destination}, budget: {query.budget}")
+            if query._reasoning:
+                logger.info(f"🧠 LLM Reasoning: {query._reasoning}")
             return query
             
     except asyncio.TimeoutError:
@@ -88,6 +137,7 @@ def _rule_based_intent_parsing(user_message: str) -> Optional[ChatQuery]:
     Uses regex patterns to extract:
     - Airport codes (3 letters)
     - City names
+    - "from X to Y" patterns
     - Dates
     - Budget amounts
     - Keywords (pet, red-eye)
@@ -97,13 +147,25 @@ def _rule_based_intent_parsing(user_message: str) -> Optional[ChatQuery]:
     
     # Extract airport codes (3 uppercase letters)
     airports = re.findall(r'\b[A-Z]{3}\b', msg_upper)
-    origin = airports[0] if len(airports) > 0 else "SFO"
-    destination = airports[1] if len(airports) > 1 else None
+    
+    # Try "from X to Y" pattern first
+    from_to_match = re.search(r'from\s+(\w+)\s+to\s+(\w+)', msg_lower, re.IGNORECASE)
+    if from_to_match:
+        origin_candidate = from_to_match.group(1).upper()
+        dest_candidate = from_to_match.group(2).upper()
+        origin = origin_candidate if len(origin_candidate) <= 3 else airports[0] if airports else "SFO"
+        destination = dest_candidate if len(dest_candidate) <= 3 else airports[1] if len(airports) > 1 else dest_candidate[:3].upper()
+    else:
+        # Use airport codes in order
+        origin = airports[0] if len(airports) > 0 else "SFO"
+        destination = airports[1] if len(airports) > 1 else None
     
     # Extract city names (common cities)
     cities = {
         "new york": "NYC", "nyc": "NYC",
         "miami": "MIA",
+        "mumbai": "MUM", "mum": "MUM",
+        "delhi": "DEL", "del": "DEL",
         "los angeles": "LAX", "la": "LAX",
         "chicago": "ORD",
         "san francisco": "SFO", "sf": "SFO",
@@ -170,7 +232,7 @@ def _rule_based_intent_parsing(user_message: str) -> Optional[ChatQuery]:
 async def generate_explanation(
     bundle,
     deals: Tuple,
-    ollama_client: OllamaClient
+    llm_client
 ) -> str:
     """
     Generate concise explanation for why a bundle is recommended.
@@ -178,7 +240,7 @@ async def generate_explanation(
     Args:
         bundle: Bundle object
         deals: Tuple of (FlightDeal, HotelDeal)
-        ollama_client: Ollama client
+        llm_client: LLM client instance
         
     Returns:
         Explanation text (max 25 words)
@@ -207,7 +269,7 @@ async def generate_explanation(
         )
         
         explanation = await asyncio.wait_for(
-            ollama_client.generate(prompt, temperature=0.7),
+            llm_client.generate(prompt, temperature=0.7, json_mode=False),
             timeout=3.0
         )
         
@@ -228,7 +290,7 @@ async def generate_explanation(
 async def answer_policy_question(
     question: str,
     metadata: dict,
-    ollama_client: OllamaClient
+    llm_client
 ) -> str:
     """
     Answer policy questions based on metadata.
@@ -236,7 +298,7 @@ async def answer_policy_question(
     Args:
         question: User's question
         metadata: Entity metadata (cancellation, pet policy, etc.)
-        ollama_client: Ollama client
+        llm_client: LLM client instance
         
     Returns:
         Answer text (max 40 words)
@@ -245,7 +307,7 @@ async def answer_policy_question(
         prompt = build_policy_qa_prompt(question, metadata)
         
         answer = await asyncio.wait_for(
-            ollama_client.generate(prompt, temperature=0.3),
+            llm_client.generate(prompt, temperature=0.3, json_mode=False),
             timeout=3.0
         )
         

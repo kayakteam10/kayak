@@ -18,6 +18,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// AI Service API (running on port 8007)
+const aiService = axios.create({
+  baseURL: 'http://localhost:8007',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 // Auth API
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
@@ -83,6 +91,11 @@ export const reviewsAPI = {
   update: (id, data) => api.put(`/api/reviews/${id}`, data),
   delete: (id) => api.delete(`/api/reviews/${id}`),
   markHelpful: (id) => api.post(`/api/reviews/${id}/helpful`),
+};
+
+// Bundles API (AI Service)
+export const bundlesAPI = {
+  getDetails: (id) => aiService.get(`/bundles/${id}`),
 };
 
 export default api;
