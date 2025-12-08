@@ -12,6 +12,16 @@ import './AdminLayout.css';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
 const AdminAnalytics = () => {
+    // Utility function to format large numbers (K, M, B)
+    const formatNumber = (num) => {
+        if (!num || num === 0) return '0';
+        const absNum = Math.abs(num);
+        if (absNum >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+        if (absNum >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+        if (absNum >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+        return num.toFixed(2);
+    };
+
     const [activeTab, setActiveTab] = useState('revenue');
     const [revenueByProperty, setRevenueByProperty] = useState([]);
     const [revenueByCity, setRevenueByCity] = useState([]);
@@ -195,17 +205,17 @@ const AdminAnalytics = () => {
                         <div className="admin-card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '24px' }}>
                             <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>💰 Total Revenue ({selectedYear})</div>
                             <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
-                                {totalRevenue > 0 ? `$${totalRevenue.toFixed(2)}` : '$0.00'}
+                                ${formatNumber(totalRevenue)}
                             </div>
                             <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '8px' }}>
-                                {totalBookings > 0 ? `${totalBookings} bookings` : 'No bookings yet'}
+                                {totalBookings > 0 ? `${totalBookings.toLocaleString()} bookings` : 'No bookings yet'}
                             </div>
                         </div>
 
                         <div className="admin-card" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white', padding: '24px' }}>
                             <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>📊 Avg Revenue/Booking</div>
                             <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
-                                {avgRevenuePerBooking > 0 ? `$${avgRevenuePerBooking.toFixed(2)}` : '$0.00'}
+                                ${formatNumber(avgRevenuePerBooking)}
                             </div>
                             <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '8px' }}>Per transaction</div>
                         </div>
@@ -246,7 +256,7 @@ const AdminAnalytics = () => {
                                         <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" label={{ value: 'Bookings', angle: 90, position: 'insideRight' }} />
                                         <Tooltip
                                             formatter={(value, name) => {
-                                                if (name === 'Revenue ($)') return [`$${parseFloat(value).toFixed(2)}`, 'Revenue'];
+                                                if (name === 'Revenue ($)') return [`$${formatNumber(value)}`, 'Revenue'];
                                                 return [value, 'Bookings'];
                                             }}
                                         />
@@ -280,7 +290,7 @@ const AdminAnalytics = () => {
                                                 <XAxis type="number" />
                                                 <YAxis dataKey="city" type="category" width={100} />
                                                 <Tooltip
-                                                    formatter={(value) => [`$${parseFloat(value).toFixed(2)}`, 'Revenue']}
+                                                    formatter={(value) => [`$${formatNumber(value)}`, 'Revenue']}
                                                     labelFormatter={(label) => `City: ${label}`}
                                                 />
                                                 <Bar dataKey="revenue" fill="#8884d8" radius={[0, 8, 8, 0]}>
@@ -324,10 +334,10 @@ const AdminAnalytics = () => {
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
                                                         <div style={{ fontSize: '24px', fontWeight: '700' }}>
-                                                            ${parseFloat(city.revenue).toFixed(0)}
+                                                            ${formatNumber(parseFloat(city.revenue))}
                                                         </div>
                                                         <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                                                            ${(parseFloat(city.revenue) / city.bookings).toFixed(0)}/booking
+                                                            ${formatNumber(parseFloat(city.revenue) / city.bookings)}/booking
                                                         </div>
                                                     </div>
                                                 </div>
@@ -353,7 +363,7 @@ const AdminAnalytics = () => {
                                                                     <td style={{ padding: '8px' }}>#{index + 4}</td>
                                                                     <td style={{ padding: '8px' }}>{city.city}</td>
                                                                     <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: '#0088FE' }}>
-                                                                        ${parseFloat(city.revenue).toFixed(2)}
+                                                                        ${formatNumber(parseFloat(city.revenue))}
                                                                     </td>
                                                                 </tr>
                                                             ))}
@@ -407,7 +417,7 @@ const AdminAnalytics = () => {
                                                 </td>
                                                 <td>{provider.properties_sold}</td>
                                                 <td style={{ fontWeight: '600', color: '#00C49F' }}>
-                                                    ${parseFloat(provider.revenue).toFixed(2)}
+                                                    ${formatNumber(parseFloat(provider.revenue))}
                                                 </td>
                                             </tr>
                                         ))}
@@ -448,7 +458,7 @@ const AdminAnalytics = () => {
                                                 <CartesianGrid strokeDasharray="3 3" />
                                                 <XAxis dataKey="date" />
                                                 <YAxis />
-                                                <Tooltip formatter={(value) => `$${parseFloat(value).toFixed(2)}`} />
+                                                <Tooltip formatter={(value) => `$${formatNumber(value)}`} />
                                                 <Legend />
                                                 <Line type="monotone" dataKey="revenue" stroke="#ff7c7c" strokeWidth={2} name="Revenue ($)" />
                                             </LineChart>

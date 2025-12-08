@@ -593,7 +593,7 @@ router.get('/analytics/reviews-stats', async (req, res) => {
 
             // Get reviews by type
             const typeStats = await reviewsCollection.aggregate([
-                { $group: { _id: '$entity_type', count: { $sum: 1 } } }
+                { $group: { _id: '$entityType', count: { $sum: 1 } } }
             ]).toArray();
 
             const reviewsByType = { hotel: 0, flight: 0, car: 0 };
