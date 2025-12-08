@@ -110,9 +110,15 @@ function ProfilePage() {
     bookingId: null,
     entityType: '',
     entityId: null,
+    entityName: '',
+    entityAddress: '',
+    entityCity: '',
     rating: 5,
     title: '',
-    reviewText: ''
+    reviewText: '',
+    pros: [],
+    cons: [],
+    stayDate: null
   });
   const [notification, setNotification] = useState(null); // { message, type: 'success' | 'error' | 'info' }
 
@@ -161,16 +167,12 @@ function ProfilePage() {
 
         setBookings(bookingsRes.data.data || bookingsRes.data.bookings || []);
 
-        // Parse reviews array - handle multiple possible response formats
+        // Parse reviews - backend returns { success: true, data: [...] }
         let reviewsArray = [];
         if (Array.isArray(reviewsRes.data?.data)) {
           reviewsArray = reviewsRes.data.data;
-        } else if (Array.isArray(reviewsRes.data?.reviews)) {
-          reviewsArray = reviewsRes.data.reviews;
         } else if (Array.isArray(reviewsRes.data)) {
           reviewsArray = reviewsRes.data;
-        } else if (reviewsRes.data?.data && typeof reviewsRes.data.data === 'object') {
-          reviewsArray = Object.values(reviewsRes.data.data);
         }
 
         setReviews(reviewsArray);
@@ -428,7 +430,7 @@ function ProfilePage() {
     }
   };
 
-  const openReviewModal = (booking) => {
+  const openReviewModal = async (booking) => {
     console.log('🔍 Opening review modal for booking:', booking);
 
     // Handle booking_details - it might be a string or already parsed object
@@ -456,13 +458,29 @@ function ProfilePage() {
       entityId = booking.id;
     }
 
+    // Extract entity details from booking
+    const entityName = details.hotelName || details.hotel_name || details.carModel || details.car_model || 
+                       (details.airline && details.flightNumber ? `${details.airline} ${details.flightNumber}` : '') || '';
+    const entityAddress = details.hotelAddress || details.hotel_address || details.pickupLocation || details.pickup_location || '';
+    const entityCity = details.city || details.location || details.destination || '';
+    
+    // Extract stay/travel date from booking
+    const stayDate = details.checkIn || details.check_in || details.departureDate || details.departure_date || 
+                     details.pickupDate || details.pickup_date || booking.booking_date || null;
+
     const formData = {
       bookingId: booking.id,
       entityType,
-      entityId: parseInt(entityId), // Ensure it's a number
+      entityId: parseInt(entityId),
+      entityName,
+      entityAddress,
+      entityCity,
       rating: 5,
       title: '',
-      reviewText: ''
+      reviewText: '',
+      pros: [],
+      cons: [],
+      stayDate
     };
 
     console.log('📝 Review form initialized:', formData);
@@ -479,14 +497,21 @@ function ProfilePage() {
       console.log('🔑 User ID from localStorage:', userId, 'Type:', typeof userId);
       console.log('🔑 Parsed user ID:', parseInt(userId));
 
-      // Map frontend fields to backend expected fields
+      // Map frontend fields to backend expected fields with enhanced data
       const reviewData = {
         listing_type: reviewForm.entityType,
         listing_id: reviewForm.entityId,
         user_id: parseInt(userId),
         user_name: userName,
         rating: reviewForm.rating,
-        comment: reviewForm.reviewText || reviewForm.title || ''
+        title: reviewForm.title || '',
+        comment: reviewForm.reviewText || '',
+        entity_name: reviewForm.entityName || null,
+        entity_address: reviewForm.entityAddress || null,
+        entity_city: reviewForm.entityCity || null,
+        pros: reviewForm.pros && reviewForm.pros.length > 0 ? reviewForm.pros : [],
+        cons: reviewForm.cons && reviewForm.cons.length > 0 ? reviewForm.cons : [],
+        stay_date: reviewForm.stayDate || null
       };
 
       console.log('📝 Submitting review:', reviewData);
@@ -506,24 +531,14 @@ function ProfilePage() {
         console.log('🔍 FULL RESPONSE:', JSON.stringify(reviewsRes, null, 2));
         console.log('🔍 reviewsRes.data:', reviewsRes.data);
         console.log('🔍 reviewsRes.data.data:', reviewsRes.data?.data);
-        console.log('🔍 Type of reviewsRes.data.data:', typeof reviewsRes.data?.data);
-        console.log('🔍 Is reviewsRes.data.data an array?', Array.isArray(reviewsRes.data?.data));
 
-        // Parse reviews array from response - handle multiple possible formats
+        // Parse reviews - backend returns { success: true, data: [...] }
         let reviewsArray = [];
 
         if (Array.isArray(reviewsRes.data?.data)) {
-          // Standard format: { data: { data: [...] } }
           reviewsArray = reviewsRes.data.data;
-        } else if (Array.isArray(reviewsRes.data?.reviews)) {
-          // Alternative format: { data: { reviews: [...] } }
-          reviewsArray = reviewsRes.data.reviews;
         } else if (Array.isArray(reviewsRes.data)) {
-          // Direct array: { data: [...] }
           reviewsArray = reviewsRes.data;
-        } else if (reviewsRes.data?.data && typeof reviewsRes.data.data === 'object') {
-          // If data.data is an object, try to extract reviews from it
-          reviewsArray = Object.values(reviewsRes.data.data);
         }
 
         console.log('✅ Final reviews array:', reviewsArray);
@@ -545,9 +560,15 @@ function ProfilePage() {
         bookingId: null,
         entityType: '',
         entityId: null,
+        entityName: '',
+        entityAddress: '',
+        entityCity: '',
         rating: 5,
         title: '',
-        reviewText: ''
+        reviewText: '',
+        pros: [],
+        cons: [],
+        stayDate: null
       });
     } catch (error) {
       console.error('Review submission error:', error);
@@ -579,6 +600,30 @@ function ProfilePage() {
   const getFilteredBookings = () => {
     if (bookingFilter === 'all') return bookings;
     return bookings.filter(b => b.status === bookingFilter);
+  };
+
+  // Delete review handler
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const userId = localStorage.getItem('userId');
+      await reviewsAPI.delete(reviewId, userId);
+      
+      // Remove the deleted review from state
+      setReviews(reviews.filter(r => {
+        const id = r._id?.$oid || r._id;
+        return id !== reviewId;
+      }));
+      
+      showNotification('Review deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to delete review';
+      showNotification(errorMsg, 'error');
+    }
   };
 
   // Notification helper
@@ -872,12 +917,12 @@ function ProfilePage() {
                   // Handle MongoDB ObjectId format
                   const reviewId = review._id?.$oid || review._id || `review-${index}`;
 
-                  // Parse date - handle both string and Date object
-                  let dateStr = 'N/A';
+                  // Parse created_at date
+                  let createdDateStr = 'N/A';
                   try {
                     const date = review.created_at ? new Date(review.created_at) : null;
                     if (date && !isNaN(date.getTime())) {
-                      dateStr = date.toLocaleDateString('en-US', {
+                      createdDateStr = date.toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -887,33 +932,106 @@ function ProfilePage() {
                     console.error('Date parsing error:', e, review.created_at);
                   }
 
-                  // Log review data for debugging
-                  if (index === 0) {
-                    console.log('📝 Sample review object:', review);
+                  // Parse stay_date
+                  let stayDateStr = null;
+                  try {
+                    if (review.stay_date) {
+                      const date = new Date(review.stay_date);
+                      if (!isNaN(date.getTime())) {
+                        stayDateStr = date.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        });
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Stay date parsing error:', e, review.stay_date);
                   }
 
                   // Fallback to legacy fields (including seeded data fields)
                   const displayRating = review.rating || 0;
+                  const displayTitle = review.title || '';
                   const displayComment = review.comment || review.review_text || '';
                   const displayType = (review.listing_type || review.entity_type || review.target_type || 'UNKNOWN').toUpperCase();
                   const displayId = review.listing_id || review.entity_id || review.target_id || 'N/A';
+                  const displayName = review.entity_name || null;
+                  const displayCity = review.entity_city || null;
+                  const displayAddress = review.entity_address || null;
+                  const hasPros = review.pros && Array.isArray(review.pros) && review.pros.length > 0;
+                  const hasCons = review.cons && Array.isArray(review.cons) && review.cons.length > 0;
+
+                  // Calculate filled and half stars for decimal ratings
+                  const fullStars = Math.floor(displayRating);
+                  const hasHalfStar = (displayRating % 1) >= 0.5;
+                  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
 
                   return (
                     <div key={reviewId} className="review-card">
                       <div className="review-header">
                         <div className="review-rating">
-                          {[...Array(5)].map((_, i) => (
-                            <FaStar key={i} className={i < displayRating ? 'star-filled' : 'star-empty'} />
+                          {[...Array(fullStars)].map((_, i) => (
+                            <FaStar key={`full-${i}`} className="star-filled" />
                           ))}
+                          {hasHalfStar && <FaStar key="half" className="star-half" />}
+                          {[...Array(emptyStars)].map((_, i) => (
+                            <FaStar key={`empty-${i}`} className="star-empty" />
+                          ))}
+                          <span className="rating-value">{displayRating.toFixed(1)}</span>
                         </div>
-                        <span className="review-date">{dateStr}</span>
+                        <span className="review-date">{createdDateStr}</span>
                       </div>
+                      
+                      {displayTitle && <h4 className="review-title">{displayTitle}</h4>}
                       {displayComment && <p className="review-text">{displayComment}</p>}
+                      
+                      {(hasPros || hasCons) && (
+                        <div className="review-pros-cons">
+                          {hasPros && (
+                            <div className="review-pros">
+                              <strong>Pros:</strong>
+                              <ul>
+                                {review.pros.map((pro, idx) => (
+                                  <li key={idx}>{pro}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {hasCons && (
+                            <div className="review-cons">
+                              <strong>Cons:</strong>
+                              <ul>
+                                {review.cons.map((con, idx) => (
+                                  <li key={idx}>{con}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       <div className="review-meta">
-                        <span className="review-entity">
-                          {displayType} #{displayId}
-                        </span>
-                        {(review.verified || review.verified_booking) && <span className="verified-badge">✓ Verified</span>}
+                        <div className="review-entity-info">
+                          <span className="review-entity-type">{displayType}</span>
+                          {displayName && <span className="review-entity-name">{displayName}</span>}
+                          {displayAddress && <span className="review-entity-address">{displayAddress}</span>}
+                          {displayCity && <span className="review-entity-location">{displayCity}</span>}
+                          {!displayName && <span className="review-entity-id">#{displayId}</span>}
+                        </div>
+                        <div className="review-dates">
+                          {stayDateStr && (
+                            <div className="stay-date">Stay: {stayDateStr}</div>
+                          )}
+                        </div>
+                        <div className="review-actions">
+                          <button 
+                            className="delete-review-btn" 
+                            onClick={() => handleDeleteReview(reviewId)}
+                            title="Delete review"
+                          >
+                            <FaTimes /> Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1141,7 +1259,7 @@ function ProfilePage() {
 
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Rating</label>
+                  <label>Rating *</label>
                   <div className="star-rating">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <FaStar
@@ -1154,7 +1272,7 @@ function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>Review Title</label>
+                  <label>Review Title *</label>
                   <input
                     type="text"
                     value={reviewForm.title}
@@ -1164,12 +1282,48 @@ function ProfilePage() {
                 </div>
 
                 <div className="form-group">
-                  <label>Your Review</label>
+                  <label>Your Review *</label>
                   <textarea
                     value={reviewForm.reviewText}
                     onChange={(e) => setReviewForm({ ...reviewForm, reviewText: e.target.value })}
                     placeholder="Share your experience..."
                     rows="5"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Pros (separate with commas)</label>
+                  <textarea
+                    value={Array.isArray(reviewForm.pros) ? reviewForm.pros.join(', ') : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setReviewForm({ ...reviewForm, pros: [value] });
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      const items = value.split(',').map(p => p.trim()).filter(p => p);
+                      setReviewForm({ ...reviewForm, pros: items });
+                    }}
+                    placeholder="Great location, Clean rooms, Friendly staff"
+                    rows="2"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Cons (separate with commas)</label>
+                  <textarea
+                    value={Array.isArray(reviewForm.cons) ? reviewForm.cons.join(', ') : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setReviewForm({ ...reviewForm, cons: [value] });
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      const items = value.split(',').map(c => c.trim()).filter(c => c);
+                      setReviewForm({ ...reviewForm, cons: items });
+                    }}
+                    placeholder="Parking was expensive, No breakfast included"
+                    rows="2"
                   />
                 </div>
               </div>

@@ -84,7 +84,7 @@ export const reviewsAPI = {
   getByEntity: (entityType, entityId, params) => api.get(`/api/reviews/${entityType}/${entityId}`, { params }),
   getMyReviews: (userId) => api.get(`/api/reviews/user/${userId}`),
   update: (id, data) => api.put(`/api/reviews/${id}`, data),
-  delete: (id) => api.delete(`/api/reviews/${id}`),
+  delete: (id, userId) => api.delete(`/api/reviews/${id}`, { params: { user_id: userId } }),
   markHelpful: (id) => api.post(`/api/reviews/${id}/helpful`),
 };
 

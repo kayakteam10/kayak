@@ -239,7 +239,8 @@ services:
       - "8006:8006"
     environment:
       PORT: 8006
-      MONGO_URL: mongodb://mongodb:27017/kayak_reviews
+      MONGO_URL: mongodb://mongodb:27017
+      MONGO_DB_NAME: kayak_db
     depends_on:
       mongodb:
         condition: service_healthy
@@ -262,6 +263,8 @@ services:
       DB_USER: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       DB_NAME: kayak_db
+      MONGO_URL: mongodb://mongodb:27017
+      MONGO_DB_NAME: kayak_db
       KAFKA_BROKER: kafka:9092
       FLIGHT_SERVICE_URL: http://flight-service:8001
       HOTEL_SERVICE_URL: http://hotel-service:8002
@@ -271,6 +274,8 @@ services:
       REVIEW_SERVICE_URL: http://review-service:8006
       AI_SERVICE_URL: http://ai-service:8007
     depends_on:
+      mongodb:
+        condition: service_healthy
       flight-service:
         condition: service_healthy
       hotel-service:

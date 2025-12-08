@@ -84,9 +84,9 @@ const SEARCH_TABS = [
 ];
 
 const heroMessages = {
-  flights: 'Compare flight deals from 100s of sites',
-  hotels: 'Compare hotel deals from 100s of sites',
-  cars: 'Compare rental cars from 100s of sites'
+  flights: 'Book flight tickets at the best prices',
+  hotels: 'Book hotels from 1000s of properties worldwide',
+  cars: 'Book rental cars for your next trip',
 };
 
 const createLeg = () => ({ from: '', to: '', departDate: '' });
