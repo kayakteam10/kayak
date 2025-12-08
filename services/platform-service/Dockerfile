@@ -2,14 +2,21 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies in the container (fixes bcrypt binary issues)
-RUN npm install --only=production
+# Install dependencies
+RUN npm install --production
 
-# Copy application code
+# Copy source code
 COPY . .
 
+# Expose port (configurable via ENV)
 EXPOSE 8080
-CMD ["npm", "start"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || '8080') + '/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start application
+CMD ["node", "src/server.js"]

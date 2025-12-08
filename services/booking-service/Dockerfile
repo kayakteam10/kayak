@@ -1,7 +1,22 @@
 FROM node:18-alpine
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm install
+
+# Install dependencies
+RUN npm install --production
+
+# Copy source code
 COPY . .
-EXPOSE 8004
-CMD ["npm", "start"]
+
+# Expose port (configurable via ENV)
+EXPOSE ${PORT:-8000}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || '8000') + '/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start application
+CMD ["node", "src/server.js"]
