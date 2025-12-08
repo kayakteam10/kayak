@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { FaLock, FaCheckCircle, FaWifi, FaParking, FaSwimmingPool, FaDumbbell, FaSpa, FaUtensils, FaCoffee, FaBed } from 'react-icons/fa';
 import { authAPI, hotelsAPI, bookingsAPI } from '../services/api';
 import { getPaymentMethods, addPaymentMethod, markPaymentMethodUsed } from '../services/paymentMethodsAPI';
 import './HotelBookingPage.css';
 
 const HotelBookingPage = () => {
+  const { user } = useAuth();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -53,12 +55,12 @@ const HotelBookingPage = () => {
           try {
             const result = await getPaymentMethods();
             console.log('HotelBookingPage - API Response:', result);
-            
+
             if (result.success) {
               const paymentMethods = result.data || [];
               console.log('HotelBookingPage - Loaded payment methods:', paymentMethods);
               setSavedPaymentMethods(paymentMethods);
-              
+
               // If no cards, set useNewCard to true
               if (paymentMethods.length === 0) {
                 console.log('HotelBookingPage - No saved cards, using new card');
@@ -289,7 +291,7 @@ const HotelBookingPage = () => {
               console.error('Error marking payment method as used:', error);
             }
           }
-          
+
           paymentDetails = {
             ...paymentDetails,
             cardNumber: `************${selectedCard.card_last4}`,
@@ -301,7 +303,7 @@ const HotelBookingPage = () => {
       }
 
       const response = await bookingsAPI.create({
-        user_id: parseInt(localStorage.getItem('userId') || authAPI.getCurrentUser()?.userId),
+        user_id: user?.id || parseInt(localStorage.getItem('userId')),
         booking_type: 'hotel',
         total_amount: total,
         payment_method: 'credit_card',
@@ -410,7 +412,7 @@ const HotelBookingPage = () => {
             {/* Payment Method */}
             <section className="form-section">
               <h2>Payment Information</h2>
-              
+
               {/* Debug: Show saved payment methods count */}
               {console.log('HotelBookingPage - Rendering payment section. Saved cards:', savedPaymentMethods.length, 'useNewCard:', useNewCard)}
 
