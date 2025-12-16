@@ -1,8 +1,8 @@
-# Kayak Microservices Architecture - Complete
+# TripWeave Microservices Architecture - Complete
 
 ## 🎉 **MIGRATION COMPLETE - 100%!**
 
-You've successfully migrated the Kayak monolith to a **7-microservice architecture**!
+You've successfully migrated the TripWeave monolith to a **7-microservice architecture**!
 
 ---
 
@@ -193,8 +193,8 @@ User → Platform → Booking Service
 - **Redis Commander**: http://localhost:8091
 
 ### **Databases:**
-- **MySQL**: localhost:3306 (kayak_db)
-- **MongoDB**: localhost:27017 (kayak_db)
+- **MySQL**: localhost:3306 (tripweave_db)
+- **MongoDB**: localhost:27017 (tripweave_db)
 
 ### **Message Queue:**
 - **Kafka**: localhost:9092

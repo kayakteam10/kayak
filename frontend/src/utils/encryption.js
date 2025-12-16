@@ -12,7 +12,7 @@
 import CryptoJS from 'crypto-js';
 
 // Salt for key derivation (in production, this should be more secure)
-const ENCRYPTION_SALT = 'kayak_payment_salt_2025';
+const ENCRYPTION_SALT = 'tripweave_payment_salt_2025';
 
 /**
  * Generate encryption key from userId
@@ -50,17 +50,17 @@ export const encryptCard = (data, userId) => {
 export const decryptCard = (encryptedData, userId) => {
   try {
     if (!encryptedData) return [];
-    
+
     const key = generateKey(userId);
     const decrypted = CryptoJS.AES.decrypt(encryptedData, key);
     const jsonString = decrypted.toString(CryptoJS.enc.Utf8);
-    
+
     if (!jsonString) {
       // If decryption fails, might be corrupted data
       console.warn('Failed to decrypt payment data - returning empty array');
       return [];
     }
-    
+
     return JSON.parse(jsonString);
   } catch (error) {
     console.error('Decryption error:', error);
@@ -78,13 +78,13 @@ export const migrateToEncrypted = (userId) => {
   try {
     const key = `savedPaymentMethods_${userId}`;
     const data = localStorage.getItem(key);
-    
+
     if (!data) return false;
-    
+
     // Try to parse as plain JSON
     try {
       const cards = JSON.parse(data);
-      
+
       // If it's an array, it's unencrypted - encrypt it
       if (Array.isArray(cards)) {
         const encrypted = encryptCard(cards, userId);
@@ -106,7 +106,7 @@ export const migrateToEncrypted = (userId) => {
         return false;
       }
     }
-    
+
     return false;
   } catch (error) {
     console.error('Migration error:', error);
@@ -141,26 +141,26 @@ export const generateCardId = () => {
  */
 export const validateCardNumber = (cardNumber) => {
   const cleaned = cardNumber.replace(/\s/g, '');
-  
+
   if (!/^\d+$/.test(cleaned)) return false;
   if (cleaned.length < 13 || cleaned.length > 19) return false;
-  
+
   // Luhn algorithm
   let sum = 0;
   let isEven = false;
-  
+
   for (let i = cleaned.length - 1; i >= 0; i--) {
     let digit = parseInt(cleaned[i]);
-    
+
     if (isEven) {
       digit *= 2;
       if (digit > 9) digit -= 9;
     }
-    
+
     sum += digit;
     isEven = !isEven;
   }
-  
+
   return sum % 10 === 0;
 };
 
@@ -171,14 +171,14 @@ export const validateCardNumber = (cardNumber) => {
  */
 export const detectCardBrand = (cardNumber) => {
   const cleaned = cardNumber.replace(/\s/g, '');
-  
+
   if (/^4/.test(cleaned)) return 'Visa';
   if (/^5[1-5]/.test(cleaned)) return 'Mastercard';
   if (/^3[47]/.test(cleaned)) return 'American Express';
   if (/^6(?:011|5)/.test(cleaned)) return 'Discover';
   if (/^35/.test(cleaned)) return 'JCB';
   if (/^30[0-5]/.test(cleaned)) return 'Diners Club';
-  
+
   return 'Unknown';
 };
 

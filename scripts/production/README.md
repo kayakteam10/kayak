@@ -1,6 +1,6 @@
-# Kayak Production Data Seeding
+# TripWeave Production Data Seeding
 
-This directory contains comprehensive production data seeding scripts for the Kayak travel booking system.
+This directory contains comprehensive production data seeding scripts for the TripWeave travel booking system.
 
 ## Overview
 
@@ -25,13 +25,13 @@ These scripts will seed your production databases with realistic, interrelated d
 ## Prerequisites
 
 1. **MySQL RDS Database**
-   - Host: `kayak-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com`
-   - Database: `kayak_db`
+   - Host: `tripweave-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com`
+   - Database: `tripweave_db`
    - Schema must be applied (see `/database/01-complete-schema-new.sql`)
 
 2. **MongoDB Access**
    - Port forwarded to `localhost:27017`
-   - Database: `kayak_db`
+   - Database: `tripweave_db`
 
 3. **Node.js Dependencies**
    ```bash
@@ -43,13 +43,13 @@ These scripts will seed your production databases with realistic, interrelated d
 Edit `.env` file if needed (already configured for production):
 
 ```env
-MYSQL_HOST=kayak-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com
+MYSQL_HOST=tripweave-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com
 MYSQL_USER=admin
 MYSQL_PASSWORD=YourStrongPassword123!
-MYSQL_DATABASE=kayak_db
+MYSQL_DATABASE=tripweave_db
 
 MONGODB_URI=mongodb://localhost:27017
-MONGODB_DATABASE=kayak_db
+MONGODB_DATABASE=tripweave_db
 ```
 
 ## Usage
@@ -173,8 +173,8 @@ After seeding, verify data integrity:
 
 ```sql
 -- Connect to MySQL
-mysql -h kayak-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com \
-      -u admin -p -D kayak_db
+mysql -h tripweave-mysql.cziiq4a6u54j.us-west-1.rds.amazonaws.com \
+      -u admin -p -D tripweave_db
 
 -- Check counts
 SELECT 'users' as table_name, COUNT(*) as count FROM users
@@ -213,7 +213,7 @@ LIMIT 10;
 
 ```bash
 # Connect to MongoDB
-mongosh "mongodb://localhost:27017/kayak_db"
+mongosh "mongodb://localhost:27017/tripweave_db"
 
 # Check review count
 db.reviews.countDocuments()
@@ -338,4 +338,4 @@ For issues or questions:
 
 ## License
 
-Internal use only - Kayak team.
+Internal use only - TripWeave team.

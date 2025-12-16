@@ -43,7 +43,7 @@
   z-index: 1;
 }
 
-/* Header styles - Kayak Style */
+/* Header styles - TripWeave Style */
 .header {
   background-color: var(--color-bg-primary);
   border-bottom: 1px solid var(--color-border-light);
@@ -78,14 +78,14 @@
   color: var(--color-primary-dark);
 }
 
-/* Kayak Block Logo */
-.kayak-logo {
+/* TripWeave Block Logo */
+.tripweave-logo {
   display: flex;
   gap: 2px;
   align-items: center;
 }
 
-.kayak-block {
+.tripweave-block {
   background-color: #FF6B35;
   color: white;
   font-size: 18px;
@@ -98,7 +98,7 @@
   transition: transform 0.2s ease;
 }
 
-.kayak-block:hover {
+.tripweave-block:hover {
   transform: translateY(-2px);
 }
 

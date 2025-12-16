@@ -1,8 +1,8 @@
-# Kayak EKS Deployment - Quick Start
+# TripWeave EKS Deployment - Quick Start
 
 ## 🚀 Complete EKS Deployment Package
 
-This directory contains everything needed to deploy the Kayak microservices platform on Amazon EKS (Elastic Kubernetes Service).
+This directory contains everything needed to deploy the TripWeave microservices platform on Amazon EKS (Elastic Kubernetes Service).
 
 ## 📁 Directory Structure
 
@@ -125,17 +125,17 @@ kubectl logs -f deployment/platform-service
 
 ### Pause Cluster (when not in use)
 ```bash
-eksctl scale nodegroup --cluster=kayak-cluster --name=kayak-nodes --nodes=0
+eksctl scale nodegroup --cluster=tripweave-cluster --name=tripweave-nodes --nodes=0
 ```
 
 ### Resume Cluster
 ```bash
-eksctl scale nodegroup --cluster=kayak-cluster --name=kayak-nodes --nodes=3
+eksctl scale nodegroup --cluster=tripweave-cluster --name=tripweave-nodes --nodes=3
 ```
 
 ### Delete Everything
 ```bash
-eksctl delete cluster --name kayak-cluster --region us-west-1
+eksctl delete cluster --name tripweave-cluster --region us-west-1
 # Also delete MSK cluster if created
 ```
 
@@ -181,10 +181,10 @@ kubectl describe service platform-service
 ### Database connection issues
 ```bash
 # Check if ConfigMap is correct
-kubectl get configmap kayak-config -o yaml
+kubectl get configmap tripweave-config -o yaml
 
 # Check if Secrets are loaded
-kubectl get secret kayak-secrets
+kubectl get secret tripweave-secrets
 ```
 
 ### Image pull errors

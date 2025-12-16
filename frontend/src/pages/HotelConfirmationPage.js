@@ -88,7 +88,7 @@ function HotelConfirmationPage() {
       </head>
       <body>
         <div class="header">
-          <div class="logo">KAYAK</div>
+          <div class="logo">TRIPWEAVE</div>
           <div class="title">Booking Confirmed</div>
           <div class="subtitle">Reference: ${booking.booking_reference}</div>
         </div>
@@ -108,7 +108,7 @@ function HotelConfirmationPage() {
         </div>
 
         <div class="footer">
-          <p>Thank you for booking with Kayak.</p>
+          <p>Thank you for booking with TripWeave.</p>
           <p>${new Date().toLocaleString()}</p>
         </div>
         <script>

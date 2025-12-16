@@ -35,12 +35,16 @@ function Header() {
   return (
     <header className="header">
       <div className="header-content">
-        <Link to="/" className="logo kayak-logo">
-          <span className="kayak-block">K</span>
-          <span className="kayak-block">A</span>
-          <span className="kayak-block">Y</span>
-          <span className="kayak-block">A</span>
-          <span className="kayak-block">K</span>
+        <Link to="/" className="logo tripweave-logo">
+          <span className="tripweave-block">T</span>
+          <span className="tripweave-block">R</span>
+          <span className="tripweave-block">I</span>
+          <span className="tripweave-block">P</span>
+          <span className="tripweave-block">W</span>
+          <span className="tripweave-block">E</span>
+          <span className="tripweave-block">A</span>
+          <span className="tripweave-block">V</span>
+          <span className="tripweave-block">E</span>
         </Link>
         <nav className="nav">
           <Link to="/" className="nav-link">Home</Link>

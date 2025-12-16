@@ -57,7 +57,7 @@ NODE_ENV=development
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=your_password
-DB_NAME=kayak_db
+DB_NAME=tripweave_db
 
 # Redis (optional)
 REDIS_URL=redis://localhost:6379

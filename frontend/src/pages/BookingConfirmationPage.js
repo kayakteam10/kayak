@@ -22,12 +22,12 @@ function BookingConfirmationPage() {
     const fetchBooking = async () => {
       try {
         let bookingData = null;
-        
+
         // Handle bundle bookings - just store IDs, don't fetch details yet
         if (type === 'bundles') {
           const flightId = searchParams.get('flight');
           const hotelId = searchParams.get('hotel');
-          
+
           if (flightId && hotelId) {
             // Store the IDs for the buttons
             setFlightBooking({ id: flightId });
@@ -95,7 +95,7 @@ function BookingConfirmationPage() {
   };
 
   if (loading) return <div className="confirmation-loading">Loading confirmation...</div>;
-  
+
   // Bundle confirmation - show summary with buttons to view details
   if (type === 'bundles' && flightBooking && hotelBooking) {
     return (
@@ -108,14 +108,14 @@ function BookingConfirmationPage() {
           </div>
 
           <div className="confirmation-details">
-            <div className="detail-card" style={{textAlign: 'center', padding: '32px'}}>
-              <h3 style={{marginBottom: '24px', fontSize: '1.3em'}}>Your bookings have been created</h3>
-              <p style={{marginBottom: '32px', color: '#666', fontSize: '1.1em'}}>
+            <div className="detail-card" style={{ textAlign: 'center', padding: '32px' }}>
+              <h3 style={{ marginBottom: '24px', fontSize: '1.3em' }}>Your bookings have been created</h3>
+              <p style={{ marginBottom: '32px', color: '#666', fontSize: '1.1em' }}>
                 Two separate bookings have been created for your convenience.
                 <br />You can view the details of each booking below.
               </p>
-              
-              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px'}}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px' }}>
                 {/* Flight Booking Card */}
                 <div style={{
                   padding: '24px',
@@ -125,18 +125,18 @@ function BookingConfirmationPage() {
                   transition: 'transform 0.2s',
                   cursor: 'pointer'
                 }} onClick={() => navigate(`/booking/confirmation/flights/${flightBooking.id}`)}>
-                  <div style={{fontSize: '48px', marginBottom: '16px', color: '#0066CC'}}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px', color: '#0066CC' }}>
                     <FaPlane />
                   </div>
-                  <h4 style={{marginBottom: '12px', fontSize: '1.2em'}}>Flight Booking</h4>
-                  <p style={{color: '#666', marginBottom: '16px'}}>Booking ID: #{flightBooking.id}</p>
-                  <button 
+                  <h4 style={{ marginBottom: '12px', fontSize: '1.2em' }}>Flight Booking</h4>
+                  <p style={{ color: '#666', marginBottom: '16px' }}>Booking ID: #{flightBooking.id}</p>
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/booking/confirmation/flights/${flightBooking.id}`);
                     }}
                     className="btn-primary"
-                    style={{width: '100%', padding: '12px'}}
+                    style={{ width: '100%', padding: '12px' }}
                   >
                     View Flight Details
                   </button>
@@ -151,18 +151,18 @@ function BookingConfirmationPage() {
                   transition: 'transform 0.2s',
                   cursor: 'pointer'
                 }} onClick={() => navigate(`/booking/confirmation/hotels/${hotelBooking.id}`)}>
-                  <div style={{fontSize: '48px', marginBottom: '16px', color: '#ff6b35'}}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px', color: '#ff6b35' }}>
                     <FaHotel />
                   </div>
-                  <h4 style={{marginBottom: '12px', fontSize: '1.2em'}}>Hotel Booking</h4>
-                  <p style={{color: '#666', marginBottom: '16px'}}>Booking ID: #{hotelBooking.id}</p>
-                  <button 
+                  <h4 style={{ marginBottom: '12px', fontSize: '1.2em' }}>Hotel Booking</h4>
+                  <p style={{ color: '#666', marginBottom: '16px' }}>Booking ID: #{hotelBooking.id}</p>
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/booking/confirmation/hotels/${hotelBooking.id}`);
                     }}
                     className="btn-primary"
-                    style={{width: '100%', padding: '12px', backgroundColor: '#ff6b35'}}
+                    style={{ width: '100%', padding: '12px', backgroundColor: '#ff6b35' }}
                   >
                     View Hotel Details
                   </button>
@@ -183,7 +183,7 @@ function BookingConfirmationPage() {
       </div>
     );
   }
-  
+
   if (!booking && !id) {
     // If no booking ID, show success message anyway
     return (
@@ -682,7 +682,7 @@ function BookingConfirmationPage() {
           <div ref={printRef} className="print-view">
             <div className="print-header">
               <div className="print-logo">
-                <h1>KAYAK</h1>
+                <h1>TRIPWEAVE</h1>
                 <p className="print-tagline">Search one and done</p>
               </div>
               <div className="print-title">
@@ -722,11 +722,11 @@ function BookingConfirmationPage() {
               <div className="footer-contact">
                 <h4>Contact Us</h4>
                 <p><FaPhone /> +1 (800) 123-4567</p>
-                <p><FaEnvelope /> support@kayak.com</p>
-                <p><FaGlobe /> www.kayak.com</p>
+                <p><FaEnvelope /> support@tripweave.com</p>
+                <p><FaGlobe /> www.tripweave.com</p>
               </div>
               <div className="footer-legal">
-                <p>Thank you for booking with KAYAK!</p>
+                <p>Thank you for booking with TRIPWEAVE!</p>
                 <p className="small-text">This is an electronic confirmation. Please retain for your records.</p>
                 <p className="small-text">Booking ID: {booking.id} | Generated: {new Date().toLocaleString()}</p>
               </div>

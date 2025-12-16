@@ -8,10 +8,10 @@
 Complete pipeline to process raw CSV data and load to database:
 ```bash
 # Full pipeline (run ONCE after deployment)
-docker exec kayak-ai-service python scripts/setup_usa_deals_pipeline.py --clear-db
+docker exec tripweave-ai-service python scripts/setup_usa_deals_pipeline.py --clear-db
 
 # Skip steps if already processed
-docker exec kayak-ai-service python scripts/setup_usa_deals_pipeline.py --skip-merge --skip-enrich
+docker exec tripweave-ai-service python scripts/setup_usa_deals_pipeline.py --skip-merge --skip-enrich
 ```
 
 **What it does:**
@@ -32,7 +32,7 @@ Syncs deals from database to inventory service via Kafka.
 
 ```bash
 # Auto-started by docker-compose
-docker exec kayak-ai-service python scripts/sync_deals_to_inventory.py
+docker exec tripweave-ai-service python scripts/sync_deals_to_inventory.py
 ```
 
 ---
@@ -42,7 +42,7 @@ Starts Kafka consumer for real-time deal processing.
 
 ```bash
 # Auto-started by docker-compose
-docker exec kayak-ai-service python scripts/start_deals_worker.py
+docker exec tripweave-ai-service python scripts/start_deals_worker.py
 ```
 
 ---
@@ -60,7 +60,7 @@ Waits for dependencies (MySQL, Kafka, Ollama) and starts FastAPI service.
 Runs unit tests for the service.
 
 ```bash
-docker exec kayak-ai-service bash scripts/run_tests.sh
+docker exec tripweave-ai-service bash scripts/run_tests.sh
 ```
 
 ---
@@ -75,12 +75,12 @@ docker-compose up -d
 # 2. Wait for services to start (startup.sh handles this)
 
 # 3. Run data pipeline ONCE
-docker exec kayak-ai-service python scripts/setup_usa_deals_pipeline.py --clear-db
+docker exec tripweave-ai-service python scripts/setup_usa_deals_pipeline.py --clear-db
 
 # 4. Verify data loaded
-docker exec kayak-ai-service python -c "
+docker exec tripweave-ai-service python -c "
 from sqlalchemy import create_engine, text
-engine = create_engine('mysql+pymysql://root:rootpassword@mysql:3306/kayak_db')
+engine = create_engine('mysql+pymysql://root:rootpassword@mysql:3306/tripweave_db')
 with engine.connect() as conn:
     flights = conn.execute(text('SELECT COUNT(*) FROM flight_deals')).scalar()
     hotels = conn.execute(text('SELECT COUNT(*) FROM hotel_deals')).scalar()
@@ -97,7 +97,7 @@ docker-compose restart ai-service
 ### Data Refresh (Optional)
 ```bash
 # Re-run pipeline to update deals with new prices
-docker exec kayak-ai-service python scripts/setup_usa_deals_pipeline.py --clear-db
+docker exec tripweave-ai-service python scripts/setup_usa_deals_pipeline.py --clear-db
 ```
 
 ---
